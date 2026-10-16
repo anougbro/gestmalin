@@ -78,3 +78,63 @@ export function quantiteParEmplacement(
 
   return parEmplacement
 }
+
+/* ============================================================
+   LA ROTATION — quel lot sort en premier ?
+
+   FEFO (premier perime, premier sorti) : impose par l'OMS pour
+   les produits medicaux. Un lot recu il y a 2 ans mais qui
+   perime dans 6 semaines doit sortir AVANT un lot recu hier qui
+   perime dans 3 ans.
+
+   FIFO (premier recu, premier sorti) : le standard quand le
+   produit n'a pas de date. Seaux, serviettes.
+   ============================================================ */
+
+/* ---------- La date de reception d'un lot ----------
+   On ne la stocke pas. On la deduit du PREMIER mouvement
+   de reception qui concerne ce lot. */
+export function dateReceptionDuLot(
+  lotId: IdLot,
+  mouvements: readonly Mouvement[],
+): string | undefined {
+  let premiere: string | undefined
+  for (const m of mouvements) {
+    if (m.lotId !== lotId || m.type !== 'reception') continue
+    if (premiere === undefined || m.date < premiere) premiere = m.date
+  }
+  return premiere
+}
+
+/* ---------- FEFO ou FIFO ? ----------
+   La decision est prise pour le PRODUIT, pas pour le lot. */
+export function rotationEstFEFO(
+  produitId: IdProduit,
+  lots: readonly Lot[],
+): boolean {
+  return lotsDUnProduit(produitId, lots).some((l) => l.peremption !== undefined)
+}
+
+/* ---------- L'ordre de sortie ---------- */
+export function lotsParPriorite(
+  produitId: IdProduit,
+  lots: readonly Lot[],
+  mouvements: readonly Mouvement[],
+): Lot[] {
+  const duProduit = lotsDUnProduit(produitId, lots)
+
+  if (rotationEstFEFO(produitId, lots)) {
+    return [...duProduit].sort((a, b) => {
+      // Un lot sans date passe en dernier : il n'est pas le plus urgent.
+      if (a.peremption === undefined) return 1
+      if (b.peremption === undefined) return -1
+      return a.peremption.localeCompare(b.peremption)
+    })
+  }
+
+  return [...duProduit].sort((a, b) => {
+    const dateA = dateReceptionDuLot(a.id, mouvements) ?? ''
+    const dateB = dateReceptionDuLot(b.id, mouvements) ?? ''
+    return dateA.localeCompare(dateB)
+  })
+}
