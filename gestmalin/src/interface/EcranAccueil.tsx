@@ -1,94 +1,129 @@
 import { useEffect, useState } from 'react'
 import { useSession } from '../etat/useSession'
-import { Icone } from './Icones'
-import { Tuile } from './Primitives'
 import { base, ATTENTE_ID } from '../donnees/base'
+import { quantiteProduit } from '../domaine/stock'
+import { Icone, type NomIcone } from './Icones'
+import { Tuile } from './Primitives'
 import type { Ecran as NomEcran } from '../App'
 
 /* ============================================================
-   L'ACCUEIL — cinq gestes, rien d'autre.
+   L'ACCUEIL
 
-   Aucun menu, aucun sous-menu. On ouvre l'application,
-   on voit ce qu'on peut faire.
+   Sur telephone : cinq grosses tuiles, deux par deux. On vise
+   avec le pouce, sans lire.
+
+   Sur ordinateur : ce n'est PAS la meme chose avec trois
+   colonnes de plus. Un ecran large merite une vraie page —
+   un titre, des chiffres, et les gestes en lecture horizontale.
    ============================================================ */
+
+type Gestes = { ecran: NomEcran; icone: NomIcone; label: string; aide: string }
+
+const GESTES: Gestes[] = [
+  { ecran: 'chercher', icone: 'loupe', label: 'Trouver', aide: 'Où est un produit' },
+  { ecran: 'ranger', icone: 'boite', label: 'Ranger', aide: 'Ce qui attend au quai' },
+  { ecran: 'reception', icone: 'boite-entree', label: 'Réception', aide: 'Enregistrer une livraison' },
+  { ecran: 'sortie', icone: 'boite-sortie', label: 'Sortie', aide: 'Servir, casser, jeter' },
+  { ecran: 'compter', icone: 'compteur', label: 'Compter', aide: 'Inventaire par zone' },
+]
 
 export function EcranAccueil({ aller }: { aller: (e: NomEcran, c?: Record<string, unknown>) => void }) {
   const { rayon, compteurs, utilisateur } = useSession()
-  const [aRanger, setARanger] = useState(0)
+  const [auQuai, setAuQuai] = useState(0)
+  const [references, setReferences] = useState(0)
   const [enStock, setEnStock] = useState(0)
 
   useEffect(() => {
     ;(async () => {
-      /* Ce qui traine au quai de reception : recu, pas encore pose. */
-      const attente = await base.emplacements.get(ATTENTE_ID)
-      const mouvements = await base.mouvements.where('rayonId').equals(rayon.id).toArray()
+      const [produits, mouvements] = await Promise.all([
+        base.produits.where('rayonId').equals(rayon.id).toArray(),
+        base.mouvements.where('rayonId').equals(rayon.id).toArray(),
+      ])
 
-      let range = 0
-      if (attente) {
-        const dansAttente = new Map<string, number>()
-        for (const m of mouvements) {
-          if (m.versEmplacementId === ATTENTE_ID) dansAttente.set(m.lotId ?? m.produitId, (dansAttente.get(m.lotId ?? m.produitId) ?? 0) + m.quantite)
-          if (m.depuisEmplacementId === ATTENTE_ID) dansAttente.set(m.lotId ?? m.produitId, (dansAttente.get(m.lotId ?? m.produitId) ?? 0) - m.quantite)
-        }
-        range = [...dansAttente.values()].reduce((s, v) => s + Math.max(0, v), 0)
+      setReferences(produits.length)
+
+      let quantites = 0
+      for (const p of produits) quantites += Math.max(0, quantiteProduit(p.id, mouvements))
+      setEnStock(quantites)
+
+      /* Ce qui est arrive et n'est pas encore pose : recu au quai
+         moins ce qui en est deja reparti. */
+      const net = new Map<string, number>()
+      for (const m of mouvements) {
+        const cle = m.lotId ?? m.produitId
+        if (m.versEmplacementId === ATTENTE_ID) net.set(cle, (net.get(cle) ?? 0) + m.quantite)
+        if (m.depuisEmplacementId === ATTENTE_ID) net.set(cle, (net.get(cle) ?? 0) - m.quantite)
       }
-
-      setARanger(range)
-      const produits = await base.produits.where('rayonId').equals(rayon.id).toArray()
-      setEnStock(produits.length)
+      setAuQuai([...net.values()].reduce((s, v) => s + Math.max(0, v), 0))
     })()
   }, [rayon, compteurs.total])
 
   return (
-    <main className="ecran">
-      <div className="contenu">
-        <div className="entre" style={{ padding: '4px 2px 0' }}>
+    <div className="ecran">
+      <div className="contenu accueil">
+
+        <header className="accueil__tete">
           <div>
-            <p style={{ margin: 0, fontSize: 13, color: 'var(--c-500)' }}>{utilisateur}</p>
-            <p style={{ margin: 0, fontSize: 15, fontWeight: 700, letterSpacing: '-0.01em' }}>
-              <span className="num">{enStock}</span> références
-            </p>
+            <p className="accueil__sur">{rayon.nom}</p>
+            <h1 className="accueil__titre">Bonjour</h1>
+          </div>
+          <p className="accueil__qui">{utilisateur}</p>
+        </header>
+
+        <div className="accueil__stats">
+          <div className="stat">
+            <span className="stat__valeur num">{references}</span>
+            <span className="stat__mot">Références</span>
+          </div>
+          <div className={compteurs.total > 0 ? 'stat stat--alerte' : 'stat'}>
+            <span className="stat__valeur num">{compteurs.total}</span>
+            <span className="stat__mot">Alertes</span>
+          </div>
+          <div className="stat">
+            <span className="stat__valeur num">{auQuai}</span>
+            <span className="stat__mot">Au quai</span>
+          </div>
+          <div className="stat">
+            <span className="stat__valeur num">{enStock}</span>
+            <span className="stat__mot">Unités en stock</span>
           </div>
         </div>
 
-        {compteurs.total > 0 ? (
-          <button
-            className="bandeau"
-            onClick={() => aller('alertes')}
-          >
-            <span className="bandeau__compte num">{compteurs.agir}</span>
-            <span className="bandeau__texte">
-              <span className="bandeau__titre">À traiter</span>
-              <span className="bandeau__note">
-                {compteurs.agir === 0 ? 'Rien d\'urgent' : `${compteurs.surveiller} à surveiller`}
-              </span>
-            </span>
-            <Icone nom="cloche" taille={22} />
+        <div>
+          <p className="section__titre">Gestes</p>
+          <div className="accueil__gestes">
+            {GESTES.map(({ ecran, icone, label, aide }) => (
+              <button
+                key={ecran}
+                className="pos geste"
+                onClick={() => aller(ecran)}
+              >
+                {ecran === 'ranger' && auQuai > 0 && (
+                  <span className="pastille num">{auQuai}</span>
+                )}
+                {ecran === 'accueil' && compteurs.total > 0 && (
+                  <span className="pastille num">{compteurs.total}</span>
+                )}
+                <Icone nom={icone} taille={24} className="geste__icone" />
+                <span className="geste__label">{label}</span>
+                <span className="geste__aide">{aide}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <p className="section__titre">Gestion</p>
+          <div className="grille-2">
+            <Tuile icone="capsule" label="Produits" note="Catalogue" ton={rayon.ton} surClick={() => aller('produits')} />
+            <Tuile icone="cloche" label="Alertes" note="À traiter" ton={rayon.ton} surClick={() => aller('alertes')} />
+          </div>
+          <button className="lien-fichier" onClick={() => aller('fichiers')}>
+            <Icone nom="export" taille={19} />
+            <span>Importer et exporter</span>
           </button>
-        ) : (
-          <div className="bandeau bandeau--neutre">
-            <span className="bandeau__texte">
-              <span className="bandeau__titre">Tout est bon</span>
-              <span className="bandeau__note">Aucune alerte</span>
-            </span>
-            <Icone nom="coche" taille={22} />
-          </div>
-        )}
-
-        <div className="grille-tuiles">
-          <Tuile icone="loupe" label="Trouver" ton={rayon.ton} surClick={() => aller('chercher')} />
-          <Tuile icone="boite" label="Ranger" ton={rayon.ton} pastille={aRanger} surClick={() => aller('ranger')} />
-          <Tuile icone="boite-entree" label="Réception" ton={rayon.ton} surClick={() => aller('reception')} />
-          <Tuile icone="boite-sortie" label="Sortie" ton={rayon.ton} surClick={() => aller('sortie')} />
-        </div>
-
-        <Tuile icone="compteur" label="Compter" ton={rayon.ton} surClick={() => aller('compter')} />
-
-        <div className="grille-2" style={{ marginTop: 4 }}>
-          <Tuile icone="grille" label="Produits" ton={rayon.ton} surClick={() => aller('produits')} />
-          <Tuile icone="alerte" label="Alertes" ton={rayon.ton} pastille={compteurs.total} surClick={() => aller('alertes')} />
         </div>
       </div>
-    </main>
+    </div>
   )
 }

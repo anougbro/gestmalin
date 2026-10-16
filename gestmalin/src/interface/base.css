@@ -13,6 +13,11 @@
 html, body, #root {
   height: 100%;
   margin: 0;
+  /* La couleur de fond est posee sur html ET body : sinon une
+     zone qui depasse la hauteur de la fenetre laisse voir le
+     fond blanc par defaut du navigateur. */
+  background: var(--c-50);
+  color-scheme: light;
 }
 
 body {
@@ -131,6 +136,129 @@ body {
   color: #fff;
 }
 .scan__legende { margin: 0; font-size: 14px; font-weight: 600; text-align: center; }
+
+/* ============================================================
+   L'ACCUEIL
+
+   Deux presentations du MEME contenu.
+   - telephone : cinq tuilles qu'on vise au pouce
+   - ordinateur : une vraie page, avec titre et chiffres
+   ============================================================ */
+
+.accueil__tete {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+.accueil__sur {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--c-500);
+}
+.accueil__titre {
+  margin: 2px 0 0;
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+}
+.accueil__qui {
+  margin: 0 0 3px;
+  font-size: 13px;
+  color: var(--c-500);
+}
+
+.accueil__stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 13px 15px;
+  border: 1px solid var(--line);
+  border-radius: var(--r3);
+  background: var(--c-0);
+  box-shadow: var(--sh-1);
+}
+.stat__valeur {
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+}
+.stat__mot {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--c-500);
+}
+.stat--alerte { border-color: var(--dgr-200); background: var(--dgr-50); }
+.stat--alerte .stat__valeur { color: var(--dgr-700); }
+.stat--alerte .stat__mot { color: var(--dgr-700); opacity: 0.85; }
+
+.accueil__gestes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 9px;
+}
+
+.geste {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 100px;
+  padding: 15px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r4);
+  background: var(--c-0);
+  box-shadow: var(--sh-1);
+  cursor: pointer;
+  font-family: inherit;
+  color: var(--c-800);
+  transition: box-shadow 130ms ease, border-color 130ms ease, transform 80ms ease;
+}
+.geste:hover { box-shadow: var(--sh-3); border-color: var(--line-2); }
+.geste:active { transform: scale(0.985); }
+.geste:focus-visible { outline: 2px solid var(--c-900); outline-offset: 2px; }
+
+.geste__icone { color: var(--teal-700); }
+.geste__label {
+  font-size: 14px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+/* L'aide n'apparait que sur grand ecran : sur telephone, une
+   phrase sous chaque icone_noirait le pavage et n'est pas lue. */
+.geste__aide { display: none; }
+
+.lien-fichier {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 52px;
+  margin-top: 9px;
+  padding: 0 14px;
+  border: 1px dashed var(--line-2);
+  border-radius: var(--r3);
+  background: transparent;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--c-600);
+}
+.lien-fichier:hover { background: var(--c-0); color: var(--teal-700); }
 
 /* ---------- Bouton ---------- */
 
@@ -580,10 +708,10 @@ body {
     display: flex;
     flex-direction: column;
     gap: 24px;
-    width: 258px;
+    width: 226px;
     flex: none;
     min-height: 100vh;
-    padding: 24px 16px;
+    padding: 22px 14px;
     background: var(--c-0);
     border-right: 1px solid var(--line);
   }
@@ -660,22 +788,73 @@ body {
   .app__colonne > .app__barre { display: none; }
 
   .contenu {
-    padding: 30px 34px 48px;
-    max-width: 960px;
+    padding: 32px 36px 56px;
+    max-width: 1120px;
     width: 100%;
-    gap: 18px;
+    margin: 0 auto;
+    gap: 26px;
   }
 
-  .grille-tuiles { grid-template-columns: repeat(3, 1fr); }
+  /* ---------- L'accueil devient une vraie page ---------- */
+
+  .accueil { max-width: 940px; }
+
+  .accueil__tete { margin-bottom: 10px; }
+  .accueil__titre { font-size: 36px; }
+  .accueil__qui { font-size: 14px; }
+
+  /* Les quatre chiffres sur une seule ligne. */
+  .accueil__stats { grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .stat { padding: 18px 20px; border-radius: var(--r4); box-shadow: var(--sh-2); }
+  .stat__valeur { font-size: 34px; }
+  .stat__mot { font-size: 12.5px; }
+
+  /* Les gestes se lisent en ligne : icone, titre, puis l'aide.
+     Les cartes sont alignees en HAUT et non centrees : sinon un
+     texte sur trois lignes decale toute la rangee vers le bas. */
+  .accueil__gestes { grid-template-columns: repeat(5, 1fr); gap: 12px; }
+  .geste {
+    min-height: 158px;
+    padding: 20px 14px 18px;
+    justify-content: flex-start;
+    gap: 0;
+    text-align: center;
+  }
+  .geste__icone {
+    width: 44px;
+    height: 44px;
+    padding: 10px;
+    margin-bottom: 14px;
+    border-radius: var(--r3);
+    background: var(--teal-50);
+    color: var(--teal-700);
+  }
+  .geste__label { display: block; font-size: 15px; margin-bottom: 5px; }
+  .geste__aide {
+    display: block;
+    font-size: 12px;
+    line-height: 1.35;
+    color: var(--c-500);
+    text-wrap: balance;
+  }
+
   .grille-2 { gap: 12px; }
-  .tuile { min-height: 118px; }
+  .tuile { min-height: 108px; }
+  .lien-fichier { min-height: 56px; margin-top: 12px; }
 
   .entete {
-    padding: 16px 34px;
+    padding: 18px 36px;
     background: transparent;
     backdrop-filter: none;
+    border-bottom: 1px solid var(--line);
   }
   .entete__titre { font-size: 22px; letter-spacing: -0.02em; }
+
+  /* Les listes de produits, d'alertes et de comptage peuvent
+     respirer sur un grand ecran. */
+  .liste { gap: 10px; }
+  .carte { padding: 20px; }
+  .grille-tuiles { grid-template-columns: repeat(3, 1fr); }
 
   .ecran--attente { min-height: 100vh; }
 
