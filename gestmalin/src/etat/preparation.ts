@@ -19,7 +19,7 @@ export async function demarrer() {
   await base.rayons.bulkAdd(RAYONS_PAR_DEFAUT.map((r, i) => ({ ...r, ordre: i })))
   await base.zones.bulkAdd(ZONES_PAR_DEFAUT)
 
-  await base.emplacements.bulkAdd(ZONES_PAR_DEFAUT.flatMap(emplacementsDeZone))
+  await base.emplacements.bulkAdd(ZONES_PAR_DEFAUT.flatMap((z) => emplacementsDeZone(z.id)))
 
   /* Le quai de reception : une position reelle qui n'appartient
      a aucune zone. Tout ce qui arrive passe par la avant d'etre pose. */

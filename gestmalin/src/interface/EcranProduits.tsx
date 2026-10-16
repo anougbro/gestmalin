@@ -87,7 +87,7 @@ export function EcranProduits({
           <Bouton
             taille={64}
             plein
-            onClick={async () => {
+            surClick={async () => {
               if (!p?.nomFr.trim()) return
               await produits.enregistrer(p)
               setEdition(null)
@@ -113,8 +113,8 @@ export function EcranProduits({
 
       <div className="contenu">
         <div className="grille-2">
-          <Bouton taille={64} plein onClick={() => setNouveau(true)}>Nouveau</Bouton>
-          <Bouton variante="secondaire" taille={64} icone="export" onClick={() => aller('fichiers')}>Fichiers</Bouton>
+          <Bouton taille={64} plein surClick={() => setNouveau(true)}>Nouveau</Bouton>
+          <Bouton variante="secondaire" taille={64} icone="export" surClick={() => aller('fichiers')}>Fichiers</Bouton>
         </div>
 
         {liste.length === 0 ? (

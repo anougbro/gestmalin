@@ -68,13 +68,14 @@ export function convertirDateGS1(aammjj: string): string {
 type ConstructeurCodeLu = (code: CodeLu) => void
 
 export class LecteurCodeBarres {
-  private lecteur?: BrowserMultiFormatReader
+  private lecteur: BrowserMultiFormatReader | null = null
+  private video: HTMLVideoElement
+  private surCode: ConstructeurCodeLu
   private arrete = false
 
-  constructor(
-    private video: HTMLVideoElement,
-    private surCode: ConstructeurCodeLu,
-  ) {
+  constructor(video: HTMLVideoElement, surCode: ConstructeurCodeLu) {
+    this.video = video
+    this.surCode = surCode
     this.lecteur = new BrowserMultiFormatReader()
   }
 
@@ -101,6 +102,10 @@ export class LecteurCodeBarres {
 
   arreter(): void {
     this.arrete = true
-    this.lecteur?.reset()
+    /* stopStreams existe sur les versions recentes de l'API.
+       On l'appelle si elle est presente, sinon les controles de
+       la camera ne cessent jamais. */
+    const lecteur = this.lecteur as unknown as { stopStreams?: () => void }
+    lecteur?.stopStreams?.()
   }
 }

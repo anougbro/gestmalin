@@ -333,7 +333,7 @@ export const journal = {
   deLaDate: (depuis: string) =>
     base.mouvements.where('date').above(depuis).reverse().sortBy('date'),
   enAttenteDeSynchro: () => base.mouvements.where('synchro').equals(0).toArray(),
-  marquerSynchro: (ids: string[]) => base.mouvements.where('id').anyOf(ids).modify({ synchro: true }),
+  marquerSynchro: (ids: string[]) => base.mouvements.where('id').anyOf(ids).modify({ synchro: 1 }),
 }
 
 export type { Emplacement, Zone }

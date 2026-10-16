@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useSession } from '../etat/useSession'
 import { base, ATTENTE_ID } from '../donnees/base'
 import { quantiteProduit } from '../domaine/stock'
+import { nouvelId, maintenant } from '../donnees/depots'
 import type { ProduitRow } from '../donnees/base'
 import { Bouton, Entete, Stepper, Vide } from './Primitives'
 
@@ -72,7 +73,7 @@ export function EcranCompter({ retour }: { retour: () => void }) {
           : x,
       ),
     )
-    setIndex((i) => Math.min(i + 1, l.length))
+    setIndex((i) => Math.min(i + 1, lignes.length))
   }
 
   async function valider() {

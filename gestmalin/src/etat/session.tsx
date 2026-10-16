@@ -64,7 +64,8 @@ export function FournisseurSession({ children }: { children: ReactNode }) {
   const valeur = useMemo<Session>(
     () => ({
       rayon,
-      changeRayon: setRayon,
+      changeRayon: (id: string) =>
+        setRayon(RAYONS_PAR_DEFAUT.find((r) => r.id === id) ?? RAYONS_PAR_DEFAUT[0]),
       utilisateur: 'Préparateur',
       alertes,
       compteurs: compterAlertes(alertes),

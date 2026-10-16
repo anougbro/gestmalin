@@ -1,13 +1,34 @@
 <!doctype html>
-<html lang="en">
+<html lang="fr">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>gestmalin</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#0C4A45" />
+    <meta name="description" content="Gestion de stock hors ligne pour pharmacie : médicaments et produits ménagers." />
+
+    <!-- L'application est concue pour un ecran de telephone tenu d'une
+         seule main : pas de zoom automatique au double-tap. -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Gestmalin" />
+
+    <link rel="icon" type="image/svg+xml" href="/icone.svg" />
+    <link rel="apple-touch-icon" href="/icone-192.png" />
+
+    <title>Gestmalin — Stock pharmacie</title>
+
+    <style>
+      /* Avant que la feuille de style ne charge : on montre deja la
+         bonne couleur, pour eviter le flash blanc au demarrage. */
+      html { background: #f4f6f8; }
+    </style>
   </head>
   <body>
     <div id="root"></div>
+    <noscript>
+      Cette application a besoin de JavaScript. Activez-le dans votre navigateur.
+    </noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

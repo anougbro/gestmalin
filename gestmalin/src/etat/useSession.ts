@@ -1,7 +1,8 @@
 import { createContext, useContext } from 'react'
 import type { Alerte, CompteursAlertes } from '../domaine/alertes'
 import type { RayonTravail } from './rayons'
-import type { demarrer, toutEffacer } from './session'
+import type { demarrer } from './preparation'
+import type { toutEffacer } from '../donnees/depots'
 
 /* Le contrat de la session, et le moyen de le lire.
    Dans son propre fichier : un .tsx qui exporte autre chose

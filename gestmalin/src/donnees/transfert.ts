@@ -166,18 +166,32 @@ export async function simulerImport(
        porteraient le meme code. On ne fusionne JAMAIS tout seul. */
     const code = valeurs.code_barres
     const titulaire = code ? parCode.get(code) : undefined
-    const nomDiffere = titulaire && valeurs.nom_fr && titulaire.nomFr.toLowerCase() !== valeurs.nom_fr.toLowerCase()
+    /* Le code-barres designe un produit SEUL. Si le nom du fichier
+       ne correspond pas, c'est un conflit : deux produits
+       différents porteraient le meme code et le scan deviendrait
+       impossible a trancher. On ne fusionne jamais tout seul. */
+    const nomDuFichier = valeurs.nom_fr?.toLowerCase()
+    const nomDiffere = titulaire !== undefined && nomDuFichier !== undefined
+      && titulaire.nomFr.toLowerCase() !== nomDuFichier
 
-    const existeParCode = titulaire && (!valeurs.nom_fr || titulaire.nomFr.toLowerCase() === valeurs.nom_fr.toLowerCase())
+    const existeParCode: ProduitRow | undefined =
+      titulaire !== undefined && (!nomDuFichier || titulaire.nomFr.toLowerCase() === nomDuFichier)
+        ? titulaire
+        : undefined
+
     const existeParNom = produitsExistants.find(
-      (p) => p.nomFr.toLowerCase() === valeurs.nom_fr?.toLowerCase() &&
+      (p) => nomDuFichier !== undefined && p.nomFr.toLowerCase() === nomDuFichier &&
         (!rayonTrouve || p.rayonId === rayonTrouve.id),
     )
+
+    /* Le produit deja connu qu'on va mettre a jour : par code-barres
+       s'il correspond au nom, sinon par nom dans le rayon. */
+    const dejaConnu: ProduitRow | undefined = existeParCode ?? existeParNom
 
     let action: LigneLue['action'] = 'creer'
     let existantId: string | undefined
     if (nomDiffere) action = 'conflit'
-    else if (existeParCode || existeParNom) { action = 'mettre_a_jour'; existantId = (existeParCode ?? existeParNom)?.id }
+    else if (dejaConnu) { action = 'mettre_a_jour'; existantId = dejaConnu.id }
     if (problemes.length > 0 && action !== 'conflit') action = 'ignorer'
 
     let quantiteExistante: number | undefined
@@ -208,7 +222,6 @@ export async function simulerImport(
 
 export async function appliquerImport(
   simulation: Simulation,
-  correspondance: Correspondance,
   mode: ModeImport,
   auteurId: string,
 ): Promise<{ crees: number; misAJour: number; mouvements: number }> {

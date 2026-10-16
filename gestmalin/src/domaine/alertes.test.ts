@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 import { calculerAlertes, compterAlertes, FENETRE_PEREMPTION } from './alertes'
 import { aujourdhui, joursAvant, reinitialiserTemps } from './temps'
 import type { Lot, Mouvement, Produit } from './types'

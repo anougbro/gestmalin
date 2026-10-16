@@ -233,7 +233,7 @@ async function lireEntreeZIP(donnees: Uint8Array): Promise<{ nom: string; conten
     if (nom === 'xl/sharedStrings.xml' || nom === 'xl/worksheets/sheet1.xml') {
       let contenu = donneesEntree
       if (methode === 8) {
-        const flux = new Blob([donneesEntree]).stream().pipeThrough(new DecompressionStream('deflate-raw'))
+        const flux = new Blob([donneesEntree.buffer as ArrayBuffer]).stream().pipeThrough(new DecompressionStream('deflate-raw'))
         contenu = new Uint8Array(await new Response(flux).arrayBuffer())
       }
       return { nom, contenu }

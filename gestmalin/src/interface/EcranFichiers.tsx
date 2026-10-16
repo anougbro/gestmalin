@@ -50,7 +50,7 @@ export function EcranFichiers({ retour }: { retour: () => void }) {
 
   async function importer() {
     if (!simulation) return
-    const r = await appliquerImport(simulation, correspondance, mode, utilisateur)
+    const r = await appliquerImport(simulation, mode, utilisateur)
     setResultat(r)
     setEtat('termine')
     await rafraichir()
