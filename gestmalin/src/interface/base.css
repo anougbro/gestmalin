@@ -13,11 +13,40 @@
 html, body, #root {
   height: 100%;
   margin: 0;
-  /* La couleur de fond est posee sur html ET body : sinon une
-     zone qui depasse la hauteur de la fenetre laisse voir le
-     fond blanc par defaut du navigateur. */
   background: var(--c-50);
   color-scheme: light;
+  overflow-x: hidden;
+}
+
+/* ---------- La barre de defilement ----------
+   Sans cela, un Windows en mode sombre dessine une barre noire
+   a droite de l'ecran. Elle doit etre dans la meme famille de
+   gris que le reste, pasvenue d'un autre theme. */
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--c-300) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--c-300);
+  border: 2px solid transparent;
+  background-clip: content-box;
+  border-radius: var(--r-pill);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--c-400);
+  background-clip: content-box;
+}
+::-webkit-scrollbar-corner {
+  background: transparent;
 }
 
 body {
