@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { FournisseurSession } from './etat/session'
 import { RAYONS_PAR_DEFAUT } from './etat/rayons'
 import { useSession } from './etat/useSession'
-import { Icone } from './interface/Icones'
+import { Icone, type NomIcone } from './interface/Icones'
 import { EcranAccueil } from './interface/EcranAccueil'
 import { EcranReception } from './interface/EcranReception'
 import { EcranRanger } from './interface/EcranRanger'
@@ -17,9 +17,13 @@ import './interface/base.css'
 /* ============================================================
    LA COQUILLE
 
-   Pas de bibliotheque de navigation : six ecrans, un simple
-   etat. Une bibliotheque de routes pour six ecrans serait
+   Pas de bibliotheque de navigation : neuf ecrans, un simple
+   etat. Une bibliotheque de routes pour neuf ecrans serait
    une dependance de plus a maintenir pour rien.
+
+   La meme coquille sert le telephone ET l'ordinateur :
+   - en dessous de 900 px : une colonne, comme sur mobile
+   - au-dessus : une vraie barre laterale a gauche
    ============================================================ */
 
 export type Ecran =
@@ -45,17 +49,31 @@ const ECRANS_ECRAN: Record<Ecran, { titre: string; composant: (p: Props) => Reac
   fichiers: { titre: 'Fichiers', composant: EcranFichiers },
 }
 
+/* Les cinq gestes, dans l'ordre de la journee. */
+const GESTES: { ecran: Ecran; icone: NomIcone; label: string }[] = [
+  { ecran: 'accueil', icone: 'grille', label: 'Accueil' },
+  { ecran: 'chercher', icone: 'loupe', label: 'Trouver' },
+  { ecran: 'reception', icone: 'boite-entree', label: 'Réception' },
+  { ecran: 'ranger', icone: 'boite', label: 'Ranger' },
+  { ecran: 'sortie', icone: 'boite-sortie', label: 'Sortie' },
+  { ecran: 'compter', icone: 'compteur', label: 'Compter' },
+]
+
+const PLUS_TARD: { ecran: Ecran; icone: NomIcone; label: string }[] = [
+  { ecran: 'alertes', icone: 'cloche', label: 'Alertes' },
+  { ecran: 'produits', icone: 'capsule', label: 'Produits' },
+  { ecran: 'fichiers', icone: 'export', label: 'Fichiers' },
+]
+
+/* ---------- Le selecteur de rayon ---------- */
+
 function SelecteurRayon() {
   const { rayon, changeRayon } = useSession()
   const [ouvert, setOuvert] = useState(false)
 
   if (!ouvert) {
     return (
-      <button
-        className="seg-item seg--actif"
-        style={{ display: 'flex', width: '100%', alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: 44 }}
-        onClick={() => setOuvert(true)}
-      >
+      <button className="seg-item seg--actif" onClick={() => setOuvert(true)}>
         <Icone nom={rayon.ton === 'teal' ? 'capsule' : 'maison'} taille={18} />
         {rayon.nom}
       </button>
@@ -63,34 +81,14 @@ function SelecteurRayon() {
   }
 
   return (
-    <div
-      style={{ display: 'flex', gap: 4, background: 'var(--c-100)', padding: 4, borderRadius: 'var(--r2)' }}
-      role="tablist"
-    >
+    <div className="seg" role="tablist">
       {RAYONS_PAR_DEFAUT.map((r) => (
         <button
           key={r.id}
           role="tab"
           aria-selected={r.id === rayon.id}
-          className="seg-item"
-          style={{
-            flex: 1,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 7,
-            minHeight: 44,
-            borderRadius: 'var(--r1)',
-            border: 'none',
-            cursor: 'pointer',
-            fontSize: 14,
-            fontWeight: 650,
-            fontFamily: 'inherit',
-            color: r.id === rayon.id ? '#fff' : 'var(--c-600)',
-            background: r.id === rayon.id
-              ? r.ton === 'teal' ? 'var(--teal-700)' : 'var(--amb-700)'
-              : 'transparent',
-          }}
+          className={`seg-item${r.id === rayon.id ? ' seg-item--actif' : ''}`}
+          data-ton={r.ton}
           onClick={() => { changeRayon(r.id); setOuvert(false) }}
         >
           <Icone nom={r.ton === 'teal' ? 'capsule' : 'maison'} taille={17} />
@@ -100,6 +98,67 @@ function SelecteurRayon() {
     </div>
   )
 }
+
+/* ---------- La barre laterale, pour l'ordinateur ---------- */
+
+function BarreLaterale({ courant, aller }: { courant: Ecran; aller: (e: Ecran) => void }) {
+  const { compteurs, utilisateur, rayon, changeRayon } = useSession()
+
+  const lien = (liste: typeof GESTES) =>
+    liste.map(({ ecran, icone, label }) => (
+      <button
+        key={ecran}
+        className={`nav-item${courant === ecran ? ' nav-item--actif' : ''}`}
+        onClick={() => aller(ecran)}
+        aria-current={courant === ecran ? 'page' : undefined}
+      >
+        <Icone nom={icone} taille={19} />
+        <span>{label}</span>
+        {ecran === 'alertes' && compteurs.total > 0 && (
+          <span className="nav-item__pastille num">{compteurs.total}</span>
+        )}
+      </button>
+    ))
+
+  return (
+    <aside className="barre">
+      <div className="barre__marque">
+        <Icone nom="capsule" taille={22} />
+        <span>Gestmalin</span>
+      </div>
+
+      <div className="barre__rayon">
+        <p className="barre__titre">Rayon</p>
+        <div className="seg seg--vertical" role="tablist">
+          {RAYONS_PAR_DEFAUT.map((r) => (
+            <button
+              key={r.id}
+              role="tab"
+              aria-selected={r.id === rayon.id}
+              className={`seg-item${r.id === rayon.id ? ' seg-item--actif' : ''}`}
+              data-ton={r.ton}
+              onClick={() => changeRayon(r.id)}
+            >
+              <Icone nom={r.ton === 'teal' ? 'capsule' : 'maison'} taille={17} />
+              {r.nom}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <nav className="barre__nav">
+        <p className="barre__titre">Gestes</p>
+        {lien(GESTES)}
+        <p className="barre__titre barre__titre--espace">Gestion</p>
+        {lien(PLUS_TARD)}
+      </nav>
+
+      <div className="barre__pied">{utilisateur}</div>
+    </aside>
+  )
+}
+
+/* ---------- La coquille ---------- */
 
 function Coquille() {
   const [pile, setPile] = useState<{ ecran: Ecran; contexte: Record<string, unknown> }[]>([
@@ -116,7 +175,7 @@ function Coquille() {
 
   if (!pret) {
     return (
-      <div className="ecran" style={{ display: 'grid', placeItems: 'center' }}>
+      <div className="ecran ecran--attente">
         <p style={{ color: 'var(--c-400)' }}>Préparation…</p>
       </div>
     )
@@ -126,20 +185,24 @@ function Coquille() {
 
   return (
     <div className="app">
-      <header className="app__barre">
-        <SelecteurRayon />
-      </header>
+      <BarreLaterale courant={courant.ecran} aller={aller} />
 
-      {courant.ecran !== 'accueil' && (
-        <header className="entete">
-          <button className="entete__retour" onClick={retour} aria-label="Retour">
-            <Icone nom="retour" taille={22} />
-          </button>
-          <h1 className="entete__titre">{definition.titre}</h1>
+      <div className="app__colonne">
+        <header className="app__barre">
+          <SelecteurRayon />
         </header>
-      )}
 
-      <Composant ecran={courant.ecran} aller={aller} retour={retour} contexte={courant.contexte} />
+        {courant.ecran !== 'accueil' && (
+          <header className="entete">
+            <button className="entete__retour" onClick={retour} aria-label="Retour">
+              <Icone nom="retour" taille={22} />
+            </button>
+            <h1 className="entete__titre">{definition.titre}</h1>
+          </header>
+        )}
+
+        <Composant ecran={courant.ecran} aller={aller} retour={retour} contexte={courant.contexte} />
+      </div>
     </div>
   )
 }

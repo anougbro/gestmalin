@@ -28,7 +28,11 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
-/* ---------- La coquille : barre de rayon toujours visible ---------- */
+/* ============================================================
+   LA COQUILLE
+   Une colonne sur telephone, barre laterale sur ordinateur.
+   Meme composant, deux presentations.
+   ============================================================ */
 
 .app {
   max-width: 520px;
@@ -40,6 +44,16 @@ body {
   box-shadow: var(--sh-5);
 }
 
+.app__colonne {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Sur telephone la barre laterale n'existe pas : elle sort du flux. */
+.barre { display: none; }
+
 .app__barre {
   position: sticky;
   top: 0;
@@ -49,16 +63,42 @@ body {
   border-bottom: 1px solid var(--line);
 }
 
-.seg--actif {
+.seg {
+  display: flex;
+  gap: 4px;
   background: var(--c-100);
+  padding: 4px;
+  border-radius: var(--r2);
+}
+.seg--vertical { flex-direction: column; }
+
+.seg-item {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 44px;
+  padding: 0 8px;
   border: none;
+  border-radius: var(--r1);
+  background: transparent;
   cursor: pointer;
   font-family: inherit;
   font-size: 14px;
+  font-weight: 650;
+  color: var(--c-600);
+}
+.seg-item--actif { color: #fff; }
+.seg-item--actif[data-ton='teal'] { background: var(--teal-700); }
+.seg-item--actif[data-ton='amb'] { background: var(--amb-700); }
+
+.seg--actif {
+  width: 100%;
+  background: var(--c-100);
   font-weight: 700;
   letter-spacing: -0.01em;
   color: var(--c-800);
-  border-radius: var(--r2);
 }
 
 /* ---------- La fenetre de scan ---------- */
@@ -519,4 +559,127 @@ body {
 .sr-only {
   position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
   overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+
+/* ============================================================
+   BUREAU
+   A partir de 900px on ne se contente pas d'elargir : la colonne
+   centrale devenait illisible, on change de structure.
+   ============================================================ */
+
+@media (min-width: 900px) {
+  .app {
+    max-width: none;
+    box-shadow: none;
+    flex-direction: row;
+    align-items: stretch;
+  }
+
+  .barre {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    width: 258px;
+    flex: none;
+    min-height: 100vh;
+    padding: 24px 16px;
+    background: var(--c-0);
+    border-right: 1px solid var(--line);
+  }
+
+  .barre__marque {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 0 8px;
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--teal-700);
+  }
+
+  .barre__titre {
+    margin: 0 0 7px;
+    padding: 0 8px;
+    font-size: 10.5px;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--c-400);
+  }
+  .barre__titre--espace { margin-top: 22px; }
+
+  .barre__rayon { padding: 0 2px; }
+  .barre__rayon .seg-item { justify-content: flex-start; }
+  .barre__nav { display: flex; flex-direction: column; flex: 1; }
+
+  .nav-item {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    min-height: 42px;
+    padding: 0 12px;
+    border: none;
+    border-radius: var(--r2);
+    background: transparent;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 14.5px;
+    font-weight: 600;
+    color: var(--c-600);
+    text-align: left;
+  }
+  .nav-item:hover { background: var(--c-50); color: var(--c-900); }
+  .nav-item--actif { background: var(--teal-50); color: var(--teal-700); }
+  .nav-item--actif:hover { background: var(--teal-50); }
+
+  .nav-item__pastille {
+    margin-left: auto;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 6px;
+    border-radius: var(--r-pill);
+    background: var(--dgr-700);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    display: grid;
+    place-items: center;
+  }
+
+  .barre__pied {
+    padding: 12px;
+    border-top: 1px solid var(--line);
+    font-size: 13px;
+    color: var(--c-500);
+  }
+
+  /* Le selecteur du haut ferait doublon avec la barre laterale. */
+  .app__colonne > .app__barre { display: none; }
+
+  .contenu {
+    padding: 30px 34px 48px;
+    max-width: 960px;
+    width: 100%;
+    gap: 18px;
+  }
+
+  .grille-tuiles { grid-template-columns: repeat(3, 1fr); }
+  .grille-2 { gap: 12px; }
+  .tuile { min-height: 118px; }
+
+  .entete {
+    padding: 16px 34px;
+    background: transparent;
+    backdrop-filter: none;
+  }
+  .entete__titre { font-size: 22px; letter-spacing: -0.02em; }
+
+  .ecran--attente { min-height: 100vh; }
+
+  /* La fenetre de scan reste plein ecran : on scanne une boite
+     tenue a bout de bras, pas dans un panneau. */
+  .scan__vise { width: 52%; height: 180px; }
 }
