@@ -1,0 +1,71 @@
+/* ============================================================
+            GESTMALIN — Jetons de design
+    La source de vérité des couleurs, espacements et ombres.
+            On ne modifie JAMAIS ces valeurs ailleurs.
+   ============================================================ */
+:root {
+    /* Neutre leger dominant et froid */
+    --c-0: #FFFFFF;
+    --c-25: #FAFBFC;
+    --c-50: #F4F6F8;
+    --C-100: #EAEEF2;
+    --c-200: #DCE2E8;
+    --c-300: #C2CBD4;;
+    --c-400: #98A3AE;
+    --c-500: #6E7883;
+    --c-600: #4C555F;
+    --c-700: #333B44;
+    --c-800: #1E242B;
+    --c-900: #0F141A;
+    --line: rgba(15, 20, 26, .08);
+    --line2:  rgba(15, 20, 26, .14);
+
+
+    /* --- Rayon 1 : Médicaments (pin profond) --- */
+    --teal-900: #062B29;
+    --teal-700: #0C4A45;
+    --teal-600: #0E5A53;
+    --teal-500: #12776E;
+    --teal-100: #D8EAE7;
+    --teal-50:  #EFF6F5;
+
+
+    /* --- Rayon 2 : Produits ménagers (ambre brûlé) --- */
+    --amb-900: #341A06;
+    --amb-700: #8A4408;
+    --amb-600: #A15410;
+    --amb-500: #C2701C;
+    --amb-100: #F3E2C9;
+    --amb-50:  #FCF4EA;
+
+    /* --- Sémantique : uniquement lorsqu'une couleur porte un sens --- */
+    --dgr-700: #B42318;
+    --dgr-50:  #FEF3F2;
+    --dgr-200: #F7CFCB;
+    --wrn-700: #A4550F;
+    --wrn-50:  #FCF4EA;
+    --wrn-200: #F0DCBE;
+    --ok-700:  #15803D;
+    --ok-50:   #EAF5EE;
+    --ok-200:  #C6E3D1;
+
+    /* --- Rayons de coin, du plus petit au plus grand --- */
+    --r1: 6px;
+    --r2: 10px;
+    --r3: 14px;
+    --r4: 20px;
+    --r-pill: 999px;
+
+    /* --- Ombres multi-couches, teintées froides --- */
+    --sh-1: 0 1px 2px rgba(15, 20, 26, .05);
+    --sh-2: 0 1px 2px rgba(15, 20, 26, .05), 0 2px 4px rgba(15, 20, 26, .04);
+    --sh-3: 0 2px 4px rgba(15, 20, 26, .05), 0 6px 14px rgba(15, 20, 26, .07);
+    --sh-4: 0 2px 4px rgba(15, 20, 26, .04), 0 10px 24px rgba(15, 20, 26, .08);
+    --sh-5: 0 4px 8px rgba(15, 20, 26, .06), 0 18px 40px rgba(15, 20, 26, .11);
+
+
+    /* --- Typographie --- */
+    --font: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI",
+            Roboto, "Helvetica Neue", Arial, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+}
