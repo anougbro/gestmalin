@@ -11,6 +11,7 @@ import { EcranAlertes } from './interface/EcranAlertes'
 import { EcranCompter } from './interface/EcranCompter'
 import { EcranChercher } from './interface/EcranChercher'
 import { EcranProduits } from './interface/EcranProduits'
+import { EcranFichiers } from './interface/EcranFichiers'
 import './interface/base.css'
 
 /* ============================================================
@@ -23,7 +24,7 @@ import './interface/base.css'
 
 export type Ecran =
   | 'accueil' | 'reception' | 'ranger' | 'sortie'
-  | 'alertes' | 'compter' | 'chercher' | 'produits'
+  | 'alertes' | 'compter' | 'chercher' | 'produits' | 'fichiers'
 
 type Props = {
   ecran: Ecran
@@ -41,6 +42,7 @@ const ECRANS_ECRAN: Record<Ecran, { titre: string; composant: (p: Props) => Reac
   compter: { titre: 'Compter', composant: EcranCompter },
   chercher: { titre: 'Trouver', composant: EcranChercher },
   produits: { titre: 'Produits', composant: EcranProduits },
+  fichiers: { titre: 'Fichiers', composant: EcranFichiers },
 }
 
 function SelecteurRayon() {

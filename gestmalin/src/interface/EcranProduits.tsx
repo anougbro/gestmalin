@@ -3,6 +3,7 @@ import { useSession } from '../etat/useSession'
 import { produits } from '../donnees/depots'
 import type { ProduitRow } from '../donnees/base'
 import { Bouton, Champ, Entete, Stepper, Vide } from './Primitives'
+import type { Ecran as NomEcran } from '../App'
 
 /* ============================================================
    LES PRODUITS — le catalogue du rayon
@@ -13,7 +14,13 @@ import { Bouton, Champ, Entete, Stepper, Vide } from './Primitives'
    il n'y a rien a contourner.
    ============================================================ */
 
-export function EcranProduits({ retour }: { retour: () => void }) {
+export function EcranProduits({
+  retour,
+  aller,
+}: {
+  retour: () => void
+  aller: (e: NomEcran) => void
+}) {
   const { rayon } = useSession()
   const [liste, setListe] = useState<ProduitRow[]>([])
   const [edition, setEdition] = useState<ProduitRow | null>(null)
@@ -105,7 +112,10 @@ export function EcranProduits({ retour }: { retour: () => void }) {
       />
 
       <div className="contenu">
-        <Bouton taille={64} plein onClick={() => setNouveau(true)}>Nouveau produit</Bouton>
+        <div className="grille-2">
+          <Bouton taille={64} plein onClick={() => setNouveau(true)}>Nouveau</Bouton>
+          <Bouton variante="secondaire" taille={64} icone="export" onClick={() => aller('fichiers')}>Fichiers</Bouton>
+        </div>
 
         {liste.length === 0 ? (
           <Vide titre="Rayon vide" note="Ajoute un produit ou importe un fichier." />
