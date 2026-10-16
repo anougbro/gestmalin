@@ -1,7 +1,7 @@
-import { base } from './base'
+import { base, ATTENTE_ID } from './base'
 import type { LotRow, MouvementRow, ProduitRow } from './base'
 import type {
-  Emplacement, IdProduit, Lot, Mouvement, Produit, Zone,
+  Emplacement, IdProduit, Lot, Mouvement, Zone,
 } from '../domaine/types'
 import {
   quantiteLot, quantiteProduit, lotsParPriorite,
@@ -142,6 +142,127 @@ export const categories = {
 export const fournisseurs = {
   duRayon: (rayonId: string) => base.fournisseurs.where('rayonId').equals(rayonId).toArray(),
   parId: (id: string) => base.fournisseurs.get(id),
+}
+
+/* ---------- 2. Le gesture de reception, en un seul appel ---------- */
+
+/**
+ * Enregistre une reception.
+ *
+ * Cette fonction fait DEUX choses dans UNE transaction : creer le
+ * lot si besoin, puis ecrire le mouvement. Soit les deux
+ * reussissent, soit rien n'est ecrit. On ne peut jamais se
+ * retrouver avec un mouvement qui pointe vers un lot inexistant.
+ *
+ * La marchandise arrive au QUAI, pas directement en rayon : c'est
+ * l'ecran Ranger qui la fera poser a sa place.
+ */
+export async function receptionner({
+  rayonId, produitId, quantite, numero, peremption, originePays, numeroSerie,
+  auteurId, versEmplacementId = ATTENTE_ID,
+}: {
+  rayonId: string
+  produitId: string
+  quantite: number
+  numero?: string
+  peremption?: string
+  originePays?: string
+  numeroSerie?: string
+  auteurId: string
+  versEmplacementId?: string
+}): Promise<{ lot: LotRow; mouvement: MouvementRow }> {
+  /* Un lot est unique par numero ET par date de peremption.
+     Deux livraisons du meme lot ne creent pas deux lots. */
+  const existant = numero
+    ? await base.lots
+        .where('produitId').equals(produitId)
+        .filter((l) => l.numero === numero && l.peremption === peremption)
+        .first()
+    : undefined
+
+  const lot = existant ?? {
+    id: nouvelId(),
+    produitId,
+    numero,
+    peremption,
+    originePays,
+    numeroSerie,
+    quantite: 0,
+    emplacementId: versEmplacementId,
+  }
+
+  const mouvement: Mouvement = {
+    id: nouvelId(),
+    type: 'reception',
+    rayonId,
+    produitId,
+    lotId: lot.id,
+    quantite,
+    versEmplacementId,
+    auteurId,
+    date: maintenant(),
+  }
+  exigerMouvementValide(mouvement)
+
+  const ligne: MouvementRow = { ...mouvement, synchro: 0 }
+
+  await base.transaction('rw', base.lots, base.mouvements, async () => {
+    if (!existant) await base.lots.add(lot)
+    await base.mouvements.add(ligne)
+  })
+
+  return { lot, mouvement: ligne }
+}
+
+/** Pose une marchandise du quai a sa place : un simple transfert. */
+export async function poserEnPlace({
+  rayonId, produitId, lotId, quantite, versEmplacementId, auteurId,
+}: {
+  rayonId: string
+  produitId: string
+  lotId: string
+  quantite: number
+  versEmplacementId: string
+  auteurId: string
+}): Promise<MouvementRow> {
+  return enregistrerMouvement({
+    id: nouvelId(),
+    type: 'transfert',
+    rayonId,
+    produitId,
+    lotId,
+    quantite,
+    depuisEmplacementId: ATTENTE_ID,
+    versEmplacementId,
+    auteurId,
+    date: maintenant(),
+  })
+}
+
+/** Sors de la marchandise en suivant la rotation : FEFO si dates, FIFO sinon. */
+export async function sortirQuantite({
+  rayonId, produitId, lotId, quantite, motif, auteurId, depuisEmplacementId,
+}: {
+  rayonId: string
+  produitId: string
+  lotId: string
+  quantite: number
+  motif: string
+  auteurId: string
+  depuisEmplacementId: string
+}): Promise<MouvementRow> {
+  return enregistrerMouvement({
+    id: nouvelId(),
+    type: 'sortie',
+    rayonId,
+    produitId,
+    lotId,
+    quantite,
+    depuisEmplacementId,
+    motif,
+    auteurId,
+    date: maintenant(),
+  })
 }
 
 /* ---------- 3. Les lectures de stock ---------- */

@@ -131,5 +131,12 @@ class BaseGestmalin extends Dexie {
 
 export const base = new BaseGestmalin()
 
+/* ---------- Le quai de reception ----------
+   Tout ce qui arrive passe par la avant d'etre pose en rayon.
+   C'est ce qui rend l'ecran Ranger utile : on voit ce qui attend,
+   avec sa destination. Ce n'est pas une vraie etagere, donc
+   elle n'appartient a aucune zone. */
+export const ATTENTE_ID = 'attente-quai'
+
 /* ---------- Les types de mouvement, reutilises ---------- */
 export const TOUS_LES_TYPES: TypeMouvement[] = ['reception', 'sortie', 'transfert', 'perte']

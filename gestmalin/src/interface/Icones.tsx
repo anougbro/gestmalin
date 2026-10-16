@@ -161,11 +161,28 @@ const TRACES: Record<NomIcone, React.ReactNode> = {
     </>
   ),
 
-  /* --- Actions --- */
-  retour: <path d="M19 12H5.4" /><path d="m11 5.6-5.6 6.4 5.6 6.4" />,
+  /* --- Actions ---
+     Plusieurs tracés dans le meme noeud exigent un fragment.
+     Un seul <path> n'en a pas besoin. */
+  retour: (
+    <>
+      <path d="M19 12H5.4" />
+      <path d="m11 5.6-5.6 6.4 5.6 6.4" />
+    </>
+  ),
   coche: <path d="m5.4 12.6 4.6 4.4L18.6 7.4" />,
-  croix: <path d="m6.6 6.6 10.8 10.8" /><path d="M17.4 6.6 6.6 17.4" />,
-  plus: <path d="M12 5.4v13.2" /><path d="M5.4 12h13.2" />,
+  croix: (
+    <>
+      <path d="m6.6 6.6 10.8 10.8" />
+      <path d="M17.4 6.6 6.6 17.4" />
+    </>
+  ),
+  plus: (
+    <>
+      <path d="M12 5.4v13.2" />
+      <path d="M5.4 12h13.2" />
+    </>
+  ),
   moins: <path d="M5.4 12h13.2" />,
 }
 
@@ -189,6 +206,3 @@ export function Icone({ nom, taille = 24, className }: Props) {
     </svg>
   )
 }
-
-/* ---------- Le jeu complet, pour le controle de qualite ---------- */
-export const TOUTES_LES_ICONES = Object.keys(TRACES) as NomIcone[]
