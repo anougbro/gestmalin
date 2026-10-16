@@ -15,6 +15,9 @@ export type IdProduit = string
 export type IdLot = string
 export type IdMouvement = string
 export type IdCategorie = string
+export type IdFournisseur = string
+export type IdInventaire = string
+export type IdUtilisateur = string
 
 
 /* ---------- Le rayon : le grand tiroir ----------
@@ -166,5 +169,67 @@ export type Mouvement = {
   /* 
   Format ISO : 'AAAA-MM-JJTHH:MM:SSZ'. 
   */
+  date: string
+}
+
+/* ---------- Le fournisseur : la provenance ---------- */
+export type Fournisseur = {
+  id: IdFournisseur
+  rayonId: IdRayon
+  nom: string
+  contact?: string
+  telephone?: string
+}
+
+/* ---------- L'inventaire ---------- */
+export type StatutInventaire = 'en_cours' | 'valide'
+
+export type Inventaire = {
+  id: IdInventaire
+  rayonId: IdRayon
+  zoneId: IdZone
+  date: string
+  statut: StatutInventaire
+}
+
+/* ---------- La ligne d'inventaire ----------
+   ATTENTION : il n'y a PAS de champ "quantite attendue".
+   Pendant le comptage, l'attendu est CALCULE au moment de
+   l'affichage a partir des mouvements. Le stocker ici
+   transformerait le comptage en verification aveugle. */
+export type LigneInventaire = {
+  id: string
+  inventaireId: IdInventaire
+  produitId: IdProduit
+  /* Vide tant que le produit n'a pas ete compte. */
+  quantiteReelle?: number
+  motifEcart?: string
+}
+
+/* ---------- L'utilisateur ---------- */
+export type Utilisateur = {
+  id: IdUtilisateur
+  nom: string
+}
+
+/* ---------- La chaine du froid ---------- */
+export type ReleveTemperature = {
+  id: string
+  zoneId: IdZone
+  valeur: number
+  date: string
+}
+
+/* ---------- La demande d'approbation ----------
+   Motif generique en trois temps : demande, approbation,
+   mouvement. Utilise pour la quarantaine, les releves hors
+   plage, et demain peut-etre autre chose. */
+export type DemandeApprobation = {
+  id: string
+  rayonId: IdRayon
+  lotId?: IdLot
+  zoneId?: IdZone
+  motif: string
+  detail?: string
   date: string
 }
