@@ -907,7 +907,6 @@ body {
 }
 .pave__touche:hover { background: rgba(255, 255, 255, 0.2); }
 .pave__touche:active { transform: scale(0.95); }
-.pave__touche--valider { background: #fff; color: var(--teal-900); grid-column: span 3; min-height: 52px; }
 
 .personne {
   display: flex;
@@ -977,13 +976,17 @@ body {
   color: var(--c-600);
 }
 .reglages-lien:hover { background: var(--c-0); color: var(--teal-700); }
-/* Le pave : 3 colonnes. La touche « 0 » occupe la premiere case
-   du dernier rang, et « Entrer » prend les deux restantes — c'est
-   ce qui la rend impossible a rater au doigt. */
+/* Le pave : 3 colonnes sur 4 rangs. Le dernier rang porte
+   « effacer », « 0 », « Entrer » — le meme ordre qu'un clavier. */
 .pave__touche--zero { font-size: 24px; }
 
+/* La touche d'effacement : muette comme les chiffres, mais son
+   icone doit se voir. Meme hauteur que les autres — une touche
+   qu'on rate au doigt est une touche absente. */
+.pave__touche--effacer { color: rgba(255, 255, 255, 0.82); }
+.pave__touche--effacer:disabled { opacity: 0.35; cursor: default; }
+
 .pave__entree {
-  grid-column: span 2;
   min-height: 60px;
   border: none;
   border-radius: var(--r3);
@@ -1011,6 +1014,105 @@ body {
   font-weight: 600;
   text-align: center;
 }
+/* ============================================================
+   LA BARRE LATERALE
+
+   Ces styles ne vivent PAS dans la media query ordinateur.
+
+   Depuis que le telephone a un menu en tiroir, la meme liste
+   s'affiche sur les deux : si son style est dans la media query,
+   le tiroir s'affiche comme un brouillon — boutons sans style,
+  poses en ligne a l'horizontale. Une feuille de style ne doit
+   pas contenir deux versions du meme composant.
+
+   Ce qui reste dans la media query : la largeur de 226 px, le
+   bord, la hauteur pleine. C'est tout ce qui depend de l'ecran.
+   ============================================================ */
+
+.barre__marque {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 0 8px;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--teal-700);
+}
+
+.barre__titre {
+  margin: 0 0 7px;
+  padding: 0 8px;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--c-400);
+}
+.barre__titre--espace { margin-top: 14px; }
+
+.barre__rayon { padding: 0 2px; }
+.barre__rayon .seg-item { justify-content: flex-start; }
+
+/* La liste : en colonne, elle occupe ce qui reste et defile si
+   c'est plus haut que la place disponible. Le pied, lui, ne bouge
+   jamais — c'est la sortie de secours, elle doit etre visible. */
+.barre__nav {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.nav-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: none;
+  border-radius: var(--r2);
+  background: transparent;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--c-600);
+  text-align: left;
+}
+.nav-item:hover { background: var(--c-50); color: var(--c-900); }
+.nav-item--actif { background: var(--teal-50); color: var(--teal-700); }
+.nav-item--actif:hover { background: var(--teal-50); }
+
+.nav-item__pastille {
+  margin-left: auto;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: var(--r-pill);
+  background: var(--dgr-700);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+}
+
+.barre__pied {
+  flex: none;
+  margin-top: auto;
+  padding: 12px;
+  border-top: 1px solid var(--line);
+  font-size: 13px;
+  color: var(--c-500);
+}
+
+/* Sur telephone, la barre laterale n'existe que dans le tiroir.
+   Elle reste masquee par defaut : pas de media query ne doit
+   etre necessaire pour qu'elle disparaisse. */
+.tiroir .barre { display: flex; }
 /* ---------- Changer de personne ---------- */
 
 /* Sur l'ordinateur : le pied de la barre laterale.
@@ -1149,6 +1251,143 @@ body {
    d'ordinateur disparait sans qu'on le voie.
    ============================================================ */
 
+/* ============================================================
+   LES MEDIA QUERIES — EN DERNIER
+
+   Une regle ecrite apres un @media gagne sur lui. Ces blocs
+   doivent donc rester les derniers du fichier : deplace, un style
+   d'ordinateur disparait sans qu'on le voie.
+   ============================================================ */
+
+
+
+
+
+/* ============================================================
+   LE TIROIR — le menu, sur telephone
+
+   Sur telephone, la barre laterale n'existe pas : on ne pouvait
+   aller que par les tuiles de l'accueil. Aucun tri, aucun filtre,
+   aucun acces direct a un ecran par son nom.
+
+   Le tiroir reprend la meme liste, a l'identique : mêmes mots,
+   mêmes icones, meme ordre. On ne repete pas a appliquer deux
+  Pregles de style, on en a une seule.
+   ============================================================ */
+
+.tiroir { position: fixed; inset: 0; z-index: 100; }
+
+.tiroir__voile {
+  position: absolute;
+  inset: 0;
+  border: none;
+  padding: 0;
+  background: rgba(8, 24, 22, 0.42);
+  cursor: pointer;
+  animation: voile 140ms ease both;
+}
+
+@keyframes voile { from { opacity: 0; } to { opacity: 1; } }
+
+.tiroir__panneau {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: min(300px, 86vw);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  box-shadow: var(--sh-5);
+  animation: glisse 180ms cubic-bezier(0.22, 0.8, 0.3, 1) both;
+}
+
+@keyframes glisse {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+
+/* Le voile et le panneau doivent disparaitre instantanement :
+   une sortie animee fait perdre la main sur l'ecran choisi. */
+.tiroir__voile, .tiroir__panneau { animation-fill-mode: both; }
+
+/* Le bouton menu, a cote du rayon. Meme cible que la pastille
+   de personne : 44 px, une seule main, avec des gants. */
+.menu-btn {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line-2);
+  border-radius: var(--r2);
+  background: var(--c-50);
+  color: var(--teal-700);
+  cursor: pointer;
+  transition: background 110ms ease, transform 70ms ease;
+}
+.menu-btn:hover { background: var(--teal-50); }
+.menu-btn:active { transform: scale(0.94); }
+
+/* Dans le tiroir, la barre laterale doit remplir le panneau et
+   pouvoir defiler dedans. */
+.tiroir .barre {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 100%;
+  min-height: 100%;
+  padding: 22px 14px;
+  background: var(--c-0);
+  border-right: none;
+}
+.tiroir .barre__nav { flex: 1; min-height: 0; overflow-y: auto; }
+.tiroir .barre__pied { flex: none; margin-top: auto; }
+
+/* ============================================================
+   LES MEDIA QUERIES — EN DERNIER
+
+   Une regle ecrite apres un @media gagne sur lui. Ces blocs
+   doivent donc rester les derniers du fichier : deplace, un style
+   d'ordinateur disparait sans qu'on le voie.
+   ============================================================ */
+
+/* ============================================================
+   LES MEDIA QUERIES — EN DERNIER
+
+   Une regle ecrite apres un @media gagne sur lui. Ces blocs
+   doivent donc rester les derniers du fichier : deplace, un style
+   d'ordinateur disparait sans qu'on le voie.
+   ============================================================ */
+
+/* ============================================================
+   LES MEDIA QUERIES — EN DERNIER
+
+   Une regle ecrite apres un @media gagne sur lui. Ces blocs
+   doivent donc rester les derniers du fichier : deplace, un style
+   d'ordinateur disparait sans qu'on le voie.
+   ============================================================ */
+
+
+
+
+
+/* L'indice de defilement : un degrade sur les derniers
+   millimetres de la liste, uniquement quand il reste des entrees
+   en dessous. Sans lui, la liste coupee net passe pour une erreur
+   d'affichage. */
+.barre__nav--defile {
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 26px), transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 26px), transparent 100%);
+}
+
+/* ============================================================
+   LES MEDIA QUERIES — EN DERNIER
+
+   Une regle ecrite apres un @media gagne sur lui. Ces blocs
+   doivent donc rester les derniers du fichier : deplace, un style
+   d'ordinateur disparait sans qu'on le voie.
+   ============================================================ */
+
 @media (min-width: 900px) {
   .app {
     max-width: none;
@@ -1173,93 +1412,13 @@ body {
     border-right: 1px solid var(--line);
   }
 
-  .barre__marque {
-    display: flex;
-    align-items: center;
-    gap: 9px;
-    padding: 0 8px;
-    font-size: 16px;
-    font-weight: 700;
-    letter-spacing: -0.02em;
-    color: var(--teal-700);
-  }
-
-  .barre__titre {
-    margin: 0 0 7px;
-    padding: 0 8px;
-    font-size: 10.5px;
-    font-weight: 800;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: var(--c-400);
-  }
-  .barre__titre--espace { margin-top: 14px; }
-
-  .barre__rayon { padding: 0 2px; }
-  .barre__rayon .seg-item { justify-content: flex-start; }
-  .barre__nav { display: flex; flex-direction: column; flex: 1; }
-
-  /* 14 entrees a 44 px de haut font 616 px : c'est plus haut
-     qu'un ecran de 800 px une fois la marque, le rayon et le pied
-     poses. Plutot que de rendre les touches plus petites — le
-     minimum tactile n'est pas negociable — on reduit les vides
-     autour, et la liste defile pour le reste. Le pied, lui, ne
-     bouge jamais : c'est la sortie de secours. */
+  /* 14 entrees a 44 px font 616 px : c'est plus haut qu'un ecran de
+     800 px une fois la marque, le rayon et le pied poses. Plutot que de
+     rendre les touches plus petites — le minimum tactile n'est pas
+     negociable — on reduit les vides autour, et la liste defile.
+     Le pied, lui, ne bouge jamais. */
   .barre { gap: 14px; }
 
-  .nav-item {
-    position: relative;
-    display: flex;
-    align-items: center;
-    gap: 11px;
-    min-height: 44px;
-    padding: 0 12px;
-    border: none;
-    border-radius: var(--r2);
-    background: transparent;
-    cursor: pointer;
-    font-family: inherit;
-    font-size: 14.5px;
-    font-weight: 600;
-    color: var(--c-600);
-    text-align: left;
-  }
-  .nav-item:hover { background: var(--c-50); color: var(--c-900); }
-  .nav-item--actif { background: var(--teal-50); color: var(--teal-700); }
-  .nav-item--actif:hover { background: var(--teal-50); }
-
-  .nav-item__pastille {
-    margin-left: auto;
-    min-width: 20px;
-    height: 20px;
-    padding: 0 6px;
-    border-radius: var(--r-pill);
-    background: var(--dgr-700);
-    color: #fff;
-    font-size: 11px;
-    font-weight: 700;
-    display: grid;
-    place-items: center;
-  }
-
-  .barre__pied {
-    flex: none;
-    padding: 12px;
-    border-top: 1px solid var(--line);
-    font-size: 13px;
-    color: var(--c-500);
-  }
-
-  /* Sur un ecran de 900 px de haut, la liste des gestes est plus
-     haute que la fenetre. Si tout defile, le bouton « Changer »
-     part sous le bord et il faut faire defiler pour changer de
-     personne. C'est une sortie de secours : elle doit toujours
-     etre visible. Donc la liste defile, le pied reste fixe. */
-  .barre__nav {
-    flex: 1;
-    min-height: 0;
-    overflow-y: auto;
-  }
 
   /* Le selecteur du haut ferait doublon avec la barre laterale. */
   .app__colonne > .app__barre { display: none; }

@@ -71,8 +71,56 @@ export function EcranConnexion() {
     setCode((v) => v + c)
   }
 
+  /* Effacer le dernier chiffre. Sans cette touche, une erreur
+     de frappe est irrattrapable : il faut retaper les quatre
+     chiffres. J'avais supprime cette touche en nettoyant une
+     erreur de compilation — une erreur de typage qui a supprime
+     une fonction. Le test ne l'a pas vu : il n'y avait aucun test
+     sur ce pave. */
+  function effacer() {
+    setErreur(null)
+    setCode((v) => v.slice(0, -1))
+  }
+
+  function toutEffacer() {
+    setErreur(null)
+    setCode('')
+  }
+
   const seul = liste.length <= 1
   const idCourant = seul ? (liste[0]?.id ?? UTILISATEUR_INITIAL.id) : choisi
+
+  /* Sur ordinateur, on tape au clavier : chiffres, retour
+     arriere, entree. C'est plus rapide que viser trois touches,
+     et ca evite les erreurs de frappe au doigt. */
+  useEffect(() => {
+    const auClavier = (e: KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        /* Une touche du pave garde le focus apres avoir ete
+           touchee. Sans cet empirement, « Entrer » au clavier
+           declenche la DERNIERE touche touchee au doigt : on
+           ajoute un chiffre ou on en efface un, et le code tapé
+           devient faux sans qu'on voie pourquoi.
+
+           On neutralise donc toujours le comportement par defaut
+           d'Entree, et on ne valide que si le code est complet. */
+        e.preventDefault()
+        if (idCourant && code.length === 4) void tenter(idCourant)
+        return
+      }
+
+      if (e.key >= '0' && e.key <= '9') {
+        chiffre(e.key)
+      } else if (e.key === 'Backspace') {
+        e.preventDefault()
+        effacer()
+      } else if (e.key === 'Escape') {
+        toutEffacer()
+      }
+    }
+    window.addEventListener('keydown', auClavier)
+    return () => window.removeEventListener('keydown', auClavier)
+  })
 
   return (
     <div className="ecran ecran--connexion">
@@ -121,6 +169,7 @@ export function EcranConnexion() {
 
             <PavillonNumerique
               onChiffre={chiffre}
+              onEffacer={effacer}
               onValider={() => void tenter(idCourant)}
               peutValider={code.length === 4}
             />
@@ -155,9 +204,10 @@ export function EcranConnexion() {
 /* ---------- Le pave numerique ---------- */
 
 function PavillonNumerique({
-  onChiffre, onValider, peutValider,
+  onChiffre, onEffacer, onValider, peutValider,
 }: {
   onChiffre: (c: string) => void
+  onEffacer: () => void
   onValider: () => void
   peutValider: boolean
 }) {
@@ -166,6 +216,20 @@ function PavillonNumerique({
       {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => (
         <button key={n} className="pave__touche" onClick={() => onChiffre(String(n))}>{n}</button>
       ))}
+
+      {/* Trois touches de meme taille sur le dernier rang :
+          effacer, zero, entrer. Elles se succedent dans le meme
+          ordre que sur un pave de telephone ou sur un clavier.
+          « Entrer » ne prend pas deux cases : une touche qui
+          sort du pave n'est plus une touche du pave, et on la
+          rate au doigt. */}
+      <button
+        className="pave__touche pave__touche--effacer"
+        onClick={onEffacer}
+        aria-label="Effacer le dernier chiffre"
+      >
+        <Icone nom="effacer" taille={24} />
+      </button>
 
       <button className="pave__touche pave__touche--zero" onClick={() => onChiffre('0')} aria-label="Zéro">0</button>
 

@@ -18,6 +18,8 @@
     "verifier-atteignabilite": "node --experimental-strip-types scripts/verifier-atteignabilite.ts",
     "verifier-defilement": "node --experimental-strip-types scripts/verifier-defilement.ts",
     "verifier-barre-haut": "node --experimental-strip-types scripts/verifier-barre-haut.ts",
+    "verifier-menu": "node --experimental-strip-types scripts/verifier-menu.ts",
+    "verifier-pave": "node --experimental-strip-types scripts/verifier-pave-session.ts",
     "remplir": "node --experimental-strip-types scripts/remplir-et-capturer.ts"
   },
   "dependencies": {

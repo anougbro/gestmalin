@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { FournisseurSession } from './etat/session'
 import { RAYONS_PAR_DEFAUT } from './etat/rayons'
 import { useSession } from './etat/useSession'
@@ -140,15 +140,47 @@ function BoutonQui() {
 
 /* ---------- La barre laterale, pour l'ordinateur ---------- */
 
-function BarreLaterale({ courant, aller }: { courant: Ecran; aller: (e: Ecran) => void }) {
+function BarreLaterale({
+  courant, aller, surFermeture,
+}: {
+  courant: Ecran
+  aller: (e: Ecran) => void
+  /** Appele apres un choix : le tiroir se referme, la barre de
+      l'ordinateur reste en place et n'en a rien. */
+  surFermeture?: () => void
+}) {
   const { compteurs, utilisateur, rayon, changeRayon, deconnecter } = useSession()
+  const navRef = useRef<HTMLElement | null>(null)
+  const [defile, setDefile] = useState(false)
+
+  /* Sur un ecran de 900 px de haut, la liste est plus haute que la
+     fenetre. Coupee net, elle passe pour une erreur d'affichage :
+     on ne sait pas s'il manque des entrees ou si l'ecran est casse.
+
+     L'indice n'apparait QUE si la liste deborde reellement —
+     sinon un degrade qui ne degrade rien, c'est du bruit. */
+  useEffect(() => {
+    const el = navRef.current
+    if (!el) return
+
+    const mesurer = () => setDefile(el.scrollHeight - el.clientHeight > 4)
+    mesurer()
+
+    /* ResizeObserver : la hauteur change quand on tourne le
+       telephone ou qu'on ouvre le clavier. */
+    const ro = new ResizeObserver(mesurer)
+    ro.observe(el)
+    for (const e of Array.from(el.children)) ro.observe(e)
+
+    return () => ro.disconnect()
+  }, [utilisateur, compteurs.total])
 
   const lien = (liste: typeof GESTES) =>
     liste.map(({ ecran, icone, label }) => (
       <button
         key={ecran}
         className={`nav-item${courant === ecran ? ' nav-item--actif' : ''}`}
-        onClick={() => aller(ecran)}
+        onClick={() => { aller(ecran); surFermeture?.() }}
         aria-current={courant === ecran ? 'page' : undefined}
       >
         <Icone nom={icone} taille={19} />
@@ -176,7 +208,7 @@ function BarreLaterale({ courant, aller }: { courant: Ecran; aller: (e: Ecran) =
               aria-selected={r.id === rayon.id}
               className={`seg-item${r.id === rayon.id ? ' seg-item--actif' : ''}`}
               data-ton={r.ton}
-              onClick={() => changeRayon(r.id)}
+              onClick={() => { changeRayon(r.id); surFermeture?.() }}
             >
               <Icone nom={r.ton === 'teal' ? 'capsule' : 'maison'} taille={17} />
               {r.nom}
@@ -185,7 +217,7 @@ function BarreLaterale({ courant, aller }: { courant: Ecran; aller: (e: Ecran) =
         </div>
       </div>
 
-      <nav className="barre__nav">
+      <nav className={`barre__nav${defile ? ' barre__nav--defile' : ''}`} ref={navRef}>
         <p className="barre__titre">Gestes</p>
         {lien(GESTES)}
         <p className="barre__titre barre__titre--espace">Gestion</p>
@@ -197,6 +229,7 @@ function BarreLaterale({ courant, aller }: { courant: Ecran; aller: (e: Ecran) =
             Sans lui, on ne peut pas changer de personne sans
             vider toute la base. */}
         <button className="qui" onClick={deconnecter}>
+          <Icone nom="personne" taille={18} />
           <span className="qui__nom">{utilisateur?.nom ?? '—'}</span>
           <span className="qui__role">Changer</span>
         </button>
@@ -211,6 +244,7 @@ function Coquille() {
   const [pile, setPile] = useState<{ ecran: Ecran; contexte: Record<string, unknown> }[]>([
     { ecran: 'accueil', contexte: {} },
   ])
+  const [tiroir, setTiroir] = useState(false)
   const { pret, utilisateur } = useSession()
 
   const courant = pile[pile.length - 1]
@@ -219,6 +253,25 @@ function Coquille() {
   const aller = (ecran: Ecran, contexte: Record<string, unknown> = {}) =>
     setPile((p) => [...p, { ecran, contexte }])
   const retour = () => setPile((p) => (p.length > 1 ? p.slice(0, -1) : p))
+
+  /* Echap ferme le tiroir : sur ordinateur, on ne ferme pas une
+     barre laterale en pressant une touche, mais sur telephone
+     c'est le geste attendu. Fermer sans sauver son travail est
+     le pire defaut d'un tiroir. */
+  useEffect(() => {
+    if (!tiroir) return
+    const surEchap = (e: KeyboardEvent) => { if (e.key === 'Escape') setTiroir(false) }
+    window.addEventListener('keydown', surEchap)
+    return () => window.removeEventListener('keydown', surEchap)
+  }, [tiroir])
+
+  /* On ne defile plus derriere le tiroir : sans cela, le doigt
+     qui descend sur la liste fait remonter la page en meme
+     temps, et on perd l'ecran qu'on voulait. */
+  useEffect(() => {
+    document.body.style.overflow = tiroir ? 'hidden' : ''
+    return () => { document.body.style.overflow = '' }
+  }, [tiroir])
 
   if (!pret) {
     return (
@@ -238,8 +291,32 @@ function Coquille() {
     <div className="app">
       <BarreLaterale courant={courant.ecran} aller={aller} />
 
+      {/* Le tiroir n'existe qu'au telephone. Sur ordinateur la
+          barre laterale est deja la, et deux menus pour la meme
+          liste ne servent a rien. */}
+      {tiroir && (
+        <div className="tiroir">
+          <button
+            className="tiroir__voile"
+            onClick={() => setTiroir(false)}
+            aria-label="Fermer le menu"
+          />
+          <div className="tiroir__panneau">
+            <BarreLaterale courant={courant.ecran} aller={aller} surFermeture={() => setTiroir(false)} />
+          </div>
+        </div>
+      )}
+
       <div className="app__colonne">
         <header className="app__barre">
+          <button
+            className="menu-btn"
+            onClick={() => setTiroir((v) => !v)}
+            aria-label="Ouvrir le menu"
+            aria-expanded={tiroir}
+          >
+            <Icone nom="grille" taille={22} />
+          </button>
           <SelecteurRayon />
           <BoutonQui />
         </header>

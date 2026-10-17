@@ -17,7 +17,7 @@ export type NomIcone =
   | 'compteur' | 'cloche' | 'froid' | 'quarantaine' | 'etiquette' | 'fournisseur'
   | 'grille' | 'import' | 'export' | 'camera' | 'clavier'
   | 'retour' | 'coche' | 'croix' | 'plus' | 'moins' | 'alerte'
-  | 'personne'
+  | 'personne' | 'effacer'
 
 /* Le 1,75 sur les trois attributs : c'est ce qui donne
    la meme epaisseur partout, meme sur un autre ecran. */
@@ -112,6 +112,17 @@ const TRACES: Record<NomIcone, React.ReactNode> = {
     <>
       <circle cx="12" cy="8.2" r="3.6" />
       <path d="M5.2 20a6.8 6.8 0 0 1 13.6 0" />
+    </>
+  ),
+
+  /* --- Effacer un chiffre ---
+     La touche retour, telle qu'elle est sur un clavier. Une
+     croix seule se confond avec « fermer ». La pointe vers la
+     gauche, c'est le geste de revenir en arriere. */
+  effacer: (
+    <>
+      <path d="M9 6.4h9.6a2 2 0 0 1 2 2v7.2a2 2 0 0 1-2 2H9L3.6 12Z" />
+      <path d="M12.4 9.6 16.4 13.6M16.4 9.6 12.4 13.6" />
     </>
   ),
 

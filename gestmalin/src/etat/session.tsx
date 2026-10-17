@@ -21,6 +21,40 @@ import { dejaPreparee, demarrer, reparerComptes } from './preparation'
    qui donnent deux versions differentes de la meme reponse.
    ============================================================ */
 
+/* ---------- La session, entre deux ouvertures ----------
+
+   Rafraichir la page ne doit PAS deconnecter : sur telephone,
+   une actualisation arrive quand on est presse, et redemander
+   le code au milieu d'une rupture de stock est une gene.
+
+   Mais on ne veut pas non plus qu'un appareil shared reste
+   connecte overnight. D'ou `sessionStorage` : la session
+   survit a un rafraichissement et disparait a la fermeture de
+   l'onglet. Ni le code, ni la personne : seulement l'identifiant,
+   et il est reverifie dans la base au demarrage. */
+
+const CLE_SESSION = 'gestmalin.session'
+
+function lireSession(): string | null {
+  try {
+    return sessionStorage.getItem(CLE_SESSION)
+  } catch {
+    /* Mode prive de certains navigateurs : pas de session
+       conservee, on redemandera le code. Mieux vaut ca que
+       planter au demarrage. */
+    return null
+  }
+}
+
+function ecrireSession(id: string | null): void {
+  try {
+    if (id === null) sessionStorage.removeItem(CLE_SESSION)
+    else sessionStorage.setItem(CLE_SESSION, id)
+  } catch {
+    /* Sans consequence : la personne reste connectee jusqu'a
+       la fermeture, ce qui est le comportement normal. */
+  }
+}
 /** Dexie cache ses vraies erreurs dans un BulkError : sans
     ouvrir le boite, on ne sait pas QUELLE ecriture a echoue. */
 function detailErreur(e: unknown): unknown {
@@ -85,6 +119,7 @@ export function FournisseurSession({ children }: { children: ReactNode }) {
       const r = verifierCode(tous, identifiant, code)
       if (r.ok) {
         setUtilisateur(r.utilisateur)
+        ecrireSession(r.utilisateur.id)
         /* Si le rayon ouvert n'est pas le sien, on l'amene sur un
            rayon qui l'est. Sinon elle entre sur un écran qui n'est
            pas le sien, sans comprendre pourquoi c'est vide. */
@@ -108,6 +143,25 @@ export function FournisseurSession({ children }: { children: ReactNode }) {
       try {
         if (!(await dejaPreparee())) await demarrer()
         await reparerComptes()
+
+        /* On restaure la personne d'avant le rafraichissement.
+           On ne la fait PAS confiance : on la relit dans la base,
+           et on verifie qu'elle est toujours active et qu'elle a
+           toujours le droit sur le rayon ouvert. Un compte
+           desactive entre-temps ne ressuscite pas. */
+        const memorise = lireSession()
+        if (memorise) {
+          const u = await base.utilisateurs.get(memorise)
+          if (u?.actif) {
+            setUtilisateur(u)
+            if (!u.rayonsAutorises.includes(rayon.id)) {
+              const autre = RAYONS_PAR_DEFAUT.find((x) => u.rayonsAutorises.includes(x.id))
+              if (autre) setRayon(autre)
+            }
+          } else {
+            ecrireSession(null)
+          }
+        }
       } catch (e) {
         /* Un demarrage casse sans rien dire laisse la personne
            devant un pave de chiffres qui ne marche pas.
@@ -131,7 +185,10 @@ export function FournisseurSession({ children }: { children: ReactNode }) {
         setRayon(RAYONS_PAR_DEFAUT.find((r) => r.id === id) ?? RAYONS_PAR_DEFAUT[0]),
       utilisateur,
       connecter,
-      deconnecter: () => setUtilisateur(null),
+      deconnecter: () => {
+        setUtilisateur(null)
+        ecrireSession(null)
+      },
       alertes,
       compteurs: compterAlertes(alertes),
       enAttenteValidation: enAttente,
