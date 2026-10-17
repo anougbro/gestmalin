@@ -24,6 +24,7 @@
     "verifier-migration": "node --experimental-strip-types scripts/verifier-migration.ts",
     "verifier-codes": "node --experimental-strip-types scripts/verifier-codes.ts",
     "verifier-texte": "node --experimental-strip-types scripts/verifier-texte-ecran.ts",
+    "fil-des-etats": "node --experimental-strip-types scripts/fil-des-etats.ts",
     "remplir": "node --experimental-strip-types scripts/remplir-et-capturer.ts"
   },
   "dependencies": {
