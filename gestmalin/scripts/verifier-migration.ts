@@ -1,4 +1,4 @@
-import { chromium, type Page } from 'playwright'
+import { chromium } from 'playwright'
 
 /* ============================================================
    LE PASSAGE A 5 CHIFFRES
