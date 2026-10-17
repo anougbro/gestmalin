@@ -17,6 +17,7 @@ export type NomIcone =
   | 'compteur' | 'cloche' | 'froid' | 'quarantaine' | 'etiquette' | 'fournisseur'
   | 'grille' | 'import' | 'export' | 'camera' | 'clavier'
   | 'retour' | 'coche' | 'croix' | 'plus' | 'moins' | 'alerte'
+  | 'personne'
 
 /* Le 1,75 sur les trois attributs : c'est ce qui donne
    la meme epaisseur partout, meme sur un autre ecran. */
@@ -101,6 +102,16 @@ const TRACES: Record<NomIcone, React.ReactNode> = {
     <>
       <path d="M12 3.4 4.6 6.2v5.3c0 4.3 3 8.3 7.4 9.5 4.4-1.2 7.4-5.2 7.4-9.5V6.2Z" />
       <path d="M12 8.6v4.4" /><path d="M12 16.4h.01" />
+    </>
+  ),
+
+  /* --- La personne, et le changement de personne ---
+     Un bouton « changer de personne » qui ne montre pas de
+     personne se confond avec n'importe quel texte. */
+  personne: (
+    <>
+      <circle cx="12" cy="8.2" r="3.6" />
+      <path d="M5.2 20a6.8 6.8 0 0 1 13.6 0" />
     </>
   ),
 

@@ -122,16 +122,18 @@ function BoutonQui() {
   const { utilisateur, deconnecter } = useSession()
   if (!utilisateur) return null
 
-  /* L'initiale seule : sur une petite barre, il n'y a pas la
-     place pour un nom. Mais il faut une cible large — 44 px
-     minimum, une seule main, souvent avec des gants. */
+  /* Une initiale dans un rond ne veut rien dire : « P » peut
+     vouloir dire pharmacie, personne, ou prenom. L'icone personne
+     se lit seule. La sortie principale reste le bouton de
+     l'accueil, qui porte le nom et le mot « Changer » ; celui-ci
+     est le raccourci quand on est au fond d'un ecran. */
   return (
     <button
       className="qui-btn"
       onClick={deconnecter}
       aria-label={`${utilisateur.nom} — changer de personne`}
     >
-      <span aria-hidden="true">{utilisateur.nom.slice(0, 1).toUpperCase()}</span>
+      <Icone nom="personne" taille={22} />
     </button>
   )
 }

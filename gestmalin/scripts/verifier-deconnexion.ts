@@ -110,5 +110,68 @@ for (const c of CAS) {
   await page.close()
 }
 
+/* ---------- La sortie principale : sur l'accueil ----------
+
+   Le bouton de la barre laterale et la pastille du haut sont
+   des raccourcis. La sortie qui doit toujours fonctionner est
+   celle de l'accueil : c'est l'ecran de depart, donc devant les
+   yeux a chaque retour. Elle porte le nom ET le mot « Changer »
+   — un nom seul, ou une initiale dans un rond, ne disent pas
+   qu'on peut changer. */
+
+const ACCUEIL = '.qui-btn-lg'
+
+async function verifierAccueil(surMobile: boolean) {
+  const page = await navigateur.newPage({ viewport: surMobile ? { width: 393, height: 852 } : { width: 1440, height: 900 } })
+  await page.goto('http://localhost:5173/', { waitUntil: 'networkidle' })
+  await page.waitForTimeout(1200)
+
+  for (const chiffre of ['1', '2', '3', '4']) {
+    await page.getByRole('button', { name: chiffre, exact: true }).click()
+  }
+  await page.getByRole('button', { name: 'Entrer' }).click()
+  await page.waitForTimeout(900)
+
+  const bouton = page.locator(ACCUEIL)
+  if ((await bouton.count()) === 0) {
+    console.log(`ECHEC accueil ${surMobile ? 'telephone' : 'bureau'} : aucun bouton de changement de personne`)
+    return 1
+  }
+
+  const boite = await bouton.boundingBox()
+  const petit = !boite || boite.width < 44 || boite.height < 44
+  if (petit) {
+    console.log(`ECHEC accueil ${surMobile ? 'telephone' : 'bureau'} : bouton trop petit ${Math.round(boite?.width ?? 0)}x${Math.round(boite?.height ?? 0)}`)
+    return 1
+  }
+
+  /* Le mot « Changer » doit etre lisible dans le bouton : sans
+     lui, on ne sait pas que le nom est cliquable. */
+  const texte = (await bouton.innerText()).replace(/\s+/g, ' ').trim()
+  const ditChanger = /changer/i.test(texte)
+  const ditNom = /Pr/.test(texte)
+
+  if (!ditChanger || !ditNom) {
+    console.log(`ECHEC accueil ${surMobile ? 'telephone' : 'bureau'} : le bouton dit « ${texte} »`)
+    return 1
+  }
+
+  await bouton.click()
+  await page.waitForTimeout(700)
+
+  const dehors = (await page.locator('.ecran--connexion').count()) > 0
+  if (!dehors) {
+    console.log(`ECHEC accueil ${surMobile ? 'telephone' : 'bureau'} : le clic ne deconnecte pas`)
+    return 1
+  }
+
+  console.log(`accueil ${(surMobile ? 'telephone' : 'bureau  ').padEnd(10)} « ${texte} » ${Math.round(boite!.width)}x${Math.round(boite!.height)} px — deconnexion OK`)
+  await page.close()
+  return 0
+}
+
+echecs += await verifierAccueil(true)
+echecs += await verifierAccueil(false)
+
 console.log(echecs === 0 ? '\nCHANGER DE PERSONNE MARCHE PARTOUT.' : `\n${echecs} ECHEC(S).`)
 await navigateur.close()

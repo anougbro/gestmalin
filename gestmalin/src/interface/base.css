@@ -1073,6 +1073,82 @@ body {
    d'ordinateur disparait sans qu'on le voie.
    ============================================================ */
 
+
+
+
+
+/* ---------- Changer de personne, sur l'accueil ----------
+
+   Un bouton qui se lit sans etiquette : icone personne, le nom,
+   et le mot « Changer ». Le nom seul indiquait qu'on etait
+   connecte ; le mot « Changer » indique ce qu'on peut faire.
+   Les deux ensemble, aucune ambiguite. */
+
+.qui-btn-lg {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex: none;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--line-2);
+  border-radius: var(--r3);
+  background: var(--c-0);
+  color: var(--c-700);
+  font-family: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 110ms ease, border-color 110ms ease;
+}
+.qui-btn-lg:hover { background: var(--c-50); border-color: var(--line-3); }
+.qui-btn-lg:active { transform: scale(0.98); }
+
+.qui-btn-lg__nom {
+  font-weight: 650;
+  color: var(--c-800);
+  /* Le nom peut etre long : il cede la place au mot
+     « Changer », qui ne doit jamais disparaitre. */
+  max-width: 14ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.qui-btn-lg__mot {
+  flex: none;
+  padding-left: 9px;
+  border-left: 1px solid var(--line-2);
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--teal-700);
+}
+
+/* ============================================================
+   LES MEDIA QUERIES — EN DERNIER
+
+   Une regle ecrite apres un @media gagne sur lui. Ces blocs
+   doivent donc rester les derniers du fichier : deplace, un style
+   d'ordinateur disparait sans qu'on le voie.
+   ============================================================ */
+
+
+
+
+
+/* Un ecran qui montre un nom doit montrer aussi comment changer.
+   Sans ce controle, la personne est coincée. */
+.accueil__tete { align-items: flex-start; }
+
+/* ============================================================
+   LES MEDIA QUERIES — EN DERNIER
+
+   Une regle ecrite apres un @media gagne sur lui. Ces blocs
+   doivent donc rester les derniers du fichier : deplace, un style
+   d'ordinateur disparait sans qu'on le voie.
+   ============================================================ */
+
 @media (min-width: 900px) {
   .app {
     max-width: none;

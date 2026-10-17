@@ -28,7 +28,7 @@ const GESTES: Gestes[] = [
 ]
 
 export function EcranAccueil({ aller }: { aller: (e: NomEcran, c?: Record<string, unknown>) => void }) {
-  const { rayon, compteurs, utilisateur, enAttenteValidation } = useSession()
+  const { rayon, compteurs, utilisateur, enAttenteValidation, deconnecter } = useSession()
   const [auQuai, setAuQuai] = useState(0)
   const [references, setReferences] = useState(0)
   const [enStock, setEnStock] = useState(0)
@@ -67,7 +67,25 @@ export function EcranAccueil({ aller }: { aller: (e: NomEcran, c?: Record<string
             <p className="accueil__sur">{rayon.nom}</p>
             <h1 className="accueil__titre">Bonjour</h1>
           </div>
-          <p className="accueil__qui">{utilisateur?.nom}</p>
+
+          {/* Le nom de la personne etait ecrit ici, en texte. On
+              savait QUI on est, mais pas comment changer.
+
+              C'est pourtant la meilleure place possible : c'est
+              l'ecran de depart, donc devant les yeux a chaque
+              retour, et c'est la que le doigt va chercher la
+              question « qui est connecte ». Une pastille avec
+              une initiale, en haut a droite, ne le dit pas :
+              un « P » rond ne signifie rien pour personne. */}
+          <button
+            className="qui-btn-lg"
+            onClick={deconnecter}
+            aria-label={`${utilisateur?.nom} — changer de personne`}
+          >
+            <Icone nom="personne" taille={18} />
+            <span className="qui-btn-lg__nom">{utilisateur?.nom}</span>
+            <span className="qui-btn-lg__mot">Changer</span>
+          </button>
         </header>
 
         <div className="accueil__stats">
