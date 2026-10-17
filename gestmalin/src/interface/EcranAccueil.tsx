@@ -92,17 +92,24 @@ export function EcranAccueil({ aller }: { aller: (e: NomEcran, c?: Record<string
         <div>
           <p className="section__titre">Gestes</p>
           <div className="accueil__gestes">
-            {GESTES.map(({ ecran, icone, label, aide }) => (
+            {GESTES.map(({ ecran, icone, label, aide }, i) => (
               <button
                 key={ecran}
-                className="pos geste"
+                /* Sur telephone, cinq tuiles ne rentrent pas en deux
+                   colonnes : la derniere resterait seule et bancale.
+                   Compter occupe donc toute la largeur, comme dans la
+                   maquette d'origine. */
+                className={i === GESTES.length - 1 ? 'pos geste geste--large' : 'pos geste'}
                 onClick={() => aller(ecran)}
+                /* La pastille vit DANS le bouton : sans ce nom, le
+                   bouton s'appellerait « 12 Ranger » et l'ecran
+                   ne serait plus trouvable au doigt comme au
+                   clavier. Le chiffre est une information, pas
+                   une partie du nom. */
+                aria-label={label}
               >
                 {ecran === 'ranger' && auQuai > 0 && (
                   <span className="pastille num">{auQuai}</span>
-                )}
-                {ecran === 'accueil' && compteurs.total > 0 && (
-                  <span className="pastille num">{compteurs.total}</span>
                 )}
                 <Icone nom={icone} taille={24} className="geste__icone" />
                 <span className="geste__label">{label}</span>
@@ -115,13 +122,24 @@ export function EcranAccueil({ aller }: { aller: (e: NomEcran, c?: Record<string
         <div>
           <p className="section__titre">Gestion</p>
           <div className="grille-2">
-            <Tuile icone="capsule" label="Produits" note="Catalogue" ton={rayon.ton} surClick={() => aller('produits')} />
-            <Tuile icone="cloche" label="Alertes" note="À traiter" ton={rayon.ton} surClick={() => aller('alertes')} />
+            <Tuile
+              icone="capsule" label="Produits" note="Catalogue" ton={rayon.ton}
+              surClick={() => aller('produits')}
+            />
+            <Tuile
+              icone="cloche" label="Alertes" note="À traiter" ton={rayon.ton}
+              surClick={() => aller('alertes')}
+            />
           </div>
-          <button className="lien-fichier" onClick={() => aller('fichiers')}>
-            <Icone nom="export" taille={19} />
-            <span>Importer et exporter</span>
-          </button>
+          {/* Le meme ecran porte le meme nom partout. Sur telephone
+              il apparait dans la meme grille que les deux autres,
+              avec la meme forme : le doigt ne doit pas changer de
+              cible selon la largeur. */}
+          <Tuile
+            icone="export" label="Fichiers" note="Importer · Exporter" ton={rayon.ton}
+            surClick={() => aller('fichiers')}
+            plein
+          />
         </div>
       </div>
     </div>

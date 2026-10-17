@@ -192,14 +192,11 @@ function Coquille() {
           <SelecteurRayon />
         </header>
 
-        {courant.ecran !== 'accueil' && (
-          <header className="entete">
-            <button className="entete__retour" onClick={retour} aria-label="Retour">
-              <Icone nom="retour" taille={22} />
-            </button>
-            <h1 className="entete__titre">{definition.titre}</h1>
-          </header>
-        )}
+        {/* Pas d'en-tete ici : chaque ecran possede le sien.
+            Il doit le posseder, parce que le titre change en cours
+            de route — la Reception affiche le nom du produit qu'on
+            scanne, pas « Réception ». Un en-tete dans la coquille
+            afficherait donc deux fois le même titre, et le mauvais. */}
 
         <Composant ecran={courant.ecran} aller={aller} retour={retour} contexte={courant.contexte} />
       </div>

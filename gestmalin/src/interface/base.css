@@ -181,24 +181,22 @@ body {
   gap: 12px;
   margin-bottom: 4px;
 }
-.accueil__sur {
-  margin: 0;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--c-500);
-}
+
+/* Sur telephone, la barre du haut affiche deja le rayon.
+   Le repeter ici ferait doublon et coûte 20 px de hauteur
+   sur un ecran ou chaque ligne compte. */
+.accueil__sur { display: none; }
+
 .accueil__titre {
   margin: 2px 0 0;
-  font-size: 28px;
+  font-size: 21px;
   font-weight: 700;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.02em;
   line-height: 1.1;
 }
 .accueil__qui {
-  margin: 0 0 3px;
-  font-size: 13px;
+  margin: 0 0 2px;
+  font-size: 12.5px;
   color: var(--c-500);
 }
 
@@ -212,17 +210,17 @@ body {
   display: flex;
   flex-direction: column;
   gap: 1px;
-  padding: 13px 15px;
+  padding: 11px 14px;
   border: 1px solid var(--line);
   border-radius: var(--r3);
   background: var(--c-0);
   box-shadow: var(--sh-1);
 }
 .stat__valeur {
-  font-size: 26px;
+  font-size: 22px;
   font-weight: 700;
   line-height: 1.05;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.02em;
 }
 .stat__mot {
   font-size: 12px;
@@ -266,9 +264,41 @@ body {
   font-weight: 650;
   letter-spacing: -0.01em;
 }
+
+/* Le dernier geste occupe toute la largeur : cinq tuiles ne
+   rentrent pas proprement en deux colonnes. */
+.geste--large { grid-column: span 2; min-height: 88px; }
+
 /* L'aide n'apparait que sur grand ecran : sur telephone, une
    phrase sous chaque icone_noirait le pavage et n'est pas lue. */
 .geste__aide { display: none; }
+
+.liste { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+
+/* ---------- Filet de securite contre le debordement ----------
+   Un nom de produit trop long, ou une valeur qui ne rentre pas,
+   ne doit JAMAIS pousser la page hors de l'ecran.
+
+   Cause numero un de debordement horizontal sur telephone : un
+   enfant de flex sans `min-width: 0`. Par defaut, un enfant flex
+   refuse de descendre sous la taille de son contenu, et il
+   pousse toute la page vers la droite. */
+.app,
+.app__colonne,
+.ecran,
+.contenu,
+.carte,
+.liste {
+  min-width: 0;
+  max-width: 100%;
+}
+.app__colonne { width: 100%; }
+.ecran { overflow-x: hidden; }
+.contenu > * { min-width: 0; max-width: 100%; }
+
+/* La tuile « Fichiers » occupe toute la largeur sur telephone,
+   comme les gestes. */
+.tuile--plein { grid-column: span 2; margin-top: 9px; }
 
 .lien-fichier {
   display: flex;
@@ -585,15 +615,20 @@ body {
   padding: 16px;
 }
 
-/* ---------- Liste ---------- */
-
-.liste { display: flex; flex-direction: column; gap: 8px; }
+/* ---------- Liste ----------
+   ATTENTION : les enfants de .ligne sont des <span>. Un <span>
+   reste sur UNE ligne et `text-overflow: ellipsis` n'y
+   fonctionne pas. Il faut les passer en bloc explicitement,
+   sinon le titre et la note se collent : « Dolipraneboîte ».
+   C'est aussi ce qui evite que la ligne pousse la page hors de
+   l'ecran sur un nom de produit long. */
 
 .ligne {
   display: flex;
   align-items: center;
   gap: 12px;
   width: 100%;
+  min-width: 0;
   min-height: 64px;
   padding: 12px 14px;
   border: 1px solid var(--line);
@@ -611,16 +646,37 @@ body {
   text-decoration: line-through;
   box-shadow: none;
 }
-.ligne__corps { flex: 1; min-width: 0; }
+
+/* `min-width: 0` est la piece qui manquait : sans lui, un enfant
+   flex refuse de descendre sous la taille de son contenu et
+   repousse toute la page vers la droite. */
+.ligne__corps {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
 .ligne__titre {
+  display: block;
   font-size: 15px;
   font-weight: 650;
   letter-spacing: -0.01em;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  /* Un mot seul sans espace (Doliprane1 000mg) deborderait
+     meme avec l'ellipse. */
+  overflow-wrap: anywhere;
 }
-.ligne__note { font-size: 12.5px; color: var(--c-500); }
+.ligne__note {
+  display: block;
+  font-size: 12.5px;
+  color: var(--c-500);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
 /* ---------- Panneau de destination ---------- */
 
@@ -776,7 +832,7 @@ body {
     display: flex;
     align-items: center;
     gap: 11px;
-    min-height: 42px;
+    min-height: 44px;
     padding: 0 12px;
     border: none;
     border-radius: var(--r2);
@@ -829,6 +885,7 @@ body {
   .accueil { max-width: 940px; }
 
   .accueil__tete { margin-bottom: 10px; }
+  .accueil__sur { display: block; margin: 0; font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--c-500); }
   .accueil__titre { font-size: 36px; }
   .accueil__qui { font-size: 14px; }
 
@@ -849,6 +906,9 @@ body {
     gap: 0;
     text-align: center;
   }
+  /* Sur cinq colonnes, tout le monde a sa place : la carte large
+     du telephone redevient normale. */
+  .geste--large { grid-column: auto; min-height: 158px; }
   .geste__icone {
     width: 44px;
     height: 44px;
@@ -869,7 +929,7 @@ body {
 
   .grille-2 { gap: 12px; }
   .tuile { min-height: 108px; }
-  .lien-fichier { min-height: 56px; margin-top: 12px; }
+  .tuile--plein { grid-column: auto; margin-top: 0; }
 
   .entete {
     padding: 18px 36px;

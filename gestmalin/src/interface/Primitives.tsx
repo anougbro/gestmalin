@@ -52,6 +52,8 @@ export function Tuile({
   pastille,
   ton,
   surClick,
+  nomAccessible,
+  plein,
 }: {
   icone: NomIcone
   label: string
@@ -59,12 +61,15 @@ export function Tuile({
   pastille?: number
   ton?: 'teal' | 'amb'
   surClick: () => void
+  nomAccessible?: string
+  plein?: boolean
 }) {
   const classes = ['tuile', 'pos']
   if (ton) classes.push(`tuile--${ton}`)
+  if (plein) classes.push('tuile--plein')
 
   return (
-    <button className={classes.join(' ')} onClick={surClick}>
+    <button className={classes.join(' ')} onClick={surClick} aria-label={nomAccessible ?? label}>
       {pastille !== undefined && pastille > 0 && (
         <span className="pastille num">{pastille}</span>
       )}
