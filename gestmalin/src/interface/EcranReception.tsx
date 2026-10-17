@@ -72,7 +72,7 @@ export function EcranReception({ retour }: { retour: () => void }) {
       quantite,
       numero: lot || undefined,
       peremption: peremption || undefined,
-      auteurId: utilisateur,
+      auteurId: utilisateur?.id ?? 'anonyme',
     })
     await rafraichir()
     setChoisi(null)

@@ -67,7 +67,7 @@ export function EcranAccueil({ aller }: { aller: (e: NomEcran, c?: Record<string
             <p className="accueil__sur">{rayon.nom}</p>
             <h1 className="accueil__titre">Bonjour</h1>
           </div>
-          <p className="accueil__qui">{utilisateur}</p>
+          <p className="accueil__qui">{utilisateur?.nom}</p>
         </header>
 
         <div className="accueil__stats">

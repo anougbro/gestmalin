@@ -1,8 +1,6 @@
 import { base, ATTENTE_ID } from './base'
-import type { LotRow, MouvementRow, ProduitRow } from './base'
-import type {
-  Emplacement, IdProduit, Lot, Mouvement, Zone,
-} from '../domaine/types'
+import type { LotRow, MouvementRow, ProduitRow, UtilisateurRow, DemandeApprobationRow } from './base'
+import type { Emplacement, IdProduit, Lot, Mouvement, Zone } from '../domaine/types'
 import {
   quantiteLot, quantiteProduit, lotsParPriorite,
 } from '../domaine/stock'
@@ -322,7 +320,83 @@ export async function lotsServisEnPremier(produitId: IdProduit): Promise<{ lot: 
     .filter((l) => l.quantite > 0)
 }
 
-/* ---------- 4. Le journal, en lecture ---------- */
+/* ---------- 4. La chaine du froid ---------- */
+
+export const releves = {
+  tous: () => base.relevesTemperature.orderBy('date').reverse().toArray(),
+  deLaZone: (zoneId: string) =>
+    base.relevesTemperature.where('zoneId').equals(zoneId).reverse().sortBy('date'),
+  derniers: (zoneId: string, n = 20) =>
+    base.relevesTemperature.where('zoneId').equals(zoneId).reverse().sortBy('date').then((r) => r.slice(0, n)),
+
+  /** Un releve = une ligne. On n'ecrase JAMAIS un releve : c'est
+      une trace de temperatures, un controle doit pouvoir les
+      relire dans l'ordre. */
+  ajouter: async (zoneId: string, valeur: number, date = maintenant()) => {
+    const ligne = { id: nouvelId(), zoneId, valeur, date }
+    await base.relevesTemperature.add(ligne)
+    return ligne
+  },
+}
+
+/* ---------- 5. Les fournisseurs ---------- */
+
+export const fournisseursDepot = {
+  tous: () => base.fournisseurs.toArray(),
+  duRayon: (rayonId: string) => base.fournisseurs.where('rayonId').equals(rayonId).toArray(),
+  parId: (id: string) => base.fournisseurs.get(id),
+  enregistrer: async (nom: string, rayonId: string) => {
+    const existant = await base.fournisseurs.where('nom').equalsIgnoreCase(nom).first()
+    if (existant) return existant
+    const ligne = { id: nouvelId(), rayonId, nom, actif: true }
+    await base.fournisseurs.add(ligne)
+    return ligne
+  },
+}
+
+/* ---------- 6. Les utilisateurs ---------- */
+
+export const utilisateurs = {
+  tous: () => base.utilisateurs.toArray(),
+
+  enregistrer: async (u: UtilisateurRow) => {
+    const dejaLa = await base.utilisateurs.get(u.id)
+    if (dejaLa) await base.utilisateurs.put(u)
+    else await base.utilisateurs.add(u)
+    return u
+  },
+}
+
+/* ---------- 7. Les demandes d'approbation ---------- */
+
+export const approbations = {
+  enAttente: () => base.demandesApprobation.where('statut').equals('en_attente').toArray(),
+  toutes: () => base.demandesApprobation.orderBy('date').reverse().toArray(),
+
+  demander: async (d: Omit<DemandeApprobationRow, 'id' | 'statut' | 'date'>) => {
+    const ligne: DemandeApprobationRow = {
+      ...d, id: nouvelId(), statut: 'en_attente', date: maintenant(),
+    }
+    await base.demandesApprobation.add(ligne)
+    return ligne
+  },
+
+  decider: async (id: string, approuve: boolean, approbateurId: string, mandatId?: string) => {
+    const d = await base.demandesApprobation.get(id)
+    if (!d) throw new Error('Demande introuvable.')
+    /* Une demande deja decidee ne se red Decide pas : c'est une
+       trace, pas un etat modifiable. */
+    if (d.statut !== 'en_attente') throw new Error('Cette demande a déjà été traitée.')
+    await base.demandesApprobation.put({
+      ...d,
+      statut: approuve ? 'approuvee' : 'refusee',
+      approbateurId,
+      mandatId,
+    })
+  },
+}
+
+/* ---------- 8. Le journal, en lecture ---------- */
 
 export const journal = {
   tous: () => base.mouvements.orderBy('date').reverse().toArray(),

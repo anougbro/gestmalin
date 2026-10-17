@@ -210,10 +210,6 @@ export type LigneInventaire = {
 }
 
 /* ---------- L'utilisateur ---------- */
-export type Utilisateur = {
-  id: IdUtilisateur
-  nom: string
-}
 
 /* ---------- La chaine du froid ---------- */
 export type ReleveTemperature = {

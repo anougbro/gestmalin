@@ -10,7 +10,7 @@
    rencontre encore souvent.
    ============================================================ */
 
-import { chromium, devices } from 'playwright'
+import { chromium, devices, type Page } from 'playwright'
 import { mkdirSync } from 'node:fs'
 
 const SORTIE = 'captures'
@@ -20,6 +20,18 @@ const TAILLES = [{ nom: 'petit-360', largeur: 360, hauteur: 800, echelle: 2 }, {
 
 const navigateur = await chromium.launch()
 const problemes: string[] = []
+
+/* Depuis la phase 5, l'application demande un code a 4 chiffres.
+   Les tests doivent donc se connecter : sinon ils explorent un
+   ecran de connexion et concluent que tout est inaccessible. */
+async function connecter(page: Page) {
+  if ((await page.locator('.pave__touche').count()) === 0) return
+  for (const chiffre of ['1', '2', '3', '4']) {
+    await page.getByRole('button', { name: chiffre, exact: true }).click()
+  }
+  await page.getByRole('button', { name: 'Valider' }).click()
+  await page.waitForTimeout(600)
+}
 
 for (const t of TAILLES) {
   const contexte = await navigateur.newContext({
@@ -31,6 +43,7 @@ for (const t of TAILLES) {
   })
   const page = await contexte.newPage()
   await page.goto('http://localhost:5173/', { waitUntil: 'networkidle' })
+  await connecter(page)
   await page.waitForTimeout(900)
 
   await page.screenshot({ path: `${SORTIE}/${t.nom}-accueil.png`, fullPage: true })
@@ -117,6 +130,7 @@ for (const t of TAILLES) {
     /* Retour a l'accueil : on separe chaque ecran par une
        navigation complete, pas par un retour dans l'historique. */
     await page.goto('http://localhost:5173/', { waitUntil: 'networkidle' })
+  await connecter(page)
     await page.waitForTimeout(400)
   }
 

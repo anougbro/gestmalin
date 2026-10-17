@@ -34,6 +34,7 @@ type Ligne = {
 
 export function EcranCompter({ retour }: { retour: () => void }) {
   const { rayon, utilisateur, rafraichir } = useSession()
+  const auteur = utilisateur?.id ?? 'anonyme'
   const [lignes, setLignes] = useState<Ligne[]>([])
   const [index, setIndex] = useState(0)
   const [termine, setTermine] = useState(false)
@@ -86,7 +87,7 @@ export function EcranCompter({ retour }: { retour: () => void }) {
             id: nouvelId(), type: 'reception', rayonId: rayon.id, produitId: l.produit.id,
             quantite: l.reelle, versEmplacementId: l.produit.emplacementId ?? ATTENTE_ID,
             motif: 'ecart_inventaire',
-            auteurId: utilisateur, date: maintenant(), synchro: 0,
+            auteurId: auteur, date: maintenant(), synchro: 0,
           })
         }
         continue
@@ -104,7 +105,7 @@ export function EcranCompter({ retour }: { retour: () => void }) {
           ? { versEmplacementId: l.produit.emplacementId ?? ATTENTE_ID }
           : { depuisEmplacementId: l.produit.emplacementId ?? ATTENTE_ID, motif: 'ecart_inventaire' }),
         motif: 'ecart_inventaire',
-        auteurId: utilisateur,
+        auteurId: auteur,
         date: maintenant(),
         synchro: 0,
       })

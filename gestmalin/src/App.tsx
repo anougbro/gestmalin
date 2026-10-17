@@ -12,6 +12,11 @@ import { EcranCompter } from './interface/EcranCompter'
 import { EcranChercher } from './interface/EcranChercher'
 import { EcranProduits } from './interface/EcranProduits'
 import { EcranFichiers } from './interface/EcranFichiers'
+import { EcranFroid } from './interface/EcranFroid'
+import { EcranReappro } from './interface/EcranReappro'
+import { EcranValidation } from './interface/EcranValidation'
+import { EcranEtiquettes } from './interface/EcranEtiquettes'
+import { EcranConnexion } from './interface/EcranConnexion'
 import './interface/base.css'
 
 /* ============================================================
@@ -29,6 +34,7 @@ import './interface/base.css'
 export type Ecran =
   | 'accueil' | 'reception' | 'ranger' | 'sortie'
   | 'alertes' | 'compter' | 'chercher' | 'produits' | 'fichiers'
+  | 'froid' | 'commander' | 'valider' | 'etiquettes'
 
 type Props = {
   ecran: Ecran
@@ -47,6 +53,10 @@ const ECRANS_ECRAN: Record<Ecran, { titre: string; composant: (p: Props) => Reac
   chercher: { titre: 'Trouver', composant: EcranChercher },
   produits: { titre: 'Produits', composant: EcranProduits },
   fichiers: { titre: 'Fichiers', composant: EcranFichiers },
+  froid: { titre: 'Réserve froide', composant: EcranFroid },
+  commander: { titre: 'Commande', composant: EcranReappro },
+  valider: { titre: 'À valider', composant: EcranValidation as unknown as (p: Props) => React.ReactElement },
+  etiquettes: { titre: 'Étiquettes', composant: EcranEtiquettes },
 }
 
 /* Les cinq gestes, dans l'ordre de la journee. */
@@ -61,6 +71,10 @@ const GESTES: { ecran: Ecran; icone: NomIcone; label: string }[] = [
 
 const PLUS_TARD: { ecran: Ecran; icone: NomIcone; label: string }[] = [
   { ecran: 'alertes', icone: 'cloche', label: 'Alertes' },
+  { ecran: 'valider', icone: 'quarantaine', label: 'À valider' },
+  { ecran: 'commander', icone: 'fournisseur', label: 'Commander' },
+  { ecran: 'froid', icone: 'froid', label: 'Réserve froide' },
+  { ecran: 'etiquettes', icone: 'etiquette', label: 'Étiquettes' },
   { ecran: 'produits', icone: 'capsule', label: 'Produits' },
   { ecran: 'fichiers', icone: 'export', label: 'Fichiers' },
 ]
@@ -153,7 +167,7 @@ function BarreLaterale({ courant, aller }: { courant: Ecran; aller: (e: Ecran) =
         {lien(PLUS_TARD)}
       </nav>
 
-      <div className="barre__pied">{utilisateur}</div>
+      <div className="barre__pied">{utilisateur?.nom ?? '—'}</div>
     </aside>
   )
 }
@@ -164,7 +178,7 @@ function Coquille() {
   const [pile, setPile] = useState<{ ecran: Ecran; contexte: Record<string, unknown> }[]>([
     { ecran: 'accueil', contexte: {} },
   ])
-  const { pret } = useSession()
+  const { pret, utilisateur } = useSession()
 
   const courant = pile[pile.length - 1]
   const definition = ECRANS_ECRAN[courant.ecran]
@@ -180,6 +194,10 @@ function Coquille() {
       </div>
     )
   }
+
+  /* On entre par un code, pas par un mot de passe : quatre
+     chiffres, tapes d'une seule main, avec des gants. */
+  if (!utilisateur) return <EcranConnexion />
 
   const Composant = definition.composant
 

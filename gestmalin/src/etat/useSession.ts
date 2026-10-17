@@ -1,5 +1,6 @@
 import { createContext, useContext } from 'react'
 import type { Alerte, CompteursAlertes } from '../domaine/alertes'
+import type { Utilisateur } from '../domaine/acces'
 import type { RayonTravail } from './rayons'
 import type { demarrer } from './preparation'
 import type { toutEffacer } from '../donnees/depots'
@@ -11,7 +12,10 @@ import type { toutEffacer } from '../donnees/depots'
 export type Session = {
   rayon: RayonTravail
   changeRayon: (id: string) => void
-  utilisateur: string
+  /** La personne connectee, ou null tant qu'elle ne l'est pas. */
+  utilisateur: Utilisateur | null
+  connecter: (identifiant: string, code: string) => Promise<{ ok: boolean; message?: string }>
+  deconnecter: () => void
   alertes: Alerte[]
   compteurs: CompteursAlertes
   rafraichir: () => Promise<void>

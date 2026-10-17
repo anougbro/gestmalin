@@ -66,7 +66,7 @@ export function EcranRanger({ retour }: { retour: () => void }) {
       lotId: item.lotId,
       quantite: item.quantite,
       versEmplacementId: item.produit.emplacementId,
-      auteurId: utilisateur,
+      auteurId: utilisateur?.id ?? 'anonyme',
     })
     setFait(item.produit.id)
     await charger()

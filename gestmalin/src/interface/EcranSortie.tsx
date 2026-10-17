@@ -74,7 +74,7 @@ export function EcranSortie({ retour }: { retour: () => void }) {
         lotId: l.lot.id,
         quantite: pris,
         motif,
-        auteurId: utilisateur,
+        auteurId: utilisateur?.id ?? 'anonyme',
         depuisEmplacementId: l.lot.emplacementId,
       })
       restant -= pris

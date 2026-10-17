@@ -1,9 +1,10 @@
 import Dexie, { type Table } from 'dexie'
 import type {
   Rayon, Zone, Emplacement, Produit, Lot, Mouvement, Categorie,
-  Fournisseur, Inventaire, LigneInventaire, Utilisateur,
+  Fournisseur, Inventaire, LigneInventaire,
   ReleveTemperature, DemandeApprobation, TypeMouvement,
 } from '../domaine/types'
+import type { Utilisateur, Role } from '../domaine/acces'
 
 /* ============================================================
    LA BASE LOCALE — IndexedDB, via Dexie
@@ -16,7 +17,6 @@ import type {
 export type TypeZone =
   | 'reserve_seche' | 'reserve_froide' | 'vitrine' | 'quarantaine' | 'rebut'
 
-export type Role = 'preparateur' | 'responsable' | 'pharmacien' | 'directeur'
 
 export type StatutInventaire = 'en_cours' | 'valide'
 export type StatutDemande = 'en_attente' | 'approuvee' | 'refusee'
@@ -53,11 +53,10 @@ export type LigneInventaireRow = LigneInventaire & {
   recompte: boolean
 }
 
-export type UtilisateurRow = Utilisateur & {
-  role: Role
-  rayonsAutorises: string[]
-  actif: boolean
-}
+/* Le type de la personne vient du domaine : une seule definition,
+   sinon la base et le code parleraient de deux personnes differentes. */
+export type UtilisateurRow = Utilisateur
+export type { Role }
 
 export type ReleveTemperatureRow = ReleveTemperature
 

@@ -1,18 +1,33 @@
 import { base, ATTENTE_ID } from '../donnees/base'
 import { toutEffacer } from '../donnees/depots'
 import { RAYONS_PAR_DEFAUT, ZONES_PAR_DEFAUT, emplacementsDeZone } from './rayons'
+import { empreinte, type Utilisateur } from '../domaine/acces'
 
 /* ============================================================
    LE PREMIER AMORCAGE
 
    A la toute premiere ouverture, la base est vide : on y met
-   les deux rayons, leurs zones, leurs emplacements, et le quai
-   de reception.
+   les deux rayons, leurs zones, leurs emplacements, le quai de
+   reception, et la personne qui travaille ici.
 
    Ce n'est PAS une donnee de demonstration : c'est la structure
    physique de la pharmacie. Les produits, eux, viendront par
    import ou saisie — on n'invente pas de medicaments.
    ============================================================ */
+
+/* Le code de la personne creee au premier lancement.
+   1234 est volontaire : c'est le code le plus facile a retenir
+   pour une premiere connexion, et il se change aussitot.
+   Il n'est stocke qu'en empreinte. */
+export const CODE_INITIAL = '1234'
+
+export const UTILISATEUR_INITIAL: Omit<Utilisateur, 'empreinte'> = {
+  id: 'u-1',
+  nom: 'Préparateur',
+  role: 'preparateur',
+  rayonsAutorises: ['r-med', 'r-men'],
+  actif: true,
+}
 
 export async function demarrer() {
   await toutEffacer()
@@ -26,8 +41,8 @@ export async function demarrer() {
   await base.emplacements.put({ id: ATTENTE_ID, zoneId: '', code: 'QUAI', ordre: 0 })
 
   await base.utilisateurs.put({
-    id: 'u-1', nom: 'Préparateur', role: 'preparateur',
-    rayonsAutorises: ['r-med', 'r-men'], actif: true,
+    ...UTILISATEUR_INITIAL,
+    empreinte: empreinte(UTILISATEUR_INITIAL.id, CODE_INITIAL),
   })
 }
 

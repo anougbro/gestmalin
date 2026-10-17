@@ -256,7 +256,7 @@ body {
 }
 .geste:hover { box-shadow: var(--sh-3); border-color: var(--line-2); }
 .geste:active { transform: scale(0.985); }
-.geste:focus-visible { outline: 2px solid var(--c-900); outline-offset: 2px; }
+.geste:focus-visible { outline: 2px solid var(--teal-600); outline-offset: 2px; }
 
 .geste__icone { color: var(--teal-700); }
 .geste__label {
@@ -340,7 +340,7 @@ body {
 }
 .btn:active { transform: scale(0.985); }
 .btn:disabled { opacity: 0.42; cursor: not-allowed; }
-.btn:focus-visible { outline: 2px solid var(--c-900); outline-offset: 2px; }
+.btn:focus-visible { outline: 2px solid var(--teal-600); outline-offset: 2px; }
 
 .btn--primaire { background: var(--teal-700); color: #fff; }
 .btn--primaire:hover:not(:disabled) { background: var(--teal-600); }
@@ -383,7 +383,7 @@ body {
 }
 .tuile:hover { box-shadow: var(--sh-3); border-color: var(--line-2); }
 .tuile:active { transform: scale(0.98); }
-.tuile:focus-visible { outline: 2px solid var(--c-900); outline-offset: 2px; }
+.tuile:focus-visible { outline: 2px solid var(--teal-600); outline-offset: 2px; }
 
 .tuile__icone { color: var(--c-700); }
 .tuile__label { font-size: 14px; font-weight: 650; letter-spacing: -0.01em; }
@@ -950,4 +950,140 @@ body {
   /* La fenetre de scan reste plein ecran : on scanne une boite
      tenue a bout de bras, pas dans un panneau. */
   .scan__vise { width: 52%; height: 180px; }
+}
+
+/* ============================================================
+   LA CONNEXION PAR CODE
+   Un pave de chiffres : touches grandes, tapes d'une seule main.
+   Jamais de mot de passe.
+   ============================================================ */
+
+.ecran--connexion {
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  background: var(--teal-900);
+  padding: 20px;
+}
+
+.connexion {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  align-items: center;
+  width: 100%;
+  max-width: 320px;
+}
+
+.connexion__marque {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #fff;
+  font-size: 21px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin-bottom: 8px;
+}
+
+.connexion__titre {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 14px;
+  font-weight: 600;
+}
+.connexion__indices { margin: -10px 0 0; color: #fff; font-size: 16px; font-weight: 650; }
+.connexion__qui { margin: 0; color: rgba(255, 255, 255, 0.8); font-size: 14px; }
+.connexion__qui strong { color: #fff; }
+.connexion__erreur { margin: 0; color: #ffc9c2; font-size: 13px; font-weight: 600; }
+
+.pastilles { display: flex; gap: 12px; margin: 4px 0 6px; }
+.pastille-point {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255, 255, 255, 0.4);
+}
+.pastille-point--plein { background: #fff; border-color: #fff; }
+
+.pave { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; width: 100%; }
+.pave__touche {
+  min-height: 60px;
+  border: none;
+  border-radius: var(--r3);
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font-family: inherit;
+  font-size: 21px;
+  font-weight: 600;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: background 110ms ease, transform 70ms ease;
+}
+.pave__touche:hover { background: rgba(255, 255, 255, 0.2); }
+.pave__touche:active { transform: scale(0.95); }
+.pave__touche--valider { background: #fff; color: var(--teal-900); grid-column: span 3; min-height: 52px; }
+
+.personne {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-height: 56px;
+  padding: 0 16px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: var(--r3);
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.personne--choisie { background: #fff; color: var(--teal-900); }
+
+/* ============================================================
+   LA PLANCHE D ETIQUETTES
+   A l'impression, il ne reste que le code en gros.
+   ============================================================ */
+
+.planche {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
+  gap: 8px;
+}
+
+.etiquette {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 14px 8px;
+  border: 1px dashed var(--line-2);
+  border-radius: var(--r2);
+  background: var(--c-0);
+}
+.etiquette__code {
+  font-family: var(--mono);
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.etiquette__zone { font-size: 10.5px; font-weight: 600; color: var(--c-500); }
+.etiquette__rayon { font-size: 9.5px; color: var(--c-400); }
+
+.carte--alerte { border-color: var(--dgr-200); background: var(--dgr-50); }
+
+@media print {
+  .entete, .btn, .barre, .app__barre, .carte { display: none !important; }
+  body, .app, .ecran { background: #fff !important; box-shadow: none !important; }
+  .planche { gap: 3mm; }
+  .etiquette {
+    border: 1px solid #000;
+    border-radius: 0;
+    padding: 4mm 2mm;
+    break-inside: avoid;
+  }
+  .etiquette__code { font-size: 22pt; }
+  .etiquette__zone { font-size: 10pt; }
 }
