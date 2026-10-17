@@ -89,6 +89,9 @@ export type Produit = {
   unite: Unite
   seuil: number
   emplacementId?: IdEmplacement
+  /* Les produits importes ont souvent un fournisseur precis :
+     c'est lui qui determine a qui la commande est groupee. */
+  fournisseurId?: IdFournisseur
   actif: boolean
 }
 

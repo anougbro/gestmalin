@@ -31,6 +31,7 @@ export type Alerte = {
   produitId?: string
   lotId?: string
   emplacementId?: string
+  zoneId?: string
   quantite?: number
   joursRestants?: number
 }
