@@ -132,21 +132,47 @@ export async function chargerJeuEssai(rayonMed: string, rayonMen: string, auteur
   return { produits: produits.length, mouvements: mouvements.length }
 }
 
-/* ---------- Un responsable et un pharmacien, pour tester les mandats ---------- */
+/* ---------- Les personnes de l'essai ----------
+
+   Une seule source de verite pour les noms ET les codes. Ecrits
+   a deux endroits, ils finissent par differer — et la seule
+   personne qui ne peut pas verifier, c'est celle qui essaie
+   d'entrer. */
+
+export const COMPTES_ESSAI = [
+  { id: 'u-1', nom: 'Préparateur', role: 'preparateur', code: '12345', peut: 'Stock, inventaire' },
+  { id: 'u-2', nom: 'Amina', role: 'responsable', code: '22222', peut: 'Valide sur Ménagers' },
+  { id: 'u-3', nom: 'Dr Souley', role: 'pharmacien', code: '33333', peut: 'Valide tout' },
+] as const
 
 export async function chargerPersonnes(rayonMed: string, rayonMen: string): Promise<void> {
-  await base.utilisateurs.bulkPut([
-    { id: 'u-1', nom: 'Préparateur', role: 'preparateur', rayonsAutorises: [rayonMed, rayonMen], actif: true, longueurCode: LONGUEUR_CODE, empreinte: empreinte('u-1', '12345') },
-    { id: 'u-2', nom: 'Amina', role: 'responsable', rayonsAutorises: [rayonMen], actif: true, longueurCode: LONGUEUR_CODE, empreinte: empreinte('u-2', '22222') },
-    { id: 'u-3', nom: 'Dr Souley', role: 'pharmacien', rayonsAutorises: [rayonMed, rayonMen], actif: true, longueurCode: LONGUEUR_CODE, empreinte: empreinte('u-3', '33333') },
-  ])
+  const rayons: Record<string, string[]> = {
+    'u-1': [rayonMed, rayonMen],
+    'u-2': [rayonMen],
+    'u-3': [rayonMed, rayonMen],
+  }
 
-  await base.demandesApprobation.bulkPut([
-    {
+  await base.utilisateurs.bulkPut(
+    COMPTES_ESSAI.map((c) => ({
+      id: c.id,
+      nom: c.nom,
+      role: c.role,
+      rayonsAutorises: rayons[c.id] ?? [rayonMed],
+      actif: true,
+      longueurCode: LONGUEUR_CODE,
+      empreinte: empreinte(c.id, c.code),
+    })),
+  )
+
+  /* On ne rajoute la demande que si elle n'existe pas deja : la
+     recharger ne doit pas effacer la decision deja prise. */
+  const existe = await base.demandesApprobation.get('dem-1')
+  if (!existe) {
+    await base.demandesApprobation.put({
       id: 'dem-1', type: 'quarantaine', rayonId: rayonMed, statut: 'en_attente',
       motif: 'Lot douteux signalé à la réception',
       detail: 'Amoxicilline 500 mg — lot C1D3E — périmé depuis 4 jours',
       demandeurId: 'u-1', date: maintenant(),
-    },
-  ])
+    })
+  }
 }

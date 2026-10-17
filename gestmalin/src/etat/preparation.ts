@@ -101,6 +101,21 @@ export const CODE_PAR_DEFAUT = '00000'
  * une empreinte a 4 chiffres et une a 5 sont la meme chaine de
  * caracteres pour la base. D'ou ce champ, et cette comparaison.
  */
+/**
+ * Une empreinte bien formee : trois nombres en base 36, separes
+ * par des tirets, comme produite par `empreinte()`.
+ *
+ * Verifier la FORME et pas seulement la presence : une empreinte
+ * vide se repere, une empreinte abimee ou tronquee non. Or une
+ * empreinte abimee, avec la bonne longueur declaree, passe a
+ * travers du controle sur `longueurCode` et rend le compte
+ * inutilisable — et personne ne peut plus entrer, sans qu'aucun
+ * message ne dise pourquoi.
+ */
+function empreinteBienFormee(e: string | undefined): boolean {
+  return typeof e === 'string' && /^[a-z0-9]+-[a-z0-9]+-[a-z0-9]+$/.test(e)
+}
+
 export async function reparerComptes(): Promise<number> {
   const tous = await base.utilisateurs.toArray()
 
@@ -116,7 +131,7 @@ export async function reparerComptes(): Promise<number> {
     return 1
   }
 
-  const aReparer = tous.filter((u) => !u.empreinte || u.longueurCode !== LONGUEUR_CODE)
+  const aReparer = tous.filter((u) => !empreinteBienFormee(u.empreinte) || u.longueurCode !== LONGUEUR_CODE)
   for (const u of aReparer) {
     await base.utilisateurs.put({
       ...u,

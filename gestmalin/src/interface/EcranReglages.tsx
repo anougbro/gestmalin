@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useSession } from '../etat/useSession'
 import { base } from '../donnees/base'
-import { chargerJeuEssai, chargerPersonnes } from '../donnees/jeuEssai'
+import { chargerJeuEssai, chargerPersonnes, COMPTES_ESSAI } from '../donnees/jeuEssai'
 import { empreinte, LONGUEUR_CODE } from '../domaine/acces'
 import { RAYONS_PAR_DEFAUT } from '../etat/rayons'
 import { Icone } from './Icones'
@@ -87,6 +87,16 @@ export function EcranReglages({ retour }: { retour: () => void }) {
     await rafraichir()
   }
 
+  /* Remettre les comptes de l'essai a leurs codes annonces.
+     Utile quand la base a ete reparee apres un changement de
+     longueur : tout le monde est alors passe a 00000, et la
+     liste ci-dessus ne dit plus vrai. */
+  async function remettreLesComptes() {
+    await chargerPersonnes(rayon.id, autreRayon)
+    setMessage('Les codes de l\'essai sont remis.')
+    await rafraichir()
+  }
+
   async function effacerTout() {
     if (!confirm('Effacer TOUT : produits, lots, mouvements, alertes ?\n\nCette action est définitive.')) return
     await vider()
@@ -118,7 +128,7 @@ export function EcranReglages({ retour }: { retour: () => void }) {
           <p style={{ margin: '0 0 2px', fontSize: 13, color: 'var(--c-500)' }}>
             {enConfirmation
               ? 'Tape le même code encore une fois'
-              : 'Choisis un nouveau code de {LONGUEUR_CODE} chiffres'}
+              : `Choisis un nouveau code de ${LONGUEUR_CODE} chiffres`}
           </p>
 
           <PastillesCode code={code} sur="clair" />
@@ -144,6 +154,37 @@ export function EcranReglages({ retour }: { retour: () => void }) {
                 Le code n'est jamais écrit en clair, seulement son empreinte.
               </p>
             )}
+          </div>
+        </div>
+
+        {/* ---------- Les personnes et leurs codes ----------
+
+            Tant qu'on ne sait pas quel code on a choisi, on le
+            demande a quelqu'un d'autre. Une liste ecrite quelque
+            part evite les deux ennuis : se tromper de code, et
+            croire que l'application est cassee quand elle refuse
+            un code qu'on ne se rappelle pas. */}
+        <div className="carte">
+          <p className="section__titre">Personnes et codes</p>
+          <p style={{ margin: '0 0 12px', fontSize: 13.5, color: 'var(--c-700)' }}>
+            Les codes de l'essai. Ils ne sont jamais stockés en clair
+            dans l'application : elle ne compare que des empreintes.
+          </p>
+
+          <ul className="codes">
+            {COMPTES_ESSAI.map((c) => (
+              <li key={c.id} className="codes__ligne">
+                <span className="codes__nom">{c.nom}</span>
+                <span className="codes__peut">{c.peut}</span>
+                <span className="codes__code num">{c.code}</span>
+              </li>
+            ))}
+          </ul>
+
+          <div style={{ marginTop: 12 }}>
+            <Bouton variante="secondaire" surClick={() => void remettreLesComptes()}>
+              Remettre les codes de l'essai
+            </Bouton>
           </div>
         </div>
 

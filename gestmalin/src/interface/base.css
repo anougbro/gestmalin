@@ -1474,6 +1474,62 @@ body {
    d'ordinateur disparait sans qu'on le voie.
    ============================================================ */
 
+
+
+
+
+/* ---------- La liste des personnes et de leurs codes ----------
+
+   Le code est le plus lisible de la ligne : c'est ce qu'on vient
+   chercher, et c'est ce qu'on recopie. Il est en gros, en
+   chiffres tabulaires, a droite de la ligne. */
+.codes {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--r2);
+  overflow: hidden;
+}
+.codes__ligne {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 46px;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--line);
+  background: var(--c-0);
+}
+.codes__ligne:last-child { border-bottom: none; }
+.codes__nom {
+  flex: none;
+  min-width: 9ch;
+  font-size: 14px;
+  font-weight: 650;
+  color: var(--c-800);
+}
+.codes__peut {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  color: var(--c-500);
+}
+.codes__code {
+  flex: none;
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--teal-700);
+}
+
+/* ============================================================
+   LES MEDIA QUERIES — EN DERNIER
+
+   Une regle ecrite apres un @media gagne sur lui. Ces blocs
+   doivent donc rester les derniers du fichier : deplace, un style
+   d'ordinateur disparait sans qu'on le voie.
+   ============================================================ */
+
 @media (min-width: 900px) {
   .app {
     max-width: none;

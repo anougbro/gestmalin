@@ -22,6 +22,8 @@
     "verifier-pave": "node --experimental-strip-types scripts/verifier-pave-session.ts",
     "verifier-demandes": "node --experimental-strip-types scripts/verifier-demandes.ts",
     "verifier-migration": "node --experimental-strip-types scripts/verifier-migration.ts",
+    "verifier-codes": "node --experimental-strip-types scripts/verifier-codes.ts",
+    "verifier-texte": "node --experimental-strip-types scripts/verifier-texte-ecran.ts",
     "remplir": "node --experimental-strip-types scripts/remplir-et-capturer.ts"
   },
   "dependencies": {
