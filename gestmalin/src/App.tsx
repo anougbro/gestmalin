@@ -82,37 +82,27 @@ const PLUS_TARD: { ecran: Ecran; icone: NomIcone; label: string }[] = [
   { ecran: 'reglages', icone: 'grille', label: 'Réglages' },
 ]
 
-/* ---------- Le selecteur de rayon ---------- */
+/* ---------- Le rayon, en haut sur telephone ----------
 
-function SelecteurRayon() {
-  const { rayon, changeRayon } = useSession()
-  const [ouvert, setOuvert] = useState(false)
+   Ce n'est plus un bouton. C'est une etiquette.
 
-  if (!ouvert) {
-    return (
-      <button className="seg-item seg-depuis" onClick={() => setOuvert(true)}>
-        <Icone nom={rayon.ton === 'teal' ? 'capsule' : 'maison'} taille={18} />
-        {rayon.nom}
-      </button>
-    )
-  }
+   C'etait un selecteur a deux onglets : une seule pression suffisait
+   a changer de rayon. Dans une pharmacie, une pression de trop
+   pendant une sortie de medicament, c'est servir un produit du
+   mauvais rayon. Le stock des deux rayons est compense ensemble et
+   l'application ne dit pas lequel on regarde.
 
+   Changer de rayon est un acte, pas un filtre. Il se fait
+   volontairement, dans le menu, ou on voit les deux noms l'un sous
+   l'autre. Ici, on se contente de dire ou on est — ce qu'on a
+   besoin de savoir en permanence. */
+function EtiquetteRayon() {
+  const { rayon } = useSession()
   return (
-    <div className="seg" role="tablist">
-      {RAYONS_PAR_DEFAUT.map((r) => (
-        <button
-          key={r.id}
-          role="tab"
-          aria-selected={r.id === rayon.id}
-          className={`seg-item${r.id === rayon.id ? ' seg-item--actif' : ''}`}
-          data-ton={r.ton}
-          onClick={() => { changeRayon(r.id); setOuvert(false) }}
-        >
-          <Icone nom={r.ton === 'teal' ? 'capsule' : 'maison'} taille={17} />
-          {r.nom}
-        </button>
-      ))}
-    </div>
+    <span className="rayon-etiquette">
+      <Icone nom={rayon.ton === 'teal' ? 'capsule' : 'maison'} taille={18} />
+      <span className="rayon-etiquette__nom">{rayon.nom}</span>
+    </span>
   )
 }
 
@@ -317,7 +307,7 @@ function Coquille() {
           >
             <Icone nom="grille" taille={22} />
           </button>
-          <SelecteurRayon />
+          <EtiquetteRayon />
           <BoutonQui />
         </header>
 

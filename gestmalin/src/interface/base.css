@@ -90,14 +90,19 @@ body {
      la limite est donc sur .contenu, plus bas.
 
      C'est aussi ici qu'on coupe le debordement horizontal, pour
-     que rien ne fasse defiler la page de cote. */
+     que rien ne fasse defiler la page de cote.
+
+     `clip` et non `hidden` : `hidden` transforme l'element en
+     conteneur de defilement, et le menu laterale `sticky`
+     s'arrete alors de suivre le defilement de la page. `clip`
+     coupe sans creer de conteneur. */
   margin: 0 auto;
   min-height: 100%;
   display: flex;
   flex-direction: column;
   background: var(--c-50);
   box-shadow: var(--sh-5);
-  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 .app__colonne {
@@ -160,21 +165,6 @@ body {
 .seg-item--actif[data-ton='teal'] { background: var(--teal-700); }
 .seg-item--actif[data-ton='amb'] { background: var(--amb-700); }
 
-/* Le bouton rayon referme, dans la barre du haut : il montre ou
-   on est, il ne doit pas s'etaler. C'est un declencheur, pas un
-   segment de tableau — donc PAS de `flex: 1` comme les autres.
-
-   Cette regle doit suivre `.seg-item` : a specs egales, la
-   derniere ecrite gagne. */
-.seg-depuis {
-  flex: 0 1 auto;
-  min-width: 0;
-  padding: 0 14px;
-  background: var(--c-100);
-  font-weight: 700;
-  letter-spacing: -0.01em;
-  color: var(--c-800);
-}
 
 /* ---------- La fenetre de scan ---------- */
 
@@ -1388,6 +1378,102 @@ body {
    d'ordinateur disparait sans qu'on le voie.
    ============================================================ */
 
+
+
+
+
+/* ---------- Le rayon, en haut sur telephone ----------
+
+   Une etiquette, pas un bouton. C'est le seul endroit ou l'on doit
+   savoir en permanence ou l'on travaille ; ce n'est pas l'endroit
+   ou l'on change de rayon. */
+.rayon-etiquette {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--line-2);
+  border-radius: var(--r3);
+  background: var(--c-50);
+  color: var(--c-800);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  user-select: none;
+}
+.rayon-etiquette__nom { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ============================================================
+   LES MEDIA QUERIES — EN DERNIER
+
+   Une regle ecrite apres un @media gagne sur lui. Ces blocs
+   doivent donc rester les derniers du fichier : deplace, un style
+   d'ordinateur disparait sans qu'on le voie.
+   ============================================================ */
+
+
+
+
+
+/* ---------- Le pave, version claire (reglages) ----------
+
+   Meme pave que la connexion, meme ordre des touches, memes
+   hauteurs. Seul le fond change : un pave qu'on doit apprendre
+   deux fois, parce qu'il change de forme selon l'ecran, est un
+   pave qu'on rate. */
+
+.pave--clair .pave__touche {
+  background: var(--c-100);
+  color: var(--c-800);
+}
+.pave--clair .pave__touche:hover { background: var(--c-200); }
+.pave--clair .pave__touche--effacer { color: var(--c-600); }
+
+.pave--clair .pave__entree {
+  background: var(--c-100);
+  color: var(--c-400);
+}
+.pave--clair .pave__entree--pret {
+  background: var(--teal-700);
+  color: #fff;
+}
+
+/* Les pastilles sur fond blanc. */
+.pastilles--clair { margin: 12px 0 2px; justify-content: center; }
+.pastilles--clair .pastille-point { border-color: var(--line-3); }
+.pastilles--clair .pastille-point--plein { background: var(--teal-700); border-color: var(--teal-700); }
+
+/* ============================================================
+   LES MEDIA QUERIES — EN DERNIER
+
+   Une regle ecrite apres un @media gagne sur lui. Ces blocs
+   doivent donc rester les derniers du fichier : deplace, un style
+   d'ordinateur disparait sans qu'on le voie.
+   ============================================================ */
+
+
+
+
+
+.reglage__erreur {
+  margin: 10px 0 0;
+  color: var(--dgr-700);
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+}
+
+/* ============================================================
+   LES MEDIA QUERIES — EN DERNIER
+
+   Une regle ecrite apres un @media gagne sur lui. Ces blocs
+   doivent donc rester les derniers du fichier : deplace, un style
+   d'ordinateur disparait sans qu'on le voie.
+   ============================================================ */
+
 @media (min-width: 900px) {
   .app {
     max-width: none;
@@ -1399,25 +1485,27 @@ body {
   .barre {
     display: flex;
     flex-direction: column;
-    gap: 24px;
+    gap: 14px;
     width: 226px;
     flex: none;
-    /* `height` et non `min-height` : avec un minimum, le conteneur
-       peut grandir plus haut que la fenetre, et `flex: 1` sur la
-       liste ne borne rien — la liste deborde au lieu de
+    /* Collee en haut de la fenetre pendant tout le defilement.
+
+       Sans cela, sur une page plus haute que la fenetre, le menu
+       s'arretait a 100vh et remontait avec la page : il restait
+       une bande de couleur de fond sous son bord, a gauche, sur
+       toute la longueur du defilement. Mesure : 141 px sur une
+       fenetre de 900 px.
+
+       `height` et non `min-height` : avec un minimum, `flex: 1`
+       sur la liste ne borne rien, la liste deborde au lieu de
        defiler, et le pied passe sous l'ecran. */
+    position: sticky;
+    top: 0;
     height: 100vh;
     padding: 22px 14px;
     background: var(--c-0);
     border-right: 1px solid var(--line);
   }
-
-  /* 14 entrees a 44 px font 616 px : c'est plus haut qu'un ecran de
-     800 px une fois la marque, le rayon et le pied poses. Plutot que de
-     rendre les touches plus petites — le minimum tactile n'est pas
-     negociable — on reduit les vides autour, et la liste defile.
-     Le pied, lui, ne bouge jamais. */
-  .barre { gap: 14px; }
 
 
   /* Le selecteur du haut ferait doublon avec la barre laterale. */

@@ -196,3 +196,67 @@ export function Vide({ titre, note, action }: { titre: string; note?: string; ac
     </div>
   )
 }
+/* ============================================================
+   LE PAVE DE CODE
+
+   Un pave et un seul, utilise dans toute l'application : a la
+   connexion et dans les reglages. Deux paves qui divergent, c'est
+   un pave qui ne sait plus effacer.
+
+   Le dernier rang porte « effacer », « 0 », « Entrer » — le meme
+   ordre qu'un pave de telephone ou qu'un clavier. Les trois font
+   la meme hauteur : une touche qui sort du pave est une touche
+   qu'on rate au doigt.
+   ============================================================ */
+
+export function PavillonNumerique({
+  onChiffre, onEffacer, onValider, peutValider,
+  libelleValider = 'Entrer', ton = 'sombre',
+}: {
+  onChiffre: (c: string) => void
+  onEffacer: () => void
+  onValider: () => void
+  peutValider: boolean
+  libelleValider?: string
+  /** `sombre` : sur le fond bleu de la connexion.
+      `clair`  : dans les reglages, sur fond blanc. */
+  ton?: 'sombre' | 'clair'
+}) {
+  return (
+    <div className={`pave pave--${ton}`}>
+      {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => (
+        <button key={n} className="pave__touche" onClick={() => onChiffre(String(n))}>{n}</button>
+      ))}
+
+      <button
+        className="pave__touche pave__touche--effacer"
+        onClick={onEffacer}
+        aria-label="Effacer le dernier chiffre"
+      >
+        <Icone nom="effacer" taille={24} />
+      </button>
+
+      <button className="pave__touche pave__touche--zero" onClick={() => onChiffre('0')} aria-label="Zéro">0</button>
+
+      <button
+        className={`pave__entree${peutValider ? ' pave__entree--pret' : ''}`}
+        onClick={onValider}
+        disabled={!peutValider}
+      >
+        {libelleValider}
+      </button>
+    </div>
+  )
+}
+
+/* ---------- Les pastilles du code saisi ---------- */
+
+export function PastillesCode({ code, sur }: { code: string; sur?: 'sombre' | 'clair' }) {
+  return (
+    <div className={`pastilles${sur === 'clair' ? ' pastilles--clair' : ''}`}>
+      {[0, 1, 2, 3].map((i) => (
+        <span key={i} className={`pastille-point${code.length > i ? ' pastille-point--plein' : ''}`} />
+      ))}
+    </div>
+  )
+}

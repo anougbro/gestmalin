@@ -5,40 +5,93 @@ import { chargerJeuEssai, chargerPersonnes } from '../donnees/jeuEssai'
 import { empreinte } from '../domaine/acces'
 import { RAYONS_PAR_DEFAUT } from '../etat/rayons'
 import { Icone } from './Icones'
-import { Bouton, Entete } from './Primitives'
+import { Bouton, Entete, PastillesCode, PavillonNumerique } from './Primitives'
 
 /* ============================================================
    LES REGLAGES
 
    L'ecran qu'on ouvre rarement, et qui doit etre clair quand
-   on l'ouvre : charger un jeu d'essai, tout effacer, changer
-   son code.
+   on l'ouvre : changer son code, charger un jeu d'essai, tout
+   effacer.
    ============================================================ */
 
 export function EcranReglages({ retour }: { retour: () => void }) {
   const { rayon, utilisateur, rafraichir, toutEffacer: vider } = useSession()
-  const [nouveauCode, setNouveauCode] = useState('')
   const [message, setMessage] = useState<string | null>(null)
 
+  const autreRayon = RAYONS_PAR_DEFAUT.find((x) => x.id !== rayon.id)?.id ?? rayon.id
+
+  /* ---------- Changer son code ----------
+
+     Deux saisies. Une seule laisserait la porte ouverte a une
+     faute de frappe : le code serait remplace, la personne ne le
+     retiendrait pas, et il est perdu — il n'est stocke qu'en
+     empreinte, donc personne ne peut verifier ce qu'elle vient de
+     taper, et il n'y a pas de serveur pour le reinitialiser.
+
+     Il existe bien une cle de secours a la connexion (« Code
+     oublie ? »), mais elle remet 0000 et laisse toute la
+     pharmacie au meme code. Mieux vaut ne pas avoir a s'en servir. */
+  const [code, setCode] = useState('')
+  const [premier, setPremier] = useState<string | null>(null)
+  const [erreurCode, setErreurCode] = useState<string | null>(null)
+
+  const enConfirmation = premier !== null
+
+  function ajouterChiffre(c: string) {
+    setErreurCode(null)
+    setCode((v) => (v.length >= 4 ? v : v + c))
+  }
+  function effacerChiffre() {
+    setErreurCode(null)
+    setCode((v) => v.slice(0, -1))
+  }
+
+  function validerCode() {
+    if (code.length !== 4 || !utilisateur) return
+
+    if (!enConfirmation) {
+      setPremier(code)
+      setCode('')
+      setErreurCode(null)
+      return
+    }
+
+    if (code !== premier) {
+      setErreurCode('Les deux codes ne sont pas pareils. Recommence.')
+      setPremier(null)
+      setCode('')
+      return
+    }
+
+    void (async () => {
+      await base.utilisateurs.put({ ...utilisateur, empreinte: empreinte(utilisateur.id, code) })
+      setMessage(`Code changé. Le nouveau code est pris en compte dès la prochaine connexion.`)
+      setPremier(null)
+      setCode('')
+    })()
+  }
+
+  function annulerChangement() {
+    setPremier(null)
+    setCode('')
+    setErreurCode(null)
+  }
+
+  /* ---------- Le reste ---------- */
+
   async function charger() {
-    const r = await chargerJeuEssai(rayon.id, RAYONS_PAR_DEFAUT.find((x) => x.id !== rayon.id)?.id ?? rayon.id, utilisateur?.id ?? 'u-1')
-    await chargerPersonnes(rayon.id, RAYONS_PAR_DEFAUT.find((x) => x.id !== rayon.id)?.id ?? rayon.id)
+    const r = await chargerJeuEssai(rayon.id, autreRayon, utilisateur?.id ?? 'u-1')
+    await chargerPersonnes(rayon.id, autreRayon)
     setMessage(`${r.produits} produits et ${r.mouvements} mouvements chargés.`)
     await rafraichir()
   }
 
-  async function changerCode() {
-    if (nouveauCode.length !== 4 || !utilisateur) return
-    await base.utilisateurs.put({ ...utilisateur, empreinte: empreinte(utilisateur.id, nouveauCode) })
-    setMessage('Code changé. Il sera demandé à la prochaine ouverture.')
-    setNouveauCode('')
-  }
-
   async function effacerTout() {
-    if (!confirm('Effacer TOUT : produits, lots, mouvements, alerts ?\n\nCette action est définitive.')) return
+    if (!confirm('Effacer TOUT : produits, lots, mouvements, alertes ?\n\nCette action est définitive.')) return
     await vider()
-    await chargerPersonnes(rayon.id, RAYONS_PAR_DEFAUT.find((x) => x.id !== rayon.id)?.id ?? rayon.id)
-    setMessage('Tout a été effacé. Les zones et emplacements sont conservés.')
+    await chargerPersonnes(rayon.id, autreRayon)
+    setMessage('Tout a été effacé. Les zones et les emplacements sont conservés.')
     await rafraichir()
   }
 
@@ -55,6 +108,46 @@ export function EcranReglages({ retour }: { retour: () => void }) {
           </div>
         )}
 
+        {/* ---------- Le code ---------- */}
+        <div className="carte">
+          <p className="section__titre">Mon code</p>
+          <p style={{ margin: '0 0 4px', fontSize: 13.5, color: 'var(--c-700)' }}>
+            {utilisateur ? `${utilisateur.nom} — ${utilisateur.role}` : ''}
+          </p>
+
+          <p style={{ margin: '0 0 2px', fontSize: 13, color: 'var(--c-500)' }}>
+            {enConfirmation
+              ? 'Tape le même code encore une fois'
+              : 'Choisis un nouveau code de 4 chiffres'}
+          </p>
+
+          <PastillesCode code={code} sur="clair" />
+
+          <PavillonNumerique
+            ton="clair"
+            onChiffre={ajouterChiffre}
+            onEffacer={effacerChiffre}
+            onValider={validerCode}
+            peutValider={code.length === 4}
+            libelleValider={enConfirmation ? 'Valider' : 'Suivant'}
+          />
+
+          {erreurCode && <p className="reglage__erreur">{erreurCode}</p>}
+
+          <div style={{ marginTop: 12 }}>
+            {enConfirmation ? (
+              <button className="btn btn--discret" onClick={annulerChangement}>
+                Recommencer
+              </button>
+            ) : (
+              <p style={{ margin: 0, fontSize: 12, color: 'var(--c-400)' }}>
+                Le code n'est jamais écrit en clair, seulement son empreinte.
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* ---------- Jeu d'essai ---------- */}
         <div className="carte">
           <p className="section__titre">Jeu d'essai</p>
           <p style={{ margin: '0 0 12px', fontSize: 13.5, color: 'var(--c-700)' }}>
@@ -65,30 +158,7 @@ export function EcranReglages({ retour }: { retour: () => void }) {
           <Bouton taille={56} plein surClick={charger}>Charger le jeu d'essai</Bouton>
         </div>
 
-        <div className="carte">
-          <p className="section__titre">Mon code</p>
-          <p style={{ margin: '0 0 12px', fontSize: 13.5, color: 'var(--c-700)' }}>
-            {utilisateur ? `${utilisateur.nom} — ${utilisateur.role}` : ''}
-          </p>
-          <div className="pave" style={{ gridTemplateColumns: 'repeat(4, 1fr)', maxWidth: 260 }}>
-            {[0, 1, 2, 3].map((i) => (
-              <button
-                key={i}
-                className="pave__touche"
-                style={{ background: 'var(--c-100)', color: 'var(--c-800)', minHeight: 52 }}
-                onClick={() => setNouveauCode((v) => (v.length >= 4 ? v : v + String(i + 1)))}
-              >
-                {i + 1}
-              </button>
-            ))}
-          </div>
-          <div style={{ marginTop: 10 }}>
-            <Bouton variante="secondaire" surClick={changerCode} disabled={nouveauCode.length !== 4}>
-              Changer le code {nouveauCode ? `(${nouveauCode})` : ''}
-            </Bouton>
-          </div>
-        </div>
-
+        {/* ---------- Tout effacer ---------- */}
         <div className="carte">
           <p className="section__titre">Tout effacer</p>
           <p style={{ margin: '0 0 12px', fontSize: 13.5, color: 'var(--c-700)' }}>
@@ -97,6 +167,7 @@ export function EcranReglages({ retour }: { retour: () => void }) {
           <Bouton variante="danger" icone="croix" surClick={effacerTout}>Effacer les données</Bouton>
         </div>
 
+        {/* ---------- A propos ---------- */}
         <div className="carte">
           <p className="section__titre">À propos</p>
           <div className="rangee" style={{ gap: 10, color: 'var(--c-600)', fontSize: 13.5 }}>
