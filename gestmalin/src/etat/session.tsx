@@ -80,13 +80,23 @@ export function FournisseurSession({ children }: { children: ReactNode }) {
   async function connecter(identifiant: string, code: string) {
     try {
       const tous = await base.utilisateurs.toArray()
-      const r = verifierCode(tous, identifiant, code, rayon.id)
-      if (r.ok) setUtilisateur(r.utilisateur)
+      const r = verifierCode(tous, identifiant, code)
+      if (r.ok) {
+        setUtilisateur(r.utilisateur)
+        /* Si le rayon ouvert n'est pas le sien, on l'amene sur un
+           rayon qui l'est. Sinon elle entre sur un écran qui n'est
+           pas le sien, sans comprendre pourquoi c'est vide. */
+        const siens = r.utilisateur.rayonsAutorises
+        if (!siens.includes(rayon.id)) {
+          const autre = RAYONS_PAR_DEFAUT.find((x) => siens.includes(x.id))
+          if (autre) setRayon(autre)
+        }
+      }
       return r.ok
         ? { ok: true }
-        : { ok: false, message: r.raison === 'rayon-refuse' ? "Vous n'avez pas accès à ce rayon." : 'Code incorrect.' }
+        : { ok: false, message: r.raison === 'inactif' ? 'Ce compte est désactivé.' : 'Code incorrect.' }
     } catch (e) {
-      console.error('Connexion impossible', e)
+      console.error('Connexion impossible', detailErreur(e))
       return { ok: false, message: 'Connexion impossible.' }
     }
   }

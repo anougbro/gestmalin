@@ -124,31 +124,45 @@ describe('la connexion hors ligne', () => {
   const base = [utilisateur()]
 
   it('accepte le bon code', () => {
-    const r = connecter(base, 'u1', '1234', 'r-med')
+    const r = connecter(base, 'u1', '1234')
     expect(r.ok).toBe(true)
   })
 
   it('refuse un mauvais code', () => {
-    expect(connecter(base, 'u1', '9999', 'r-med').ok).toBe(false)
+    expect(connecter(base, 'u1', '9999').ok).toBe(false)
   })
 
   it('donne le MEME message pour un code faux et un identifiant inconnu', () => {
     /* Sinon on permet de deviner quels identifiants existent,
        simplement en lisant la difference entre les messages. */
-    const inconnu = connecter(base, 'u-inexistant', '1234', 'r-med')
-    const faux = connecter(base, 'u1', '9999', 'r-med')
+    const inconnu = connecter(base, 'u-inexistant', '1234')
+    const faux = connecter(base, 'u1', '9999')
     expect(inconnu.ok).toBe(false)
     expect(faux.ok).toBe(false)
     if (!inconnu.ok && !faux.ok) expect(inconnu.raison).toBe(faux.raison)
   })
 
   it('refuse un compte desactive', () => {
-    const r = connecter([utilisateur({ actif: false })], 'u1', '1234', 'r-med')
+    const r = connecter([utilisateur({ actif: false })], 'u1', '1234')
     expect(r.ok === false && r.raison).toBe('inactif')
   })
 
-  it('refuse un rayon non autorise', () => {
-    const r = connecter(base, 'u1', '1234', 'r-inexistant')
-    expect(r.ok === false && r.raison).toBe('rayon-refuse')
+  it('ne demande PAS le rayon : le code dit qui on est', () => {
+    /* Une personne qui ne travaille que sur les Menagers doit
+       pouvoir entrer, meme si l'application s'est ouverte sur les
+       Medicaments. Refuser ici la bloquerait sans issue. */
+    const amina = utilisateur({ id: 'u2', nom: 'Amina', role: 'responsable', rayonsAutorises: ['r-men'], empreinte: empreinte('u2', '1111') })
+    const r = connecter([amina], 'u2', '1111')
+    expect(r.ok).toBe(true)
+  })
+
+  it('le rayon ne se verifie pas au moment du code, mais apres', () => {
+    /* Deux temps distincts : s'identifier, puis avoir le droit.
+       Si le second disparait, on perd le controle d'acces. */
+    const amina = utilisateur({ id: 'u2', role: 'responsable', rayonsAutorises: ['r-men'] })
+    expect(peutUtiliser(amina, 'r-men')).toBe(true)
+    expect(peutUtiliser(amina, 'r-med')).toBe(false)
+    expect(peutValider(amina, 'r-men', MAINTENANT)).toBe(true)
+    expect(peutValider(amina, 'r-med', MAINTENANT)).toBe(false)
   })
 })

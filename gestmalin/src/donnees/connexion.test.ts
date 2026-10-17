@@ -34,7 +34,7 @@ describe('une base neuve', () => {
       empreinte: empreinte(UTILISATEUR_INITIAL.id, CODE_INITIAL),
     })
 
-    const r = connecter(await base.utilisateurs.toArray(), UTILISATEUR_INITIAL.id, CODE_INITIAL, 'r-med')
+    const r = connecter(await base.utilisateurs.toArray(), UTILISATEUR_INITIAL.id, CODE_INITIAL)
     expect(r.ok).toBe(true)
   })
 })
@@ -60,7 +60,7 @@ describe('une base ancienne, sans empreinte', () => {
 
   it('avant reparation, AUCUN code ne fonctionne', async () => {
     await creerBaseAncienne()
-    const r = connecter(await base.utilisateurs.toArray(), 'u-1', CODE_INITIAL, 'r-med')
+    const r = connecter(await base.utilisateurs.toArray(), 'u-1', CODE_INITIAL)
     expect(r.ok).toBe(false)
   })
 
@@ -69,7 +69,7 @@ describe('une base ancienne, sans empreinte', () => {
     const repares = await reparerComptes()
     expect(repares).toBe(1)
 
-    const r = connecter(await base.utilisateurs.toArray(), 'u-1', CODE_INITIAL, 'r-med')
+    const r = connecter(await base.utilisateurs.toArray(), 'u-1', CODE_INITIAL)
     expect(r.ok).toBe(true)
   })
 
@@ -82,7 +82,7 @@ describe('une base ancienne, sans empreinte', () => {
 
     /* Le code choisi par la personne est preserve : la reparation
        ne doit pas ecraser un code qui fonctionne. */
-    const r = connecter(await base.utilisateurs.toArray(), 'u-1', '4321', 'r-med')
+    const r = connecter(await base.utilisateurs.toArray(), 'u-1', '4321')
     expect(r.ok).toBe(true)
   })
 })
@@ -92,7 +92,7 @@ describe('une base sans aucune personne', () => {
     await base.rayons.put({ id: 'r-med', nom: 'Médicaments', ordre: 0 })
     expect(await reparerComptes()).toBe(1)
 
-    const r = connecter(await base.utilisateurs.toArray(), 'u-1', CODE_INITIAL, 'r-med')
+    const r = connecter(await base.utilisateurs.toArray(), 'u-1', CODE_INITIAL)
     expect(r.ok).toBe(true)
   })
 })
@@ -106,8 +106,8 @@ describe('le message d echec', () => {
     })
     const tous = await base.utilisateurs.toArray()
 
-    const inconnu = connecter(tous, 'u-9999', CODE_INITIAL, 'r-med')
-    const faux = connecter(tous, 'u-1', '9999', 'r-med')
+    const inconnu = connecter(tous, 'u-9999', CODE_INITIAL)
+    const faux = connecter(tous, 'u-1', '9999')
     expect(inconnu.ok).toBe(false)
     expect(faux.ok).toBe(false)
     if (!inconnu.ok && !faux.ok) expect(inconnu.raison).toBe(faux.raison)
@@ -148,7 +148,7 @@ describe("l'amorcage sous concurrence", () => {
     oublierAmorcage()
     await demarrer()
 
-    const r = connecter(await base.utilisateurs.toArray(), 'u-1', CODE_INITIAL, 'r-med')
+    const r = connecter(await base.utilisateurs.toArray(), 'u-1', CODE_INITIAL)
     expect(r.ok).toBe(true)
   })
 

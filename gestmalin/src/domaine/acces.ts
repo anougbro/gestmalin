@@ -132,13 +132,25 @@ export function roleEffectif(u: Utilisateur, rayonId: string, maintenant: string
 
 export type ResultatConnexion =
   | { ok: true; utilisateur: Utilisateur }
-  | { ok: false; raison: 'code-incorrect' | 'inactif' | 'rayon-refuse' }
+  | { ok: false; raison: 'code-incorrect' | 'inactif' }
 
+/**
+ * Le code identifie UNE PERSONNE, pas une personne sur un rayon.
+ *
+ * C'est la distinction qui compte entre s'identifier et avoir le
+ * droit. Si la connexion verifiait le rayon, une personne qui ne
+ * travaille que sur les Menagers ne pourrait jamais entrer, parce
+ * que l'application s'ouvre sur le rayon precedent. Elle serait
+ * bloquee par un detail d'ecran, sans aucun moyen de s'en sortir.
+ *
+ * Donc : le code dit QUI VOUS ETES. Ce que vous pouvez faire sur
+ * chaque rayon se verifie ensuite, a chaque ecran (peutUtiliser,
+ * peutValider).
+ */
 export function connecter(
   utilisateurs: readonly Utilisateur[],
   identifiant: string,
   code: string,
-  rayonId: string,
 ): ResultatConnexion {
   const u = utilisateurs.find((x) => x.id === identifiant)
 
@@ -148,7 +160,6 @@ export function connecter(
   if (!u) return echec
   if (!codeCorrect(u.id, code, u.empreinte)) return echec
   if (!u.actif) return { ok: false, raison: 'inactif' }
-  if (!u.rayonsAutorises.includes(rayonId)) return { ok: false, raison: 'rayon-refuse' }
 
   return { ok: true, utilisateur: u }
 }

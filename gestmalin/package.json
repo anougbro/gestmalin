@@ -13,6 +13,7 @@
     "verifier": "tsc -b --force && eslint . && vitest run",
     "verifier-mobile": "node --experimental-strip-types scripts/verifier-mobile.ts",
     "verifier-connexion": "node --experimental-strip-types scripts/verifier-connexion.ts",
+    "verifier-comptes": "node --experimental-strip-types scripts/verifier-comptes.ts",
     "remplir": "node --experimental-strip-types scripts/remplir-et-capturer.ts"
   },
   "dependencies": {
