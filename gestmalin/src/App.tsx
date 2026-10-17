@@ -116,10 +116,30 @@ function SelecteurRayon() {
   )
 }
 
+/* ---------- Sur telephone : qui est connecte ---------- */
+
+function BoutonQui() {
+  const { utilisateur, deconnecter } = useSession()
+  if (!utilisateur) return null
+
+  /* L'initiale seule : sur une petite barre, il n'y a pas la
+     place pour un nom. Mais il faut une cible large — 44 px
+     minimum, une seule main, souvent avec des gants. */
+  return (
+    <button
+      className="qui-btn"
+      onClick={deconnecter}
+      aria-label={`${utilisateur.nom} — changer de personne`}
+    >
+      <span aria-hidden="true">{utilisateur.nom.slice(0, 1).toUpperCase()}</span>
+    </button>
+  )
+}
+
 /* ---------- La barre laterale, pour l'ordinateur ---------- */
 
 function BarreLaterale({ courant, aller }: { courant: Ecran; aller: (e: Ecran) => void }) {
-  const { compteurs, utilisateur, rayon, changeRayon } = useSession()
+  const { compteurs, utilisateur, rayon, changeRayon, deconnecter } = useSession()
 
   const lien = (liste: typeof GESTES) =>
     liste.map(({ ecran, icone, label }) => (
@@ -170,7 +190,15 @@ function BarreLaterale({ courant, aller }: { courant: Ecran; aller: (e: Ecran) =
         {lien(PLUS_TARD)}
       </nav>
 
-      <div className="barre__pied">{utilisateur?.nom ?? '—'}</div>
+      <div className="barre__pied">
+        {/* Le nom seul n'est pas une sortie : il faut un bouton.
+            Sans lui, on ne peut pas changer de personne sans
+            vider toute la base. */}
+        <button className="qui" onClick={deconnecter}>
+          <span className="qui__nom">{utilisateur?.nom ?? '—'}</span>
+          <span className="qui__role">Changer</span>
+        </button>
+      </div>
     </aside>
   )
 }
@@ -211,6 +239,7 @@ function Coquille() {
       <div className="app__colonne">
         <header className="app__barre">
           <SelecteurRayon />
+          <BoutonQui />
         </header>
 
         {/* Pas d'en-tete ici : chaque ecran possede le sien.

@@ -44,8 +44,7 @@ export function FournisseurSession({ children }: { children: ReactNode }) {
   const [alertes, setAlertes] = useState<Alerte[]>([])
   const [pret, setPret] = useState(false)
 
-  /* eslint-disable react-hooks/set-state-in-effect --
-     Charger une base IndexedDB EST une synchronisation avec un
+  /* Charger une base IndexedDB EST une synchronisation avec un
      systeme externe. Le setState arrive dans la promesse, donc
      apres le rendu : il n'y a pas de cascade. */
   async function rafraichir() {

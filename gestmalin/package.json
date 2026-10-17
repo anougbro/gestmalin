@@ -14,6 +14,7 @@
     "verifier-mobile": "node --experimental-strip-types scripts/verifier-mobile.ts",
     "verifier-connexion": "node --experimental-strip-types scripts/verifier-connexion.ts",
     "verifier-comptes": "node --experimental-strip-types scripts/verifier-comptes.ts",
+    "verifier-deconnexion": "node --experimental-strip-types scripts/verifier-deconnexion.ts",
     "remplir": "node --experimental-strip-types scripts/remplir-et-capturer.ts"
   },
   "dependencies": {

@@ -23,7 +23,7 @@ import { Icone } from './Icones'
    ============================================================ */
 
 export function EcranConnexion() {
-  const { connecter, utilisateur, deconnecter } = useSession()
+  const { connecter } = useSession()
   const [liste, setListe] = useState<{ id: string; nom: string; role: string }[]>([])
   const [choisi, setChoisi] = useState<string | null>(null)
   const [code, setCode] = useState('')
@@ -71,26 +71,6 @@ export function EcranConnexion() {
     setCode((v) => v + c)
   }
 
-
-  if (utilisateur) {
-    return (
-      <div className="ecran ecran--connexion">
-        <div className="connexion">
-          <div className="connexion__marque">
-            <Icone nom="capsule" taille={30} />
-            <span>Gestmalin</span>
-          </div>
-          <p className="connexion__qui">
-            Connectée : <strong>{utilisateur.nom}</strong>
-          </p>
-          <button className="btn btn--secondaire btn--large btn--plein" onClick={deconnecter}>
-            Changer de personne
-          </button>
-        </div>
-      </div>
-    )
-  }
-
   const seul = liste.length <= 1
   const idCourant = seul ? (liste[0]?.id ?? UTILISATEUR_INITIAL.id) : choisi
 
@@ -125,6 +105,13 @@ export function EcranConnexion() {
             <p className="connexion__indices">
               {liste.find((u) => u.id === idCourant)?.nom ?? 'Préparateur'}
             </p>
+
+            {/* Une personne tape un code qui n'existe pas, elle
+                conclut que l'application est cassee. Elle ne peut
+                pas deviner qu'il manque des comptes a creer. */}
+            {seul && liste.length === 1 && (
+              <p className="connexion__note">Seule personne — Réglages pour en ajouter</p>
+            )}
 
             <div className="pastilles">
               {[0, 1, 2, 3].map((i) => (

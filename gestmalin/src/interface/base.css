@@ -781,6 +781,245 @@ body {
    centrale devenait illisible, on change de structure.
    ============================================================ */
 
+
+
+/* ============================================================
+   LA CONNEXION PAR CODE
+   Un pave de chiffres : touches grandes, tapes d'une seule main.
+   Jamais de mot de passe.
+   ============================================================ */
+
+.ecran--connexion {
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  background: var(--teal-900);
+  padding: 20px;
+}
+
+.connexion {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  align-items: center;
+  width: 100%;
+  max-width: 320px;
+}
+
+.connexion__marque {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #fff;
+  font-size: 21px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin-bottom: 8px;
+}
+
+.connexion__titre {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 14px;
+  font-weight: 600;
+}
+.connexion__indices { margin: -10px 0 0; color: #fff; font-size: 16px; font-weight: 650; }
+.connexion__qui { margin: 0; color: rgba(255, 255, 255, 0.8); font-size: 14px; }
+.connexion__qui strong { color: #fff; }
+.connexion__erreur { margin: 0; color: #ffc9c2; font-size: 13px; font-weight: 600; }
+
+.pastilles { display: flex; gap: 12px; margin: 4px 0 6px; }
+.pastille-point {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255, 255, 255, 0.4);
+}
+.pastille-point--plein { background: #fff; border-color: #fff; }
+
+.pave { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; width: 100%; }
+.pave__touche {
+  min-height: 60px;
+  border: none;
+  border-radius: var(--r3);
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font-family: inherit;
+  font-size: 21px;
+  font-weight: 600;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: background 110ms ease, transform 70ms ease;
+}
+.pave__touche:hover { background: rgba(255, 255, 255, 0.2); }
+.pave__touche:active { transform: scale(0.95); }
+.pave__touche--valider { background: #fff; color: var(--teal-900); grid-column: span 3; min-height: 52px; }
+
+.personne {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-height: 56px;
+  padding: 0 16px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: var(--r3);
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.personne--choisie { background: #fff; color: var(--teal-900); }
+
+/* ============================================================
+   LA PLANCHE D ETIQUETTES
+   A l'impression, il ne reste que le code en gros.
+   ============================================================ */
+
+.planche {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
+  gap: 8px;
+}
+
+.etiquette {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 14px 8px;
+  border: 1px dashed var(--line-2);
+  border-radius: var(--r2);
+  background: var(--c-0);
+}
+.etiquette__code {
+  font-family: var(--mono);
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.etiquette__zone { font-size: 10.5px; font-weight: 600; color: var(--c-500); }
+.etiquette__rayon { font-size: 9.5px; color: var(--c-400); }
+
+.carte--alerte { border-color: var(--dgr-200); background: var(--dgr-50); }
+
+
+.reglages-lien {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 52px;
+  margin-top: 9px;
+  padding: 0 14px;
+  border: 1px dashed var(--line-2);
+  border-radius: var(--r3);
+  background: transparent;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--c-600);
+}
+.reglages-lien:hover { background: var(--c-0); color: var(--teal-700); }
+/* Le pave : 3 colonnes. La touche « 0 » occupe la premiere case
+   du dernier rang, et « Entrer » prend les deux restantes — c'est
+   ce qui la rend impossible a rater au doigt. */
+.pave__touche--zero { font-size: 24px; }
+
+.pave__entree {
+  grid-column: span 2;
+  min-height: 60px;
+  border: none;
+  border-radius: var(--r3);
+  background: rgba(255, 255, 255, 0.14);
+  color: rgba(255, 255, 255, 0.45);
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 650;
+  cursor: not-allowed;
+  transition: background 110ms ease, transform 70ms ease;
+}
+.pave__entree--pret {
+  background: #fff;
+  color: var(--teal-900);
+  cursor: pointer;
+}
+.pave__entree--pret:active { transform: scale(0.96); }
+
+/* Une seule personne connectee : on le dit, sinon on croit que
+   l'application est cassee quand un autre code est refuse. */
+.connexion__note {
+  margin: -8px 0 0;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 12.5px;
+  font-weight: 600;
+  text-align: center;
+}
+/* ---------- Changer de personne ---------- */
+
+/* Sur l'ordinateur : le pied de la barre laterale.
+   Un nom seul n'est pas une sortie. Il faut une cible cliquable,
+   avec une indication qu'on peut cliquer. */
+.qui {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 10px;
+  border: 1px solid var(--line-2);
+  border-radius: var(--r2);
+  background: transparent;
+  color: var(--c-700);
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+  transition: background 110ms ease, border-color 110ms ease;
+}
+.qui:hover { background: var(--c-50); border-color: var(--line-3); }
+.qui__nom {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13.5px;
+  font-weight: 650;
+}
+.qui__role { flex: none; font-size: 11.5px; color: var(--c-400); font-weight: 600; }
+
+/* Sur telephone : une pastille a cote du rayon.
+   44 px de large et de haut : une seule main, avec des gants. */
+.qui-btn {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line-2);
+  border-radius: 50%;
+  background: var(--c-50);
+  color: var(--teal-700);
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 110ms ease, transform 70ms ease;
+}
+.qui-btn:active { transform: scale(0.94); }
+.qui-btn:hover { background: var(--teal-50); }
+
+/* ============================================================
+   LES MEDIA QUERIES — EN DERNIER
+
+   Une regle ecrite apres un @media gagne sur lui. Ces blocs
+   doivent donc rester les derniers du fichier : deplace, un style
+   d'ordinateur disparait sans qu'on le voie.
+   ============================================================ */
+
 @media (min-width: 900px) {
   .app {
     max-width: none;
@@ -952,128 +1191,6 @@ body {
   .scan__vise { width: 52%; height: 180px; }
 }
 
-/* ============================================================
-   LA CONNEXION PAR CODE
-   Un pave de chiffres : touches grandes, tapes d'une seule main.
-   Jamais de mot de passe.
-   ============================================================ */
-
-.ecran--connexion {
-  display: grid;
-  place-items: center;
-  min-height: 100vh;
-  background: var(--teal-900);
-  padding: 20px;
-}
-
-.connexion {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  align-items: center;
-  width: 100%;
-  max-width: 320px;
-}
-
-.connexion__marque {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  color: #fff;
-  font-size: 21px;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  margin-bottom: 8px;
-}
-
-.connexion__titre {
-  margin: 0;
-  color: rgba(255, 255, 255, 0.72);
-  font-size: 14px;
-  font-weight: 600;
-}
-.connexion__indices { margin: -10px 0 0; color: #fff; font-size: 16px; font-weight: 650; }
-.connexion__qui { margin: 0; color: rgba(255, 255, 255, 0.8); font-size: 14px; }
-.connexion__qui strong { color: #fff; }
-.connexion__erreur { margin: 0; color: #ffc9c2; font-size: 13px; font-weight: 600; }
-
-.pastilles { display: flex; gap: 12px; margin: 4px 0 6px; }
-.pastille-point {
-  width: 13px;
-  height: 13px;
-  border-radius: 50%;
-  border: 1.5px solid rgba(255, 255, 255, 0.4);
-}
-.pastille-point--plein { background: #fff; border-color: #fff; }
-
-.pave { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; width: 100%; }
-.pave__touche {
-  min-height: 60px;
-  border: none;
-  border-radius: var(--r3);
-  background: rgba(255, 255, 255, 0.12);
-  color: #fff;
-  font-family: inherit;
-  font-size: 21px;
-  font-weight: 600;
-  cursor: pointer;
-  display: grid;
-  place-items: center;
-  transition: background 110ms ease, transform 70ms ease;
-}
-.pave__touche:hover { background: rgba(255, 255, 255, 0.2); }
-.pave__touche:active { transform: scale(0.95); }
-.pave__touche--valider { background: #fff; color: var(--teal-900); grid-column: span 3; min-height: 52px; }
-
-.personne {
-  display: flex;
-  align-items: center;
-  gap: 11px;
-  min-height: 56px;
-  padding: 0 16px;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: var(--r3);
-  background: rgba(255, 255, 255, 0.08);
-  color: #fff;
-  font-family: inherit;
-  font-size: 15px;
-  font-weight: 600;
-  cursor: pointer;
-}
-.personne--choisie { background: #fff; color: var(--teal-900); }
-
-/* ============================================================
-   LA PLANCHE D ETIQUETTES
-   A l'impression, il ne reste que le code en gros.
-   ============================================================ */
-
-.planche {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
-  gap: 8px;
-}
-
-.etiquette {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1px;
-  padding: 14px 8px;
-  border: 1px dashed var(--line-2);
-  border-radius: var(--r2);
-  background: var(--c-0);
-}
-.etiquette__code {
-  font-family: var(--mono);
-  font-size: 20px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-}
-.etiquette__zone { font-size: 10.5px; font-weight: 600; color: var(--c-500); }
-.etiquette__rayon { font-size: 9.5px; color: var(--c-400); }
-
-.carte--alerte { border-color: var(--dgr-200); background: var(--dgr-50); }
-
 @media print {
   .entete, .btn, .barre, .app__barre, .carte { display: none !important; }
   body, .app, .ecran { background: #fff !important; box-shadow: none !important; }
@@ -1087,45 +1204,3 @@ body {
   .etiquette__code { font-size: 22pt; }
   .etiquette__zone { font-size: 10pt; }
 }
-.reglages-lien {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  min-height: 52px;
-  margin-top: 9px;
-  padding: 0 14px;
-  border: 1px dashed var(--line-2);
-  border-radius: var(--r3);
-  background: transparent;
-  cursor: pointer;
-  font-family: inherit;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--c-600);
-}
-.reglages-lien:hover { background: var(--c-0); color: var(--teal-700); }
-/* Le pave : 3 colonnes. La touche « 0 » occupe la premiere case
-   du dernier rang, et « Entrer » prend les deux restantes — c'est
-   ce qui la rend impossible a rater au doigt. */
-.pave__touche--zero { font-size: 24px; }
-
-.pave__entree {
-  grid-column: span 2;
-  min-height: 60px;
-  border: none;
-  border-radius: var(--r3);
-  background: rgba(255, 255, 255, 0.14);
-  color: rgba(255, 255, 255, 0.45);
-  font-family: inherit;
-  font-size: 15px;
-  font-weight: 650;
-  cursor: not-allowed;
-  transition: background 110ms ease, transform 70ms ease;
-}
-.pave__entree--pret {
-  background: #fff;
-  color: var(--teal-900);
-  cursor: pointer;
-}
-.pave__entree--pret:active { transform: scale(0.96); }
