@@ -1105,3 +1105,27 @@ body {
   color: var(--c-600);
 }
 .reglages-lien:hover { background: var(--c-0); color: var(--teal-700); }
+/* Le pave : 3 colonnes. La touche « 0 » occupe la premiere case
+   du dernier rang, et « Entrer » prend les deux restantes — c'est
+   ce qui la rend impossible a rater au doigt. */
+.pave__touche--zero { font-size: 24px; }
+
+.pave__entree {
+  grid-column: span 2;
+  min-height: 60px;
+  border: none;
+  border-radius: var(--r3);
+  background: rgba(255, 255, 255, 0.14);
+  color: rgba(255, 255, 255, 0.45);
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 650;
+  cursor: not-allowed;
+  transition: background 110ms ease, transform 70ms ease;
+}
+.pave__entree--pret {
+  background: #fff;
+  color: var(--teal-900);
+  cursor: pointer;
+}
+.pave__entree--pret:active { transform: scale(0.96); }

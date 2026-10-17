@@ -1,17 +1,25 @@
 import { useEffect, useState } from 'react'
 import { useSession } from '../etat/useSession'
 import { base } from '../donnees/base'
+import { reparerComptes, CODE_INITIAL, CODE_PAR_DEFAUT, UTILISATEUR_INITIAL } from '../etat/preparation'
 import { Icone } from './Icones'
 
 /* ============================================================
    LA CONNEXION
 
-   Un pavé de chiffres. Pas de mot de passe : personne ne le
+   Un pave de chiffres. Pas de mot de passe : personne ne le
    retient, et personne ne le tape d'une seule main avec des
    gants. On choisit son nom, on tape quatre chiffres, on entre.
 
-   L'identifiant et l'empreinte sont Lus SUR LE TELEPHONE :
-   la connexion marche sans aucun reseau.
+   La connexion marche SANS RESEAU : le telephone contient la
+   liste des personnes et l'empreinte de leur code.
+
+   Deux details qui comptes :
+   - le bouton d'entree porte le mot « Entrer », pas une fleche
+     qui ressemble a un retour en arriere
+   - il existe TOUJOURS une sortie de secours. Une application
+     hors ligne, sans serveur, ne doit jamais pouvoir enfermer
+     quelqu'un devant son ecran.
    ============================================================ */
 
 export function EcranConnexion() {
@@ -20,17 +28,41 @@ export function EcranConnexion() {
   const [choisi, setChoisi] = useState<string | null>(null)
   const [code, setCode] = useState('')
   const [erreur, setErreur] = useState<string | null>(null)
+  const [secours, setSecours] = useState(false)
 
-  useEffect(() => {
-    void base.utilisateurs.toArray().then((tous) =>
+  const recharger = () =>
+    base.utilisateurs.toArray().then((tous) =>
       setListe(tous.filter((u) => u.actif).map((u) => ({ id: u.id, nom: u.nom, role: u.role }))),
     )
-  }, [])
 
+  useEffect(() => { void recharger() }, [])
+
+  /* Un ecran de connexion qui avale ses erreurs est un ecran qui
+     laisse croire a un code faux quand la base est cassee. On
+     attrape, et on montre ce qui s'est reellement passe. */
   async function tenter(id: string) {
-    const ok = await connecter(id, code)
-    if (!ok) setErreur('Code incorrect.')
-    setCode('')
+    try {
+      const r = await connecter(id, code)
+      if (r.ok) { setErreur(null); return }
+      setErreur(r.message ?? 'Code incorrect.')
+    } catch {
+      setErreur('Connexion impossible. Réessaie.')
+    } finally {
+      setCode('')
+    }
+  }
+
+  async function reparer() {
+    if (!confirm(
+      "Réinitialiser les codes ?\n\n" +
+      "Les codes d'origine n'ont jamais été stockés en clair : ils sont perdus.\n" +
+      "Le premier compte reprend le code 1234, les autres 0000.\n\n" +
+      "À n'utiliser que si personne ne peut plus entrer.",
+    )) return
+    await reparerComptes()
+    setSecours(false)
+    setErreur(null)
+    await recharger()
   }
 
   function chiffre(c: string) {
@@ -38,6 +70,29 @@ export function EcranConnexion() {
     if (code.length >= 4) return
     setCode((v) => v + c)
   }
+
+
+  if (utilisateur) {
+    return (
+      <div className="ecran ecran--connexion">
+        <div className="connexion">
+          <div className="connexion__marque">
+            <Icone nom="capsule" taille={30} />
+            <span>Gestmalin</span>
+          </div>
+          <p className="connexion__qui">
+            Connectée : <strong>{utilisateur.nom}</strong>
+          </p>
+          <button className="btn btn--secondaire btn--large btn--plein" onClick={deconnecter}>
+            Changer de personne
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  const seul = liste.length <= 1
+  const idCourant = seul ? (liste[0]?.id ?? UTILISATEUR_INITIAL.id) : choisi
 
   return (
     <div className="ecran ecran--connexion">
@@ -47,52 +102,62 @@ export function EcranConnexion() {
           <span>Gestmalin</span>
         </div>
 
-        {utilisateur ? (
+        {!seul && !idCourant && (
           <>
-            <p className="connexion__qui">Connectée : <strong>{utilisateur.nom}</strong></p>
-            <button className="btn btn--secondaire btn--large btn--plein" onClick={deconnecter}>
-              Changer de personne
-            </button>
-          </>
-        ) : liste.length <= 1 ? (
-          <>
-            <p className="connexion__titre">Code</p>
-            <p className="connexion__indices">{liste[0]?.nom ?? 'Préparateur'}</p>
-            <div className="pastilles">
-              {[0, 1, 2, 3].map((i) => (
-                <span key={i} className={`pastille-point${code.length > i ? ' pastille-point--plein' : ''}`} />
-              ))}
-            </div>
-            <PavillonNumerique onChiffre={chiffre} onValider={() => liste[0] && void tenter(liste[0].id)} />
-            {erreur && <p className="connexion__erreur">{erreur}</p>}
-          </>
-        ) : (
-          <>
-            <p className="connexion__titre">Qui est-ce ?</p>
-            <div className="colonne">
+            <p className="connexion__titre">Qui est-ce&nbsp;?</p>
+            <div className="colonne" style={{ width: '100%' }}>
               {liste.map((u) => (
-                <button
-                  key={u.id}
-                  className={choisi === u.id ? 'personne personne--choisie' : 'personne'}
-                  onClick={() => { setChoisi(u.id); setCode(''); setErreur(null) }}
-                >
+                <button key={u.id} className="personne" onClick={() => setChoisi(u.id)}>
                   <Icone nom="capsule" taille={20} />
                   <span>{u.nom}</span>
                 </button>
               ))}
             </div>
-            {choisi && (
-              <>
-                <div className="pastilles">
-                  {[0, 1, 2, 3].map((i) => (
-                    <span key={i} className={`pastille-point${code.length > i ? ' pastille-point--plein' : ''}`} />
-                  ))}
-                </div>
-                <PavillonNumerique onChiffre={chiffre} onValider={() => void tenter(choisi)} />
-                <button className="btn btn--discret btn--plein" onClick={() => setChoisi(null)}>Retour</button>
-              </>
-            )}
+            <button className="btn btn--discret" style={{ color: 'rgba(255,255,255,.7)' }} onClick={reparer}>
+              Code oublié ?
+            </button>
+          </>
+        )}
+
+        {idCourant && (
+          <>
+            <p className="connexion__titre">Code</p>
+            <p className="connexion__indices">
+              {liste.find((u) => u.id === idCourant)?.nom ?? 'Préparateur'}
+            </p>
+
+            <div className="pastilles">
+              {[0, 1, 2, 3].map((i) => (
+                <span key={i} className={`pastille-point${code.length > i ? ' pastille-point--plein' : ''}`} />
+              ))}
+            </div>
+
+            <PavillonNumerique
+              onChiffre={chiffre}
+              onValider={() => void tenter(idCourant)}
+              peutValider={code.length === 4}
+            />
+
             {erreur && <p className="connexion__erreur">{erreur}</p>}
+
+            {!seul && (
+              <button className="btn btn--discret" style={{ color: 'rgba(255,255,255,.7)' }} onClick={() => { setChoisi(null); setCode(''); setErreur(null) }}>
+                Retour
+              </button>
+            )}
+
+            {secours && (
+              <p className="connexion__erreur">
+                Code du premier compte : {CODE_INITIAL}. Autres comptes : {CODE_PAR_DEFAUT}.
+              </p>
+            )}
+            <button
+              className="btn btn--discret"
+              style={{ color: 'rgba(255,255,255,.5)', minHeight: 40 }}
+              onClick={() => void reparer()}
+            >
+              Code oublié ?
+            </button>
           </>
         )}
       </div>
@@ -102,19 +167,27 @@ export function EcranConnexion() {
 
 /* ---------- Le pave numerique ---------- */
 
-function PavillonNumerique({ onChiffre, onValider }: { onChiffre: (c: string) => void; onValider: () => void }) {
+function PavillonNumerique({
+  onChiffre, onValider, peutValider,
+}: {
+  onChiffre: (c: string) => void
+  onValider: () => void
+  peutValider: boolean
+}) {
   return (
     <div className="pave">
       {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => (
         <button key={n} className="pave__touche" onClick={() => onChiffre(String(n))}>{n}</button>
       ))}
-      <button className="pave__touche pave__touche--muet" onClick={() => onChiffre('0')}>0</button>
+
+      <button className="pave__touche pave__touche--zero" onClick={() => onChiffre('0')} aria-label="Zéro">0</button>
+
       <button
-        className="pave__touche pave__touche--valider"
+        className={`pave__entree${peutValider ? ' pave__entree--pret' : ''}`}
         onClick={onValider}
-        aria-label="Valider"
+        disabled={!peutValider}
       >
-        <Icone nom="retour" taille={22} />
+        Entrer
       </button>
     </div>
   )

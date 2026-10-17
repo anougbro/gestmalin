@@ -26,10 +26,16 @@ const problemes: string[] = []
    ecran de connexion et concluent que tout est inaccessible. */
 async function connecter(page: Page) {
   if ((await page.locator('.pave__touche').count()) === 0) return
+  /* Si plusieurs personnes sont creeees, il faut d'abord choisir. */
+  const personne = page.locator('.personne').first()
+  if (await personne.count()) {
+    await personne.click()
+    await page.waitForTimeout(200)
+  }
   for (const chiffre of ['1', '2', '3', '4']) {
     await page.getByRole('button', { name: chiffre, exact: true }).click()
   }
-  await page.getByRole('button', { name: 'Valider' }).click()
+  await page.getByRole('button', { name: 'Entrer' }).click()
   await page.waitForTimeout(600)
 }
 

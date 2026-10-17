@@ -8,7 +8,7 @@ import { connecter as verifierCode, type Utilisateur } from '../domaine/acces'
 import type { Mouvement } from '../domaine/types'
 import { Contexte, type Session } from './useSession'
 import { RAYONS_PAR_DEFAUT, type RayonTravail } from './rayons'
-import { dejaPreparee, demarrer } from './preparation'
+import { dejaPreparee, demarrer, reparerComptes } from './preparation'
 
 /* ============================================================
    L'ETAT DE L'APPLICATION
@@ -20,6 +20,23 @@ import { dejaPreparee, demarrer } from './preparation'
    ils passent par ici. C'est ce qui evite d'avoir deux endroits
    qui donnent deux versions differentes de la meme reponse.
    ============================================================ */
+
+/** Dexie cache ses vraies erreurs dans un BulkError : sans
+    ouvrir le boite, on ne sait pas QUELLE ecriture a echoue. */
+function detailErreur(e: unknown): unknown {
+  if (e && typeof e === 'object' && 'failures' in e) {
+    const echecs = (e as { failures?: unknown[] }).failures ?? []
+    return {
+      message: String((e as { message?: unknown }).message ?? ''),
+      echecs: echecs.map((x) => ({
+        nom: (x as { name?: string }).name,
+        message: (x as Error)?.message,
+        cle: (x as { inner?: unknown[] })?.inner?.[0],
+      })),
+    }
+  }
+  return e
+}
 
 export function FournisseurSession({ children }: { children: ReactNode }) {
   const [rayon, setRayon] = useState<RayonTravail>(RAYONS_PAR_DEFAUT[0])
@@ -61,17 +78,31 @@ export function FournisseurSession({ children }: { children: ReactNode }) {
      contient les empreintes, et le code saisi est compare a
      celle de la personne. */
   async function connecter(identifiant: string, code: string) {
-    const tous = await base.utilisateurs.toArray()
-    const r = verifierCode(tous, identifiant, code, rayon.id)
-    if (r.ok) setUtilisateur(r.utilisateur)
-    return r.ok
-      ? { ok: true }
-      : { ok: false, message: r.raison === 'rayon-refuse' ? "Vous n'avez pas accès à ce rayon." : 'Code incorrect.' }
+    try {
+      const tous = await base.utilisateurs.toArray()
+      const r = verifierCode(tous, identifiant, code, rayon.id)
+      if (r.ok) setUtilisateur(r.utilisateur)
+      return r.ok
+        ? { ok: true }
+        : { ok: false, message: r.raison === 'rayon-refuse' ? "Vous n'avez pas accès à ce rayon." : 'Code incorrect.' }
+    } catch (e) {
+      console.error('Connexion impossible', e)
+      return { ok: false, message: 'Connexion impossible.' }
+    }
   }
 
   useEffect(() => {
-    ;(async () => {
-      if (!(await dejaPreparee())) await demarrer()
+    void (async () => {
+      try {
+        if (!(await dejaPreparee())) await demarrer()
+        await reparerComptes()
+      } catch (e) {
+        /* Un demarrage casse sans rien dire laisse la personne
+           devant un pave de chiffres qui ne marche pas.
+           Dexie range ses erreurs dans un BulkError : il faut
+           regarder dedans, sinon on ne sait pas ce qui a echoue. */
+        console.error('Demarrage impossible', detailErreur(e))
+      }
       setPret(true)
     })()
   }, [])

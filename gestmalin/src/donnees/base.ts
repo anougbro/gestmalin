@@ -125,6 +125,40 @@ class BaseGestmalin extends Dexie {
       relevesTemperature: 'id, zoneId, date',
       demandesApprobation: 'id, statut, date, type, [statut+date]',
     })
+
+    /* ---------- Migration 2 : l'empreinte du code ----------
+       La version 1 stockait la personne SANS empreinte de code.
+       Sans migration, une base deja creee garde des personnes sans
+       empreinte : la comparaison du code echoue toujours et
+       personne ne peut plus jamais se connecter.
+
+       C'est exactement le piege des migrations : changer la forme
+       d'une donnee sans dire quoi faire de l'ancienne. */
+    this.version(2)
+      .stores({
+        rayons: 'id, nom, ordre',
+        zones: 'id, rayonId, type',
+        emplacements: 'id, zoneId, code, [zoneId+ordre]',
+        categories: 'id, rayonId, nom',
+        fournisseurs: 'id, rayonId, nom',
+        produits: 'id, rayonId, categorieId, codeBarres, nomFr, fournisseurId, [rayonId+nomFr]',
+        lots: 'id, produitId, peremption, [produitId+peremption]',
+        mouvements: 'id, produitId, lotId, rayonId, type, date, auteurId, synchro, [produitId+date], [lotId+date], [rayonId+date]',
+        inventaires: 'id, zoneId, statut, date',
+        lignesInventaire: 'id, inventaireId, produitId, [inventaireId+produitId]',
+        utilisateurs: 'id, nom, role',
+        relevesTemperature: 'id, zoneId, date',
+        demandesApprobation: 'id, statut, date, type, [statut+date]',
+      })
+      .upgrade(async (tx) => {
+        await tx.table('utilisateurs').toCollection().modify((u: Record<string, unknown>) => {
+          /* On ne peut pas recreer une empreinte depuis un code
+             qu'on n'a jamais eu. La seule issue honnete est de
+             remettre le code du tout premier compte a sa valeur
+             de depart, et de le dire a l'utilisateur. */
+          if (!u.empreinte) u.codeARepartir = true
+        })
+      })
   }
 }
 
