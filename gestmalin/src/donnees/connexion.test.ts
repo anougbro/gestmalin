@@ -2,11 +2,11 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { base } from './base'
 import { toutEffacer } from './depots'
 import {
-  CODE_INITIAL, reparerComptes, UTILISATEUR_INITIAL,
+  CODE_INITIAL, CODE_PAR_DEFAUT, reparerComptes, UTILISATEUR_INITIAL,
   demarrer, oublierAmorcage,
 } from '../etat/preparation'
 import { ATTENTE_ID } from './base'
-import { empreinte, connecter } from '../domaine/acces'
+import { empreinte, connecter, LONGUEUR_CODE } from '../domaine/acces'
 
 /* ============================================================
    LA CONNEXION SUR UNE BASE REELLE
@@ -54,6 +54,7 @@ describe('une base ancienne, sans empreinte', () => {
       role: 'preparateur',
       rayonsAutorises: ['r-med', 'r-men'],
       actif: true,
+      longueurCode: 4,
       empreinte: '',
     })
   }
@@ -76,13 +77,13 @@ describe('une base ancienne, sans empreinte', () => {
   it('la reparation est sans effet sur une base deja saine', async () => {
     await base.utilisateurs.put({
       ...UTILISATEUR_INITIAL,
-      empreinte: empreinte(UTILISATEUR_INITIAL.id, '4321'),
+      empreinte: empreinte(UTILISATEUR_INITIAL.id, '54321'),
     })
     expect(await reparerComptes()).toBe(0)
 
     /* Le code choisi par la personne est preserve : la reparation
        ne doit pas ecraser un code qui fonctionne. */
-    const r = connecter(await base.utilisateurs.toArray(), 'u-1', '4321')
+    const r = connecter(await base.utilisateurs.toArray(), 'u-1', '54321')
     expect(r.ok).toBe(true)
   })
 })
@@ -111,6 +112,78 @@ describe('le message d echec', () => {
     expect(inconnu.ok).toBe(false)
     expect(faux.ok).toBe(false)
     if (!inconnu.ok && !faux.ok) expect(inconnu.raison).toBe(faux.raison)
+  })
+})
+
+describe("le changement de longueur du code", () => {
+  /* Le passage de 4 a 5 chiffres est le meme piege que celui d'une
+     base creee sans empreinte : toutes les empreintes existantes
+     deviennent introuvables, et personne ne peut plus entrer.
+
+     Le champ `longueurCode` est ce qui rend la chose detectable.
+     Sans lui, une empreinte a 4 chiffres et une a 5 sont la meme
+     chaine pour la base : rien ne permet de savoir qu'il faut
+     refaire. */
+  async function baseAvecAnciensCodes() {
+    await base.utilisateurs.bulkPut([
+      {
+        id: 'u-1',
+        nom: 'Préparateur',
+        role: 'preparateur',
+        rayonsAutorises: ['r-med', 'r-men'],
+        actif: true,
+        longueurCode: 4,
+        empreinte: empreinte('u-1', '1234'),
+      },
+      {
+        id: 'u-2',
+        nom: 'Amina',
+        role: 'responsable',
+        rayonsAutorises: ['r-men'],
+        actif: true,
+        longueurCode: 4,
+        empreinte: empreinte('u-2', '1111'),
+      },
+    ])
+  }
+
+  it('AVANT reparation, aucun ancien code ne fonctionne', async () => {
+    await baseAvecAnciensCodes()
+    const tous = await base.utilisateurs.toArray()
+    expect(connecter(tous, 'u-1', '1234').ok).toBe(false)
+    expect(connecter(tous, 'u-2', '1111').ok).toBe(false)
+  })
+
+  it('la reparation en remet CHAQUE compte a la bonne longueur', async () => {
+    await baseAvecAnciensCodes()
+    expect(await reparerComptes()).toBe(2)
+
+    const tous = await base.utilisateurs.toArray()
+    expect(connecter(tous, 'u-1', CODE_INITIAL).ok).toBe(true)
+    expect(connecter(tous, 'u-2', CODE_PAR_DEFAUT).ok).toBe(true)
+
+    for (const u of tous) expect(u.longueurCode).toBe(LONGUEUR_CODE)
+  })
+
+  it('la longueur est inscrite dans l empreinte, pas deduite', async () => {
+    /* Deux codes qui ne different que par un zero ne doivent pas
+       donner la meme empreinte. */
+    expect(empreinte('u-1', '12345')).not.toBe(empreinte('u-1', '1234'))
+  })
+
+  it('une base deja a la bonne longueur n est pas touchee', async () => {
+    await base.utilisateurs.put({
+      ...UTILISATEUR_INITIAL,
+      longueurCode: LONGUEUR_CODE,
+      empreinte: empreinte('u-1', '54321'),
+    })
+    expect(await reparerComptes()).toBe(0)
+    expect(connecter(await base.utilisateurs.toArray(), 'u-1', '54321').ok).toBe(true)
+  })
+
+  it("le code de secours a la bonne longueur aussi", () => {
+    expect(CODE_PAR_DEFAUT).toHaveLength(LONGUEUR_CODE)
+    expect(CODE_INITIAL).toHaveLength(LONGUEUR_CODE)
   })
 })
 

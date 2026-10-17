@@ -43,7 +43,7 @@ for (const c of CAS) {
     await page.waitForTimeout(1200)
     await page.locator('.personne', { hasText: 'Préparateur' }).first().click()
     await page.waitForTimeout(250)
-    for (const chiffre of ['1', '2', '3', '4']) {
+    for (const chiffre of ['1', '2', '3', '4', '5']) {
       await page.getByRole('button', { name: chiffre, exact: true }).click()
     }
     await page.getByRole('button', { name: 'Entrer' }).click()

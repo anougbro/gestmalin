@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   aLeDroit, empreinte, codeCorrect, aLeMandat, peutValider,
-  peutUtiliser, roleEffectif, connecter, type Utilisateur,
+  peutUtiliser, roleEffectif, connecter, LONGUEUR_CODE, type Utilisateur,
 } from './acces'
 
 const MAINTENANT = '2026-06-15T12:00:00Z'
@@ -10,7 +10,8 @@ function utilisateur(p: Partial<Utilisateur> = {}): Utilisateur {
   return {
     id: 'u1', nom: 'Amina', role: 'preparateur',
     rayonsAutorises: ['r-med', 'r-men'], actif: true,
-    empreinte: empreinte('u1', '1234'),
+    longueurCode: LONGUEUR_CODE,
+    empreinte: empreinte('u1', '12345'),
     ...p,
   }
 }
@@ -40,28 +41,28 @@ describe('les droits par role', () => {
 
 describe('l\'empreinte du code', () => {
   it('ne ressemble a rien de lisible', () => {
-    const e = empreinte('u1', '1234')
-    expect(e).not.toContain('1234')
+    const e = empreinte('u1', '12345')
+    expect(e).not.toContain('12345')
     expect(e).not.toContain('u1')
     expect(e.length).toBeGreaterThan(8)
   })
 
   it('verifie un code correct', () => {
-    expect(codeCorrect('u1', '1234', empreinte('u1', '1234'))).toBe(true)
+    expect(codeCorrect('u1', '12345', empreinte('u1', '12345'))).toBe(true)
   })
 
   it('refuse un code faux', () => {
-    expect(codeCorrect('u1', '9999', empreinte('u1', '1234'))).toBe(false)
+    expect(codeCorrect('u1', '99999', empreinte('u1', '12345'))).toBe(false)
   })
 
   it('le meme code pour deux personnes n\'a pas la meme empreinte', () => {
     /* Sans cela, voir l'empreinte d'un collegue permettrait de
        deviner son code, qui est souvent 1234. */
-    expect(empreinte('u1', '1234')).not.toBe(empreinte('u2', '1234'))
+    expect(empreinte('u1', '12345')).not.toBe(empreinte('u2', '12345'))
   })
 
   it('l\'identifiant de la personne change l\'empreinte', () => {
-    expect(empreinte('u1', '1234')).not.toBe(empreinte('u1', '1235'))
+    expect(empreinte('u1', '12345')).not.toBe(empreinte('u1', '12346'))
   })
 })
 
@@ -124,26 +125,26 @@ describe('la connexion hors ligne', () => {
   const base = [utilisateur()]
 
   it('accepte le bon code', () => {
-    const r = connecter(base, 'u1', '1234')
+    const r = connecter(base, 'u1', '12345')
     expect(r.ok).toBe(true)
   })
 
   it('refuse un mauvais code', () => {
-    expect(connecter(base, 'u1', '9999').ok).toBe(false)
+    expect(connecter(base, 'u1', '99999').ok).toBe(false)
   })
 
   it('donne le MEME message pour un code faux et un identifiant inconnu', () => {
     /* Sinon on permet de deviner quels identifiants existent,
        simplement en lisant la difference entre les messages. */
-    const inconnu = connecter(base, 'u-inexistant', '1234')
-    const faux = connecter(base, 'u1', '9999')
+    const inconnu = connecter(base, 'u-inexistant', '12345')
+    const faux = connecter(base, 'u1', '99999')
     expect(inconnu.ok).toBe(false)
     expect(faux.ok).toBe(false)
     if (!inconnu.ok && !faux.ok) expect(inconnu.raison).toBe(faux.raison)
   })
 
   it('refuse un compte desactive', () => {
-    const r = connecter([utilisateur({ actif: false })], 'u1', '1234')
+    const r = connecter([utilisateur({ actif: false })], 'u1', '12345')
     expect(r.ok === false && r.raison).toBe('inactif')
   })
 
@@ -151,8 +152,8 @@ describe('la connexion hors ligne', () => {
     /* Une personne qui ne travaille que sur les Menagers doit
        pouvoir entrer, meme si l'application s'est ouverte sur les
        Medicaments. Refuser ici la bloquerait sans issue. */
-    const amina = utilisateur({ id: 'u2', nom: 'Amina', role: 'responsable', rayonsAutorises: ['r-men'], empreinte: empreinte('u2', '1111') })
-    const r = connecter([amina], 'u2', '1111')
+    const amina = utilisateur({ id: 'u2', nom: 'Amina', role: 'responsable', rayonsAutorises: ['r-men'], empreinte: empreinte('u2', '22222') })
+    const r = connecter([amina], 'u2', '22222')
     expect(r.ok).toBe(true)
   })
 

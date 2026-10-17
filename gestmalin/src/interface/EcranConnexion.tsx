@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useSession } from '../etat/useSession'
 import { base } from '../donnees/base'
 import { reparerComptes, CODE_INITIAL, CODE_PAR_DEFAUT, UTILISATEUR_INITIAL } from '../etat/preparation'
+import { LONGUEUR_CODE } from '../domaine/acces'
 import { Icone } from './Icones'
 import { PastillesCode, PavillonNumerique } from './Primitives'
 
@@ -55,10 +56,10 @@ export function EcranConnexion() {
 
   async function reparer() {
     if (!confirm(
-      "Réinitialiser les codes ?\n\n" +
-      "Les codes d'origine n'ont jamais été stockés en clair : ils sont perdus.\n" +
-      "Le premier compte reprend le code 1234, les autres 0000.\n\n" +
-      "À n'utiliser que si personne ne peut plus entrer.",
+      `Réinitialiser les codes ?\n\n` +
+      `Les codes d'origine n'ont jamais été stockés en clair : ils sont perdus.\n` +
+      `Le premier compte reprend le code ${CODE_INITIAL}, les autres ${CODE_PAR_DEFAUT}.\n\n` +
+      `À n'utiliser que si personne ne peut plus entrer.`,
     )) return
     await reparerComptes()
     setSecours(false)
@@ -68,8 +69,16 @@ export function EcranConnexion() {
 
   function chiffre(c: string) {
     setErreur(null)
-    if (code.length >= 4) return
-    setCode((v) => v + c)
+    /* Le garde est DANS la mise a jour fonctionnelle, pas a cote.
+
+       A cote, il lit `code` dans la closure du rendu courant. Deux
+       appuis rapproches arrivent avant le prochain rendu : le
+       deuxieme voit une valeur perimee, et un chiffre se perd —
+       l'ecran affiche un code de quatre chiffres quand la personne
+       en a tape cinq, sans aucune raison visible.
+
+       C'est un bug de frappe, pas de lecture : on tape vite. */
+    setCode((v) => (v.length >= LONGUEUR_CODE ? v : v + c))
   }
 
   /* Effacer le dernier chiffre. Sans cette touche, une erreur
@@ -106,7 +115,7 @@ export function EcranConnexion() {
            On neutralise donc toujours le comportement par defaut
            d'Entree, et on ne valide que si le code est complet. */
         e.preventDefault()
-        if (idCourant && code.length === 4) void tenter(idCourant)
+        if (idCourant && code.length === LONGUEUR_CODE) void tenter(idCourant)
         return
       }
 
@@ -168,7 +177,7 @@ export function EcranConnexion() {
               onChiffre={chiffre}
               onEffacer={effacer}
               onValider={() => void tenter(idCourant)}
-              peutValider={code.length === 4}
+              peutValider={code.length === LONGUEUR_CODE}
             />
 
             {erreur && <p className="connexion__erreur">{erreur}</p>}

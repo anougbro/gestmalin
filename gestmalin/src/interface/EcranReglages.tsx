@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useSession } from '../etat/useSession'
 import { base } from '../donnees/base'
 import { chargerJeuEssai, chargerPersonnes } from '../donnees/jeuEssai'
-import { empreinte } from '../domaine/acces'
+import { empreinte, LONGUEUR_CODE } from '../domaine/acces'
 import { RAYONS_PAR_DEFAUT } from '../etat/rayons'
 import { Icone } from './Icones'
 import { Bouton, Entete, PastillesCode, PavillonNumerique } from './Primitives'
@@ -40,7 +40,7 @@ export function EcranReglages({ retour }: { retour: () => void }) {
 
   function ajouterChiffre(c: string) {
     setErreurCode(null)
-    setCode((v) => (v.length >= 4 ? v : v + c))
+    setCode((v) => (v.length >= LONGUEUR_CODE ? v : v + c))
   }
   function effacerChiffre() {
     setErreurCode(null)
@@ -48,7 +48,7 @@ export function EcranReglages({ retour }: { retour: () => void }) {
   }
 
   function validerCode() {
-    if (code.length !== 4 || !utilisateur) return
+    if (code.length !== LONGUEUR_CODE || !utilisateur) return
 
     if (!enConfirmation) {
       setPremier(code)
@@ -65,7 +65,7 @@ export function EcranReglages({ retour }: { retour: () => void }) {
     }
 
     void (async () => {
-      await base.utilisateurs.put({ ...utilisateur, empreinte: empreinte(utilisateur.id, code) })
+      await base.utilisateurs.put({ ...utilisateur, longueurCode: LONGUEUR_CODE, empreinte: empreinte(utilisateur.id, code) })
       setMessage(`Code changé. Le nouveau code est pris en compte dès la prochaine connexion.`)
       setPremier(null)
       setCode('')
@@ -118,7 +118,7 @@ export function EcranReglages({ retour }: { retour: () => void }) {
           <p style={{ margin: '0 0 2px', fontSize: 13, color: 'var(--c-500)' }}>
             {enConfirmation
               ? 'Tape le même code encore une fois'
-              : 'Choisis un nouveau code de 4 chiffres'}
+              : 'Choisis un nouveau code de {LONGUEUR_CODE} chiffres'}
           </p>
 
           <PastillesCode code={code} sur="clair" />
@@ -128,7 +128,7 @@ export function EcranReglages({ retour }: { retour: () => void }) {
             onChiffre={ajouterChiffre}
             onEffacer={effacerChiffre}
             onValider={validerCode}
-            peutValider={code.length === 4}
+            peutValider={code.length === LONGUEUR_CODE}
             libelleValider={enConfirmation ? 'Valider' : 'Suivant'}
           />
 

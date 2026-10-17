@@ -19,6 +19,22 @@
 
 export type Role = 'preparateur' | 'responsable' | 'pharmacien' | 'directeur'
 
+/* ============================================================
+   LA LONGUEUR DU CODE
+
+   Cinq chiffres, pas quatre. 10 000 combinaisons a quatre, cent
+   mille a cinq : dix fois plus.
+
+   UNE constante, ici, et nulle part ailleurs. La longueur
+   apparait dans l'ecran de connexion, celui des reglages, les
+   empreintes, les migrations et les tests. Ecrit en dur dans
+   chacun de ces endroits, c'est un nombre qui finit par
+   differer d'un ecran a l'autre : le changement en accepte cinq,
+   la connexion en attend quatre, et personne ne sait pourquoi
+   le code marche parfois.
+   ============================================================ */
+export const LONGUEUR_CODE = 5
+
 export type Utilisateur = {
   id: string
   nom: string
@@ -26,6 +42,14 @@ export type Utilisateur = {
   rayonsAutorises: string[]
   actif: boolean
   empreinte: string
+  /** Longueur du code AU MOMENT ou l'empreinte a ete calculee.
+
+      Indispensable. Changer la longueur sans ce nombre revient a
+      changer le schema des empreintes sans dire quoi faire des
+      anciennes : le code de chacun devient introuvable, et plus
+      personne ne peut entrer. C'est precisement ce qui est
+      arrive au passage de 4 a 5 chiffres. */
+  longueurCode: number
   /** Deleguations accordees a cet utilisateur, avec leur fin. */
   mandats?: Mandat[]
 }
@@ -158,6 +182,22 @@ export function connecter(
      deviner quels identifiants existent. */
   const echec = { ok: false as const, raison: 'code-incorrect' as const }
   if (!u) return echec
+
+  /* Un compte enregistre avec un autre nombre de chiffres n'est
+     pas utilisable : son empreinte ne correspond a rien de
+     saisissable aujourd'hui. Il faut qu'il soit repare d'abord —
+     c'est le travail de `reparerComptes`, pas de la connexion.
+
+     Sans cette garde, une base a moitie migree accepterait encore
+     un ancien code a quatre chiffres. La migration aurait l'air
+     d'avoir marche tout en laissant une porte ouverte. */
+  if (u.longueurCode !== LONGUEUR_CODE) return echec
+
+  /* Idem pour la longueur saisie : un code de trois chiffres ne
+     peut pas etre le bon. On ne le demande pas, mais on ne le
+     laisse pas passer non plus. */
+  if (code.length !== LONGUEUR_CODE) return echec
+
   if (!codeCorrect(u.id, code, u.empreinte)) return echec
   if (!u.actif) return { ok: false, raison: 'inactif' }
 

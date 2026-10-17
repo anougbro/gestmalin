@@ -21,6 +21,7 @@
     "verifier-menu": "node --experimental-strip-types scripts/verifier-menu.ts",
     "verifier-pave": "node --experimental-strip-types scripts/verifier-pave-session.ts",
     "verifier-demandes": "node --experimental-strip-types scripts/verifier-demandes.ts",
+    "verifier-migration": "node --experimental-strip-types scripts/verifier-migration.ts",
     "remplir": "node --experimental-strip-types scripts/remplir-et-capturer.ts"
   },
   "dependencies": {

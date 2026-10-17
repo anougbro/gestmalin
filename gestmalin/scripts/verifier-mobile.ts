@@ -32,7 +32,7 @@ async function connecter(page: Page) {
     await personne.click()
     await page.waitForTimeout(200)
   }
-  for (const chiffre of ['1', '2', '3', '4']) {
+  for (const chiffre of ['1', '2', '3', '4', '5']) {
     await page.getByRole('button', { name: chiffre, exact: true }).click()
   }
   await page.getByRole('button', { name: 'Entrer' }).click()

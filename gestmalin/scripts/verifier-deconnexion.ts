@@ -26,7 +26,7 @@ for (const c of CAS) {
   await page.waitForTimeout(1200)
 
   /* ---- connexion ---- */
-  for (const chiffre of ['1', '2', '3', '4']) {
+  for (const chiffre of ['1', '2', '3', '4', '5']) {
     await page.getByRole('button', { name: chiffre, exact: true }).click()
   }
   await page.getByRole('button', { name: 'Entrer' }).click()
@@ -126,7 +126,7 @@ async function verifierAccueil(surMobile: boolean) {
   await page.goto('http://localhost:5173/', { waitUntil: 'networkidle' })
   await page.waitForTimeout(1200)
 
-  for (const chiffre of ['1', '2', '3', '4']) {
+  for (const chiffre of ['1', '2', '3', '4', '5']) {
     await page.getByRole('button', { name: chiffre, exact: true }).click()
   }
   await page.getByRole('button', { name: 'Entrer' }).click()

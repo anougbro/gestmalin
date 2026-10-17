@@ -26,7 +26,7 @@ const titre = () => page.locator('.entete__titre').first().innerText()
 
 await page.goto('http://localhost:5173/', { waitUntil: 'networkidle' })
 await page.waitForTimeout(1200)
-for (const c of ['1', '2', '3', '4']) {
+for (const c of ['1', '2', '3', '4', '5']) {
   await page.getByRole('button', { name: c, exact: true }).click()
 }
 await page.getByRole('button', { name: 'Entrer' }).click()
@@ -85,7 +85,7 @@ console.log('\n7. Sur ordinateur, pas de tiroir : la barre laterale est la')
 const bureau = await navigateur.newPage({ viewport: { width: 1440, height: 900 } })
 await bureau.goto('http://localhost:5173/', { waitUntil: 'networkidle' })
 await bureau.waitForTimeout(1200)
-for (const c of ['1', '2', '3', '4']) {
+for (const c of ['1', '2', '3', '4', '5']) {
   await bureau.getByRole('button', { name: c, exact: true }).click()
 }
 await bureau.getByRole('button', { name: 'Entrer' }).click()

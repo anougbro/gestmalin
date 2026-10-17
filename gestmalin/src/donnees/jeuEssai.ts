@@ -1,7 +1,7 @@
 import { base, ATTENTE_ID } from './base'
 import { nouvelId, maintenant } from './depots'
 import type { LotRow, MouvementRow, ProduitRow } from './base'
-import { empreinte } from '../domaine/acces'
+import { empreinte, LONGUEUR_CODE } from '../domaine/acces'
 
 /* ============================================================
    LE JEU D'ESSAI
@@ -136,9 +136,9 @@ export async function chargerJeuEssai(rayonMed: string, rayonMen: string, auteur
 
 export async function chargerPersonnes(rayonMed: string, rayonMen: string): Promise<void> {
   await base.utilisateurs.bulkPut([
-    { id: 'u-1', nom: 'Préparateur', role: 'preparateur', rayonsAutorises: [rayonMed, rayonMen], actif: true, empreinte: empreinte('u-1', '1234') },
-    { id: 'u-2', nom: 'Amina', role: 'responsable', rayonsAutorises: [rayonMen], actif: true, empreinte: empreinte('u-2', '1111') },
-    { id: 'u-3', nom: 'Dr Souley', role: 'pharmacien', rayonsAutorises: [rayonMed, rayonMen], actif: true, empreinte: empreinte('u-3', '2222') },
+    { id: 'u-1', nom: 'Préparateur', role: 'preparateur', rayonsAutorises: [rayonMed, rayonMen], actif: true, longueurCode: LONGUEUR_CODE, empreinte: empreinte('u-1', '12345') },
+    { id: 'u-2', nom: 'Amina', role: 'responsable', rayonsAutorises: [rayonMen], actif: true, longueurCode: LONGUEUR_CODE, empreinte: empreinte('u-2', '22222') },
+    { id: 'u-3', nom: 'Dr Souley', role: 'pharmacien', rayonsAutorises: [rayonMed, rayonMen], actif: true, longueurCode: LONGUEUR_CODE, empreinte: empreinte('u-3', '33333') },
   ])
 
   await base.demandesApprobation.bulkPut([

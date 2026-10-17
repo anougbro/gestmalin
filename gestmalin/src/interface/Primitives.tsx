@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { Icone, type NomIcone } from './Icones'
+import { LONGUEUR_CODE } from '../domaine/acces'
 
 /* ============================================================
    LES PRIMITIVES
@@ -252,9 +253,15 @@ export function PavillonNumerique({
 /* ---------- Les pastilles du code saisi ---------- */
 
 export function PastillesCode({ code, sur }: { code: string; sur?: 'sombre' | 'clair' }) {
+  /* Le nombre de pastilles suit la longueur reelle du code. Un
+     ecran qui en dessine quatre pour un code a cinq chiffres ne
+     montre pas a la personne ou elle en est : elle ne sait plus
+     combien il lui en reste a taper. */
+  const place = Math.max(LONGUEUR_CODE, code.length)
+
   return (
     <div className={`pastilles${sur === 'clair' ? ' pastilles--clair' : ''}`}>
-      {[0, 1, 2, 3].map((i) => (
+      {Array.from({ length: place }, (_, i) => (
         <span key={i} className={`pastille-point${code.length > i ? ' pastille-point--plein' : ''}`} />
       ))}
     </div>

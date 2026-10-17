@@ -1,5 +1,10 @@
 import { chromium } from 'playwright'
 
+/* La longueur vient du domaine, pas du script : un test qui
+   ecrit 5 en dur continue de passer quand l'application en
+   attend 6, et ne prouve plus rien. */
+const LONGUEUR = 5
+
 /* ============================================================
    LE PAVE DE CODE ET LA SESSION
 
@@ -74,13 +79,13 @@ if (troisTouches) {
 /* ---------- 2. Le clavier ---------- */
 console.log('\n2. Le pave au clavier')
 
-await page.keyboard.type('1234')
+await page.keyboard.type('12345')
 await page.waitForTimeout(200)
-ok((await pleines()) === 4, 'quatre chiffres tapes au clavier remplissent les quatre pastilles')
+ok((await pleines()) === LONGUEUR, 'le code tapes au clavier remplit toutes les pastilles')
 
 await page.keyboard.press('Backspace')
 await page.waitForTimeout(200)
-ok((await pleines()) === 3, 'la touche retour du clavier efface le dernier chiffre')
+ok((await pleines()) === LONGUEUR - 1, 'la touche retour du clavier efface le dernier chiffre')
 
 /* Entree avec un code incomplet ne doit rien faire : sinon on
    dirait « code incorrect » a quelqu'un qui n'a pas fini. */
@@ -88,9 +93,9 @@ await page.keyboard.press('Enter')
 await page.waitForTimeout(500)
 ok((await surLePave()) === 1, 'Entree avec un code incomplet ne tente rien')
 
-await page.keyboard.type('4')
+await page.keyboard.type('5')
 await page.waitForTimeout(200)
-ok((await pleines()) === 4, 'le code est bien complet avant Entree')
+ok((await pleines()) === LONGUEUR, 'le code est bien complet avant Entree')
 
 /* Le piege : une touche du pave garde le focus apres avoir ete
    touchee. « Entree » ne doit surtout pas la re-declencher :
@@ -114,7 +119,7 @@ const memorise = await page.evaluate(() => sessionStorage.getItem('gestmalin.ses
 ok(memorise === 'u-1', `on ne memorise que l'identifiant (${memorise})`)
 
 const contenuSession = await page.evaluate(() => JSON.stringify(sessionStorage))
-ok(!/1234|1111|2222/.test(contenuSession), 'aucun code dans la session conservee')
+ok(!/12345|22222|33333/.test(contenuSession), 'aucun code dans la session conservee')
 
 /* ---------- 4. La deconnexion, elle, coupe ---------- */
 console.log('\n4. La deconnexion coupe-t-elle vraiment ?')

@@ -39,11 +39,11 @@ if (!(await entrer.isDisabled())) {
 console.log('OK  « Entrer » inactif tant que le code est incomplet')
 
 /* ---- 3. Un code faux doit etre refuse, et le dire ---- */
-for (const c of ['9', '9', '9', '9']) {
+for (const c of ['9', '9', '9', '9', '9']) {
   await page.getByRole('button', { name: c, exact: true }).click()
 }
 if (await entrer.isDisabled()) {
-  console.log('ECHEC : « Entrer » reste inactif avec 4 chiffres')
+  console.log('ECHEC : « Entrer » reste inactif avec un code incomplet')
   process.exit(1)
 }
 await entrer.click()
@@ -60,7 +60,7 @@ if (erreurAffichee === 0) {
 console.log('OK  un code faux affiche un message')
 
 /* ---- 4. Le bon code doit laisser entrer ---- */
-for (const c of ['1', '2', '3', '4']) {
+for (const c of ['1', '2', '3', '4', '5']) {
   await page.getByRole('button', { name: c, exact: true }).click()
 }
 await page.getByRole('button', { name: 'Entrer' }).click()
@@ -72,7 +72,7 @@ if (connexion > 0) {
   await page.screenshot({ path: 'captures/connexion-echec.png' })
   process.exit(1)
 }
-console.log('OK  le code 1234 laisse entrer')
+console.log('OK  le code 12345 laisse entrer')
 
 /* ---- 5. Une fois dedans, on voit l'accueil ---- */
 const accueil = await page.locator('.accueil').count()

@@ -15,7 +15,7 @@ const ok = (bon: boolean, message: string) => {
   console.log(`  ${bon ? 'OK  ' : 'ECHEC'} ${message}`)
 }
 
-async function connecter(page: Page, code = '1234') {
+async function connecter(page: Page, code = '12345') {
   if ((await page.locator('.personne').count()) > 0) {
     await page.locator('.personne').first().click()
     await page.waitForTimeout(300)
@@ -109,15 +109,15 @@ async function saisirCode(code: string, bouton: string) {
 /* Apres la premiere saisie, le bouton devient « Valider ». Au
    retour en arriere — deux codes differents — il redevient
    « Suivant ». C'est le comportement voulu. */
-await saisirCode('9071', 'Suivant')
+await saisirCode('90715', 'Suivant')
 ok((await page.getByText(/Tape le même code/).count()) > 0, 'une deuxieme saisie est demandee')
 
-await saisirCode('1234', 'Valider')
+await saisirCode('12345', 'Valider')
 ok((await page.getByText(/pas pareils/i).count()) > 0, 'deux codes differents sont refuses')
 ok((await page.getByRole('button', { name: 'Suivant', exact: true }).count()) === 1, 'on repart de la premiere saisie')
 
-await saisirCode('5678', 'Suivant')
-await saisirCode('5678', 'Valider')
+await saisirCode('56782', 'Suivant')
+await saisirCode('56782', 'Valider')
 await page.waitForTimeout(900)
 ok((await page.getByText(/Code changé/).count()) > 0, 'le nouveau code est accepte')
 
@@ -130,7 +130,7 @@ if ((await page.locator('.personne').count()) > 0) {
   await page.locator('.personne').first().click()
   await page.waitForTimeout(300)
 }
-for (const c of '5678') {
+for (const c of '56782') {
   await page.locator('.pave__touche', { hasText: new RegExp(`^${c}$`) }).first().click()
   await page.waitForTimeout(60)
 }
