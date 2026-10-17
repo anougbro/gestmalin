@@ -17,6 +17,7 @@ import { EcranReappro } from './interface/EcranReappro'
 import { EcranValidation } from './interface/EcranValidation'
 import { EcranEtiquettes } from './interface/EcranEtiquettes'
 import { EcranConnexion } from './interface/EcranConnexion'
+import { EcranReglages } from './interface/EcranReglages'
 import './interface/base.css'
 
 /* ============================================================
@@ -34,7 +35,7 @@ import './interface/base.css'
 export type Ecran =
   | 'accueil' | 'reception' | 'ranger' | 'sortie'
   | 'alertes' | 'compter' | 'chercher' | 'produits' | 'fichiers'
-  | 'froid' | 'commander' | 'valider' | 'etiquettes'
+  | 'froid' | 'commander' | 'valider' | 'etiquettes' | 'reglages'
 
 type Props = {
   ecran: Ecran
@@ -57,6 +58,7 @@ const ECRANS_ECRAN: Record<Ecran, { titre: string; composant: (p: Props) => Reac
   commander: { titre: 'Commande', composant: EcranReappro },
   valider: { titre: 'À valider', composant: EcranValidation as unknown as (p: Props) => React.ReactElement },
   etiquettes: { titre: 'Étiquettes', composant: EcranEtiquettes },
+  reglages: { titre: 'Réglages', composant: EcranReglages },
 }
 
 /* Les cinq gestes, dans l'ordre de la journee. */
@@ -77,6 +79,7 @@ const PLUS_TARD: { ecran: Ecran; icone: NomIcone; label: string }[] = [
   { ecran: 'etiquettes', icone: 'etiquette', label: 'Étiquettes' },
   { ecran: 'produits', icone: 'capsule', label: 'Produits' },
   { ecran: 'fichiers', icone: 'export', label: 'Fichiers' },
+  { ecran: 'reglages', icone: 'grille', label: 'Réglages' },
 ]
 
 /* ---------- Le selecteur de rayon ---------- */
