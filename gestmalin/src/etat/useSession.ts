@@ -18,6 +18,9 @@ export type Session = {
   deconnecter: () => void
   alertes: Alerte[]
   compteurs: CompteursAlertes
+  /** Demandes d'approbation en attente. Montre sur l'accueil
+      combien de decisions attendent la personne. */
+  enAttenteValidation: number
   rafraichir: () => Promise<void>
   pret: boolean
   toutEffacer: typeof toutEffacer

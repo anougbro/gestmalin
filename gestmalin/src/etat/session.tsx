@@ -42,6 +42,7 @@ export function FournisseurSession({ children }: { children: ReactNode }) {
   const [rayon, setRayon] = useState<RayonTravail>(RAYONS_PAR_DEFAUT[0])
   const [utilisateur, setUtilisateur] = useState<Utilisateur | null>(null)
   const [alertes, setAlertes] = useState<Alerte[]>([])
+  const [enAttente, setEnAttente] = useState(0)
   const [pret, setPret] = useState(false)
 
   /* Charger une base IndexedDB EST une synchronisation avec un
@@ -71,6 +72,8 @@ export function FournisseurSession({ children }: { children: ReactNode }) {
         reference: aujourdhui(),
       }),
     )
+
+    setEnAttente(await base.demandesApprobation.where('statut').equals('en_attente').count())
   }
 
   /* La connexion est verifiee SUR PLACE, sans reseau : la base
@@ -131,13 +134,14 @@ export function FournisseurSession({ children }: { children: ReactNode }) {
       deconnecter: () => setUtilisateur(null),
       alertes,
       compteurs: compterAlertes(alertes),
+      enAttenteValidation: enAttente,
       rafraichir,
       pret,
       toutEffacer,
       demarrer,
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [rayon, alertes, pret, utilisateur],
+    [rayon, alertes, pret, utilisateur, enAttente],
   )
 
   return <Contexte.Provider value={valeur}>{children}</Contexte.Provider>

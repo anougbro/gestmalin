@@ -28,7 +28,7 @@ const GESTES: Gestes[] = [
 ]
 
 export function EcranAccueil({ aller }: { aller: (e: NomEcran, c?: Record<string, unknown>) => void }) {
-  const { rayon, compteurs, utilisateur } = useSession()
+  const { rayon, compteurs, utilisateur, enAttenteValidation } = useSession()
   const [auQuai, setAuQuai] = useState(0)
   const [references, setReferences] = useState(0)
   const [enStock, setEnStock] = useState(0)
@@ -121,6 +121,14 @@ export function EcranAccueil({ aller }: { aller: (e: NomEcran, c?: Record<string
 
         <div>
           <p className="section__titre">Gestion</p>
+          {/* Le meme ecran porte le meme nom partout. Sur telephone
+              il apparait dans la meme grille que les deux autres,
+              avec la meme forme : le doigt ne doit pas changer de
+              cible selon la largeur.
+
+              Ces sept tuiles ne sont pas un supplement : sur
+              telephone, la barre laterale est masquee. Une tuile
+              absente ici, c'est un ecran qui n'existe pas. */}
           <div className="grille-2">
             <Tuile
               icone="capsule" label="Produits" note="Catalogue" ton={rayon.ton}
@@ -128,18 +136,33 @@ export function EcranAccueil({ aller }: { aller: (e: NomEcran, c?: Record<string
             />
             <Tuile
               icone="cloche" label="Alertes" note="À traiter" ton={rayon.ton}
-              surClick={() => aller('alertes')}
+              pastille={compteurs.total} surClick={() => aller('alertes')}
+            />
+            <Tuile
+              icone="quarantaine" label="À valider" note="Décisions" ton={rayon.ton}
+              pastille={enAttenteValidation} surClick={() => aller('valider')}
+            />
+            <Tuile
+              icone="fournisseur" label="Commander" note="Réappro" ton={rayon.ton}
+              surClick={() => aller('commander')}
+            />
+            <Tuile
+              icone="froid" label="Réserve froide" note="Température" ton={rayon.ton}
+              surClick={() => aller('froid')}
+            />
+            <Tuile
+              icone="etiquette" label="Étiquettes" note="Imprimer" ton={rayon.ton}
+              surClick={() => aller('etiquettes')}
+            />
+            <Tuile
+              icone="export" label="Fichiers" note="Import · Export" ton={rayon.ton}
+              surClick={() => aller('fichiers')}
+            />
+            <Tuile
+              icone="grille" label="Réglages" note="Compte · Essai" ton={rayon.ton}
+              surClick={() => aller('reglages')}
             />
           </div>
-          {/* Le meme ecran porte le meme nom partout. Sur telephone
-              il apparait dans la meme grille que les deux autres,
-              avec la meme forme : le doigt ne doit pas changer de
-              cible selon la largeur. */}
-          <Tuile
-            icone="export" label="Fichiers" note="Importer · Exporter" ton={rayon.ton}
-            surClick={() => aller('fichiers')}
-            plein
-          />
         </div>
       </div>
     </div>

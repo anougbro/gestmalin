@@ -74,6 +74,23 @@ for (const c of CAS) {
     continue
   }
 
+  /* ---- est-il visible SANS faire defiler ? ---- */
+  /* Une sortie de secours qu'il faut faire defiler pour
+     atteindre n'est plus une sortie de secours. */
+  const dansFenetre = await page.evaluate((sel) => {
+    const e = document.querySelector(sel)
+    if (!e) return false
+    const b = e.getBoundingClientRect()
+    return b.top >= 0 && b.bottom <= window.innerHeight + 1
+  }, surMobile ? '.qui-btn' : '.qui')
+
+  if (!dansFenetre) {
+    console.log(`ECHEC ${c.nom} : « Changer » est hors de l'ecran, il faut faire defiler`)
+    echecs++
+    await page.close()
+    continue
+  }
+
   /* ---- fonctionne-t-il ? ---- */
   await bouton.first().click()
   await page.waitForTimeout(700)

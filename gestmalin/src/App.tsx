@@ -90,7 +90,7 @@ function SelecteurRayon() {
 
   if (!ouvert) {
     return (
-      <button className="seg-item seg--actif" onClick={() => setOuvert(true)}>
+      <button className="seg-item seg-depuis" onClick={() => setOuvert(true)}>
         <Icone nom={rayon.ton === 'teal' ? 'capsule' : 'maison'} taille={18} />
         {rayon.nom}
       </button>

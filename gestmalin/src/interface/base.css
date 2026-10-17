@@ -10,13 +10,25 @@
 
 * { box-sizing: border-box; }
 
-html, body, #root {
-  height: 100%;
+html, body {
+  min-height: 100%;
   margin: 0;
   background: var(--c-50);
   color-scheme: light;
-  overflow-x: hidden;
 }
+
+/* `#root` ne doit PAS etre un conteneur de defilement.
+
+   Avec `height: 100%` et `overflow-x: hidden` sur la racine, le
+   document ne peut plus grandir : c'est #root qui devient le
+   conteneur a defiler, imbrique dans la page. Consequences
+   concretes sur telephone : la barre d'adresse ne peut plus se
+   replier, et une capture de toute la page ne montre qu'un
+   ecran.
+
+   On laisse donc le document defiler comme d'habitude, et le
+   debordement horizontal est coupe sur la coque. */
+#root { min-height: 100%; }
 
 /* ---------- La barre de defilement ----------
    Sans cela, un Windows en mode sombre dessine une barre noire
@@ -69,13 +81,23 @@ body {
    ============================================================ */
 
 .app {
-  max-width: 520px;
+  /* La coque remplit TOUTE la largeur de la fenetre.
+     Un plafond de 520 px existait ici, il etait annule plus bas
+     par `max-width: 100%` : il n'a jamais rien fait. Sur une
+     tablette, une coque ramenee a 520 px et centree laisse une
+     bande vide de chaque cote — exactement ce qui se plaignait.
+     C'est le CONTENU qui doit rester lisible, pas la coque :
+     la limite est donc sur .contenu, plus bas.
+
+     C'est aussi ici qu'on coupe le debordement horizontal, pour
+     que rien ne fasse defiler la page de cote. */
   margin: 0 auto;
   min-height: 100%;
   display: flex;
   flex-direction: column;
   background: var(--c-50);
   box-shadow: var(--sh-5);
+  overflow-x: hidden;
 }
 
 .app__colonne {
@@ -88,10 +110,21 @@ body {
 /* Sur telephone la barre laterale n'existe pas : elle sort du flux. */
 .barre { display: none; }
 
+/* La barre du haut, sur telephone : le rayon a gauche, la
+   personne a droite, SUR LA MEME LIGNE.
+
+   `.seg-item` est `display: flex`, donc une boite de niveau
+   bloc : comme enfant direct d'un conteneur de type block, elle
+   prenait toute la largeur et repoussait la pastille a la ligne
+   du dessous. D'ou une barre de 109 px au lieu de 64. */
 .app__barre {
   position: sticky;
   top: 0;
   z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
   padding: 10px 12px;
   background: var(--c-0);
   border-bottom: 1px solid var(--line);
@@ -127,8 +160,16 @@ body {
 .seg-item--actif[data-ton='teal'] { background: var(--teal-700); }
 .seg-item--actif[data-ton='amb'] { background: var(--amb-700); }
 
-.seg--actif {
-  width: 100%;
+/* Le bouton rayon referme, dans la barre du haut : il montre ou
+   on est, il ne doit pas s'etaler. C'est un declencheur, pas un
+   segment de tableau — donc PAS de `flex: 1` comme les autres.
+
+   Cette regle doit suivre `.seg-item` : a specs egales, la
+   derniere ecrite gagne. */
+.seg-depuis {
+  flex: 0 1 auto;
+  min-width: 0;
+  padding: 0 14px;
   background: var(--c-100);
   font-weight: 700;
   letter-spacing: -0.01em;
@@ -583,7 +624,19 @@ body {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  align-items: center;
 }
+
+/* Sur une tablette, la coque remplit l'ecran — sinon une bande
+   vide de chaque cote. Mais des cartes de 900 px de large sont
+   illisibles : la ligne devient trop longue pour l'oeil. C'est
+   donc le CONTENU qui se limite et se centre, comme sur
+   ordinateur.
+
+   Pas de media query : 680 px ne mord pas sur un telephone de
+   360 a 412, et cela evite d'avoir une condition au milieu du
+   fichier, les media queries devant rester a la fin. */
+.contenu > * { width: 100%; max-width: 680px; }
 
 /* ---------- Sections ---------- */
 
@@ -1034,7 +1087,11 @@ body {
     gap: 24px;
     width: 226px;
     flex: none;
-    min-height: 100vh;
+    /* `height` et non `min-height` : avec un minimum, le conteneur
+       peut grandir plus haut que la fenetre, et `flex: 1` sur la
+       liste ne borne rien — la liste deborde au lieu de
+       defiler, et le pied passe sous l'ecran. */
+    height: 100vh;
     padding: 22px 14px;
     background: var(--c-0);
     border-right: 1px solid var(--line);
@@ -1060,11 +1117,19 @@ body {
     text-transform: uppercase;
     color: var(--c-400);
   }
-  .barre__titre--espace { margin-top: 22px; }
+  .barre__titre--espace { margin-top: 14px; }
 
   .barre__rayon { padding: 0 2px; }
   .barre__rayon .seg-item { justify-content: flex-start; }
   .barre__nav { display: flex; flex-direction: column; flex: 1; }
+
+  /* 14 entrees a 44 px de haut font 616 px : c'est plus haut
+     qu'un ecran de 800 px une fois la marque, le rayon et le pied
+     poses. Plutot que de rendre les touches plus petites — le
+     minimum tactile n'est pas negociable — on reduit les vides
+     autour, et la liste defile pour le reste. Le pied, lui, ne
+     bouge jamais : c'est la sortie de secours. */
+  .barre { gap: 14px; }
 
   .nav-item {
     position: relative;
@@ -1102,10 +1167,22 @@ body {
   }
 
   .barre__pied {
+    flex: none;
     padding: 12px;
     border-top: 1px solid var(--line);
     font-size: 13px;
     color: var(--c-500);
+  }
+
+  /* Sur un ecran de 900 px de haut, la liste des gestes est plus
+     haute que la fenetre. Si tout defile, le bouton « Changer »
+     part sous le bord et il faut faire defiler pour changer de
+     personne. C'est une sortie de secours : elle doit toujours
+     etre visible. Donc la liste defile, le pied reste fixe. */
+  .barre__nav {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
   }
 
   /* Le selecteur du haut ferait doublon avec la barre laterale. */
