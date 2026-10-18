@@ -1,0 +1,18 @@
+{
+  "//": [
+    "Extensions utiles a ce projet. VS Code les propose a la premiere ouverture.",
+    "",
+    "Volontairement ABSENTS, et c'est important :",
+    "- Prettier : il reformatte la feuille de style et remet les media",
+    "  queries au milieu du fichier. Or une regle ecrite apres un @media",
+    "  gagne sur lui : le style d'ordinateur disparait sans qu'on le voie.",
+    "  Ce fichier-la n'est pas dans un ordre que le code peut deviner.",
+    "- Tailwind : le projet n'utilise pas de classes utilitaires. Le CSS",
+    "  est ecrit a la main, dans un ordre qui compte.",
+    "",
+    "Ne pas les ajouter : ellescasseraient silencieusement la mise en page."
+  ],
+  "recommendations": [
+    "dbaeumer.vscode-eslint"
+  ]
+}
