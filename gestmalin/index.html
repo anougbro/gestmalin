@@ -13,8 +13,18 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Gestmalin" />
 
-    <link rel="icon" type="image/svg+xml" href="/icone.svg" />
-    <link rel="apple-touch-icon" href="/icone-192.png" />
+    <!-- Chemins RELATIFS, sans barre oblique de tete : `icone.svg`
+         se resout en `/icone.svg` a la racine comme en
+         `/gestmalin/icone.svg` dans un sous-dossier. Aucune
+         variable a remplacer, donc rien qui puisse rester litteral
+         dans le fichier servi.
+
+         En absolu, `/icone.svg` pointe a la racine du DOMAINE : sur
+         GitHub Pages le site vit dans `/gestmalin/`, et l'icone —
+         donc toute la reconnaissance de l'application — ne se
+         trouve pas. -->
+    <link rel="icon" type="image/svg+xml" href="icone.svg" />
+    <link rel="apple-touch-icon" href="icone-192.png" />
 
     <title>Gestmalin — Stock pharmacie</title>
 
@@ -34,6 +44,8 @@
     <noscript>
       Cette application a besoin de JavaScript. Activez-le dans votre navigateur.
     </noscript>
-    <script type="module" src="/src/main.tsx"></script>
+    <!-- Chemin relatif, sans barre oblique de tete : il marche aussi
+         bien a la racine qu dans un sous-dossier. -->
+    <script type="module" src="./src/main.tsx"></script>
   </body>
 </html>

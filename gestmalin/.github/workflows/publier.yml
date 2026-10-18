@@ -1,0 +1,76 @@
+name: Publier
+
+# ============================================================
+# METTRE EN LIGNE SUR GITHUB PAGES
+#
+# Chaque push sur `main` reconstruit et republie. Pas de fichier
+# a envoyer a la main, pas d'APK a reinstaller sur le telephone :
+# c'est tout l'interet d'une PWA.
+#
+# Le chemin de base est passe au build et non ecrit dans le code.
+# L'application ne sait donc pas ou elle est hebergee : le meme
+# code sert a la racine, dans `/gestmalin/`, ou derriere un
+# domaine propre.
+# ============================================================
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Une seule publication a la fois. Deux pushes rapproches ne
+# doivent pas se marcher dessus : le second attend le premier.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  publier:
+    name: Construire et publier
+    runs-on: ubuntu-latest
+
+    env:
+      # Le nom du depot. A changer si le depot ne s'appelle pas
+      # « gestmalin » : c'est le seul endroit ou le chemin est
+      # ecrit.
+      NOM_DEPO: gestmalin
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Installer les dependances
+        run: npm ci
+
+      - name: Verifier avant de publier
+        # Aucun defaut ne part en ligne. Les tests tournent avant
+        # le build : publier du code casse serait le pire moment
+        # pour le decouvrir.
+        run: npm run verifier
+
+      - name: Construire
+        run: npm run build
+        env:
+          BASE_PATH: /${{ github.event.repository.name }}/
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+      - name: Publier
+        id: publier
+        uses: actions/deploy-pages@v4
+
+      - name: Dire ou c'est
+        run: echo "En ligne sur ${{ steps.publier.outputs.page_url }}"
