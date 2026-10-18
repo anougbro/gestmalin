@@ -40,3 +40,12 @@ pnpm-debug.log*
 # Cache
 .cache/
 .eslintcache
+# Les documents de conception de la pharmacie.
+# Ils ne doivent JAMAIS partir dans le depot public : ils decrivent
+# le fonctionnement de l'officine. Ils restent sur le disque, et
+# c'est volontaire.
+#
+# Ils ont ete retires de l'historique par git filter-branch. Attention :
+# cette commande a supprime le repertoire du DISQUE aussi, pas
+# seulement du depot. Recuperables depuis le tag sauvegarde-avant-push.
+docs/
