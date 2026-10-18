@@ -40,6 +40,14 @@ jobs:
       # ecrit.
       NOM_DEPO: gestmalin
 
+    # Le depot contient le dossier `gestmalin`, pas l'application
+    # a la racine. Toutes les commandes y travaillent : sinon
+    # `npm ci` ne trouve aucun package.json et le build echoue
+    # sans message, ou pire, construit le mauvais dossier.
+    defaults:
+      run:
+        working-directory: gestmalin
+
     steps:
       - uses: actions/checkout@v4
 
@@ -47,6 +55,7 @@ jobs:
         with:
           node-version: 22
           cache: npm
+          cache-dependency-path: gestmalin/package-lock.json
 
       - name: Installer les dependances
         run: npm ci
@@ -60,13 +69,15 @@ jobs:
       - name: Construire
         run: npm run build
         env:
-          BASE_PATH: /${{ github.event.repository.name }}/
+          BASE_PATH: /${{ env.NOM_DEPO }}/
 
       - uses: actions/configure-pages@v5
 
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: dist
+          # `dist` est relatif a la racine du depot, pas au
+          # dossier de travail de l'etape precedente.
+          path: gestmalin/dist
 
       - name: Publier
         id: publier
