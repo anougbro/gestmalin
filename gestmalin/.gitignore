@@ -13,7 +13,13 @@ dist-ssr
 *.local
 
 # Editor directories and files
+# Les reglages du projet SONT suivis. Ils ne sont pas un gost
+# personnel : ils encodent une contrainte. Un formateur automatique
+# remettrait les media queries au milieu du fichier, et une regle
+# ecrite apres un @media gagne sur lui — le style d'ordinateur
+# disparait sans qu'aucune erreur ne s'affiche.
 .vscode/*
+!.vscode/settings.json
 !.vscode/extensions.json
 .idea
 .DS_Store

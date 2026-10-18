@@ -1,0 +1,24 @@
+{
+  "//": "Reglages du projet. Lus par VS Code a l'ouverture du dossier.",
+
+  "editor.formatOnSave": false,
+  "editor.formatOnPaste": false,
+
+  "//formatOnSave": "Volontairement faux. Le CSS et l'ordre des media queries sont faits main : un formateur automatique les remet dans un ordre qui casse la feuille de style sans erreur visible.",
+
+  "typescript.tsdk": "node_modules/typescript/lib",
+
+  "files.eol": "\n",
+  "files.insertFinalNewline": true,
+  "files.trimTrailingWhitespace": true,
+
+  // Les scriptes de verification : ils ecrivent des captures et lisent
+  // des bases IndexedDB de test. En cas d'echec, on veut le detail.
+  "eslint.enable": true,
+  "eslint.useFlatConfig": true,
+
+  // TypeScript : le fichier utilise le type strict du projet. On veut
+  // l'erreur soulignee dans le fichier, pas seulement dans le terminal.
+  "javascript.validate.enable": true,
+  "typescript.tsserver.maxTsServerMemory": 2048
+}

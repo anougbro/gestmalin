@@ -21,15 +21,12 @@ out/
 # Editors / OS
 .DS_Store
 Thumbs.db
-.vscode/
+/.vscode/
 # ...sauf ceux du projet : ils ne sont pas un gout personnel, ils
 # encodent une contrainte. Un formateur automatique remettrait les
 # media queries au milieu du fichier, et une regle ecrite apres un
 # @media gagne sur lui : le style d'ordinateur disparait sans
 # qu'aucune erreur ne s'affiche.
-!/gestmalin/.vscode/
-!/gestmalin/.vscode/settings.json
-!/gestmalin/.vscode/extensions.json
 .idea/
 *.swp
 
