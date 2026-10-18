@@ -45,12 +45,12 @@ const sw = await page.evaluate(async () => {
 })
 ok(sw === 'inscrit', `le service worker est inscrit (${sw})`)
 
-const manifest = await page.evaluate(async (b) => {
+const manifest = await page.evaluate(async () => {
   const l = document.querySelector('link[rel=manifest]') as HTMLLinkElement | null
   if (!l) return null
   const r = await fetch(l.href)
   return r.ok ? await r.json() : null
-}, base)
+})
 ok(!!manifest, 'le manifeste se charge')
 ok(manifest?.start_url === base, `start_url correct (${manifest?.start_url})`)
 
