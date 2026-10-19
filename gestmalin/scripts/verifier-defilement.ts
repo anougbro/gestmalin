@@ -1,4 +1,5 @@
 import { chromium } from 'playwright'
+import { prepare } from './aide.ts'
 
 /* ============================================================
    QUI DEFILE ?
@@ -15,9 +16,10 @@ import { chromium } from 'playwright'
 const navigateur = await chromium.launch()
 const page = await navigateur.newPage({ viewport: { width: 393, height: 852 }, hasTouch: true })
 await page.goto('http://localhost:5173/', { waitUntil: 'networkidle' })
+    await prepare(page)
 await page.waitForTimeout(1200)
 
-for (const c of ['1', '2', '3', '4']) {
+for (const c of ['1', '2', '3', '4', '5']) {
   await page.getByRole('button', { name: c, exact: true }).click()
 }
 await page.getByRole('button', { name: 'Entrer' }).click()

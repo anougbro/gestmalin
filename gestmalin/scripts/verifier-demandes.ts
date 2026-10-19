@@ -1,4 +1,5 @@
 import { chromium, type Page } from 'playwright'
+import { prepare } from './aide.ts'
 
 /* ============================================================
    TROIS DEMANDES
@@ -38,6 +39,7 @@ for (const [nom, vp] of [
   const page = await navigateur.newPage({ viewport: vp })
   await page.goto('http://localhost:5173/', { waitUntil: 'networkidle' })
   await page.waitForTimeout(1200)
+  await prepare(page)
   await connecter(page)
 
   const etiquette = page.locator('.rayon-etiquette')
@@ -61,7 +63,16 @@ for (const [nom, vp] of [
   ok(apres === nomEtiquette, `${nom} : cinq tapes dans le coin ne changent pas de rayon`)
 
   const dansMenu = page.locator('.barre__rayon .seg-item')
-  ok((await dansMenu.count()) === 2, `${nom} : les deux rayons sont dans le menu`)
+  /* Ce telephone ne gere qu'un seul rayon. Le tiroir montre donc
+     UNE pastille, et elle ne doit pas etre un bouton : un bouton
+     unique qui ne change rien est un bouton casse. La regle
+     « ne pas basculer par megarde » tient mieux ainsi qu'avec
+     deux pastilles dont une seule separe vraiment les gens. */
+  ok((await dansMenu.count()) === 1, `${nom} : le rayon du telephone est montre`)
+  const boutonsRayon = page.locator('.barre__rayon .seg-item[role="tab"]')
+  ok((await boutonsRayon.count()) === 0, `${nom} : rien a cliquer pour changer de rayon`)
+  const nomAffiche = (await dansMenu.first().innerText()).trim()
+  ok(nomAffiche === nomEtiquette, `${nom} : la pastille porte le bon nom (« ${nomAffiche} »)`)
 
   await page.close()
 }
@@ -72,6 +83,7 @@ console.log('\n2. Changer son code quand on veut')
 const page = await navigateur.newPage({ viewport: { width: 1440, height: 900 } })
 await page.goto('http://localhost:5173/', { waitUntil: 'networkidle' })
 await page.waitForTimeout(1200)
+  await prepare(page)
 await connecter(page)
 await page.getByRole('button', { name: 'Réglages' }).first().click()
 await page.waitForTimeout(700)
@@ -150,7 +162,7 @@ for (const [nom, vp] of [
 ] as const) {
   const p = await navigateur.newPage({ viewport: vp })
   await p.goto('http://localhost:5173/', { waitUntil: 'networkidle' })
-  await p.waitForTimeout(1000)
+  await prepare(p)
   await connecter(p)
 
   const info = await p.evaluate(() => ({

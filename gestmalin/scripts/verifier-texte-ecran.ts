@@ -1,4 +1,5 @@
 import { chromium } from 'playwright'
+import { prepare } from './aide.ts'
 
 /* ============================================================
    AUCUN NOM DE VARIABLE A L'ECRAN
@@ -31,6 +32,8 @@ async function inspecter(nom: string) {
 }
 
 await page.goto('http://localhost:5173/', { waitUntil: 'networkidle' })
+
+await prepare(page)
 await page.waitForTimeout(1400)
 await inspecter('connexion')
 

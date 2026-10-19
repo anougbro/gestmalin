@@ -1,4 +1,5 @@
 import { chromium } from 'playwright'
+import { prepare } from './aide.ts'
 
 /* ============================================================
    LA VERSION PUBLIEE, HORS LIGNE
@@ -33,6 +34,7 @@ page.on('console', (m) => { if (m.type() === 'error') erreurs.push(m.text().slic
 
 /* ---------- En ligne, d'abord ---------- */
 await page.goto(url, { waitUntil: 'networkidle' })
+await prepare(page)
 await page.waitForTimeout(1500)
 ok((await page.locator('.ecran--connexion').count()) > 0, 'la page se charge depuis le chemin de base')
 

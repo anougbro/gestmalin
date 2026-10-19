@@ -1,4 +1,5 @@
 import { chromium } from 'playwright'
+import { prepare } from './aide.ts'
 import { mkdirSync } from 'node:fs'
 
 /* ============================================================
@@ -132,17 +133,27 @@ async function scanner(code: string) {
 const texteEcran = () => page.locator('body').innerText()
 
 await page.goto('http://localhost:5173/', { waitUntil: 'networkidle' })
+
+await prepare(page)
 await attendre(1500)
 
 /* ---------- Connexion ---------- */
 titre('0. Connexion')
-for (const c of '12345') {
-  await page.locator('.pave__touche', { hasText: new RegExp(`^${c}$`) }).first().click()
-  await attendre(60)
-}
-await page.getByRole('button', { name: 'Entrer' }).click()
-await attendre(1200)
+await connecterSession()
 ok((await texteEcran()).includes('Réception') || (await page.locator('.menu-btn').count()) > 0, 'la session est ouverte')
+
+/** Entre si le pave est devant. Le pave est la preuve qu'on n'est
+    pas encore connecte : apres un rechargement, la session est
+    morte et il revient, et il faut retaper le code. */
+async function connecterSession() {
+  if ((await page.locator('.pave__touche').count()) === 0) return
+  for (const c of '12345') {
+    await page.locator('.pave__touche', { hasText: new RegExp(`^${c}$`) }).first().click()
+    await attendre(60)
+  }
+  await page.getByRole('button', { name: 'Entrer' }).click()
+  await attendre(1400)
+}
 
 await allerVers('Réglages')
 await page.getByRole('button', { name: /Charger le jeu/ }).click()
@@ -208,19 +219,55 @@ ok(stockFinal === 2, `la base compte 2 boites (recu ${stockFinal})`)
 
 /* ---------- 4. Le produit est dans l autre rayon ---------- */
 titre('4. Le produit est dans l autre rayon')
-await page.locator('.entete__retour').first().click()
-await attendre(700)
-await ouvrirMenu()
-await page.locator('.tiroir [role="tab"]', { hasText: /^Ménagers$/ }).click()
-await attendre(1000)
-ok((await texteEcran()).includes('Ménagers'), 'le rayon Ménagers est ouvert')
 
+/* On ne peut plus changer de rayon depuis le menu : un telephone
+   qui ne gere qu'un seul rayon n'affiche plus de bouton, et c'est
+   exactement le comportement voulu.
+
+   Le cas reel se construit donc autrement : un produit qui VIT
+   dans le rayon d'une autre personne. On l'ecrit dans la base
+   depuis l'autre point de vue — une vraie base distante, sur un
+   autre telephone — puis on le scanne ici. */
+const CODE_ETRANGER = '4006381333931'
+await page.evaluate(async (code: string) => {
+  const { base, ATTENTE_ID } = await import('/src/donnees/base.ts')
+  const { nouvelId, maintenant } = await import('/src/donnees/depots.ts')
+
+  /* Ce produit appartient au rayon que CE telephone ne gere pas. */
+  const id = 'p-etranger'
+  if (!(await base.produits.get(id))) {
+    await base.produits.add({
+      id, rayonId: 'r-men', categorieId: '', nomFr: 'Sérum du voisin',
+      codeBarres: code, unite: 'boite', seuil: 0, actif: true,
+    } as never)
+    await base.mouvements.add({
+      id: nouvelId(), type: 'reception', rayonId: 'r-men', produitId: id,
+      quantite: 4, versEmplacementId: ATTENTE_ID, motif: 'reception',
+      auteurId: 'u-9', date: maintenant(), synchro: 0,
+    } as never)
+  }
+}, CODE_ETRANGER)
+await page.reload({ waitUntil: 'networkidle' })
+await attendre(1800)
+await connecterSession()
 await allerVers('Réception')
-await scanner(CODE_NEUF)
+
+await scanner(CODE_ETRANGER)
 const apresMcn = await texteEcran()
-ok(apresMcn.includes('Médicaments'), 'le bon rayon est annonce')
+ok(apresMcn.includes('Ménagers'), 'le bon rayon est annoncé')
 ok(!apresMcn.includes('Code inconnu'), 'et non « code inconnu », qui serait faux')
 await page.screenshot({ path: 'captures/scan-autre-rayon.png' })
+
+/* Et surtout : il ne se passe RIEN d'autre. Pas de creation, pas
+   d'enregistrement. Une reception dans le mauvais rayon est
+   exactement ce qu on cherche a empecher. */
+const stockEtranger = await page.evaluate(async (code: string) => {
+  const { base } = await import('/src/donnees/base.ts')
+  const p = await base.produits.where('codeBarres').equals(code).first()
+  return { mouvements: p ? (await base.mouvements.where('produitId').equals(p.id).toArray()).length : -1, rayon: p?.rayonId ?? null }
+}, CODE_ETRANGER)
+ok(stockEtranger.mouvements === 1, `aucun mouvement n a ete ajoute (${stockEtranger.mouvements})`)
+ok(stockEtranger.rayon === 'r-men', `le produit est toujours dans Menagers (${stockEtranger.rayon})`)
 
 /* ---------- Bilan ---------- */
 console.log(echecs === 0

@@ -1,9 +1,11 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useSession } from '../etat/useSession'
 import { base } from '../donnees/base'
+import { deplacerVersRayon } from '../donnees/personnes'
+import { aLeDroit, type Utilisateur } from '../domaine/acces'
+import { RAYONS_PAR_DEFAUT } from '../etat/rayons'
 import { chargerJeuEssai, chargerPersonnes, COMPTES_ESSAI } from '../donnees/jeuEssai'
 import { empreinte, LONGUEUR_CODE } from '../domaine/acces'
-import { RAYONS_PAR_DEFAUT } from '../etat/rayons'
 import { Icone } from './Icones'
 import { Bouton, Entete, PastillesCode, PavillonNumerique } from './Primitives'
 
@@ -16,10 +18,16 @@ import { Bouton, Entete, PastillesCode, PavillonNumerique } from './Primitives'
    ============================================================ */
 
 export function EcranReglages({ retour }: { retour: () => void }) {
-  const { rayon, utilisateur, rafraichir, toutEffacer: vider } = useSession()
+  const { rayon, utilisateur, rafraichir, rayonsVisibles, toutEffacer: vider } = useSession()
   const [message, setMessage] = useState<string | null>(null)
 
-  const autreRayon = RAYONS_PAR_DEFAUT.find((x) => x.id !== rayon.id)?.id ?? rayon.id
+  /* Le second rayon a charger dans le jeu d'essai, s'il existe.
+     On NE peut pas le deviner : sur un telephone qui ne gere qu'un
+     rayon, l'autre appartient a quelqu'un d'autre, et y ecrire des
+     produits d'essai reviendrait a remplir une base qui n'a rien a
+     y faire. On passe donc `null`, et le chargeur ne remplira rien. */
+  const rayonMed = rayonsVisibles.find((id) => id !== rayon.id) ?? (rayon.id === 'r-med' ? rayon.id : null)
+  const rayonMen = rayonsVisibles.find((id) => id !== rayon.id) ?? (rayon.id === 'r-men' ? rayon.id : null)
 
   /* ---------- Changer son code ----------
 
@@ -81,8 +89,8 @@ export function EcranReglages({ retour }: { retour: () => void }) {
   /* ---------- Le reste ---------- */
 
   async function charger() {
-    const r = await chargerJeuEssai(rayon.id, autreRayon, utilisateur?.id ?? 'u-1')
-    await chargerPersonnes(rayon.id, autreRayon)
+    const r = await chargerJeuEssai(rayonMed, rayonMen, utilisateur?.id ?? 'u-1')
+    await chargerPersonnes(rayonMed, rayonMen)
     setMessage(`${r.produits} produits et ${r.mouvements} mouvements chargés.`)
     await rafraichir()
   }
@@ -92,15 +100,44 @@ export function EcranReglages({ retour }: { retour: () => void }) {
      longueur : tout le monde est alors passe a 00000, et la
      liste ci-dessus ne dit plus vrai. */
   async function remettreLesComptes() {
-    await chargerPersonnes(rayon.id, autreRayon)
+    await chargerPersonnes(rayonMed, rayonMen)
     setMessage('Les codes de l\'essai sont remis.')
     await rafraichir()
   }
 
-  async function effacerTout() {
+  /* ---------- Qui gere quel rayon ---------- */
+
+const [personnes, setPersonnes] = useState<Utilisateur[]>([])
+
+/* Se seul `directeur` deplace quelqu'un. C'est le meme droit que
+   la gestion des comptes : celui qui gere les personnes gere aussi
+   ou elles travaillent. Deux droits pour une seule idee. */
+const peutGererRayons = utilisateur ? aLeDroit(utilisateur.role, 'utilisateurs') : false
+
+async function lirePersonnes() {
+  setPersonnes(await base.utilisateurs.toArray())
+}
+
+useEffect(() => {
+  void lirePersonnes()
+}, [])
+
+async function transferer(id: string, rayonId: string) {
+  const refus = await deplacerVersRayon(id, rayonId, utilisateur)
+  if (refus) {
+    setMessage(refus)
+    await lirePersonnes()
+    return
+  }
+  await lirePersonnes()
+  await rafraichir()
+  setMessage('Rayon changé.')
+}
+
+async function effacerTout() {
     if (!confirm('Effacer TOUT : produits, lots, mouvements, alertes ?\n\nCette action est définitive.')) return
     await vider()
-    await chargerPersonnes(rayon.id, autreRayon)
+    await chargerPersonnes(rayonMed, rayonMen)
     setMessage('Tout a été effacé. Les zones et les emplacements sont conservés.')
     await rafraichir()
   }
@@ -170,8 +207,7 @@ export function EcranReglages({ retour }: { retour: () => void }) {
             Les codes de l'essai. Ils ne sont jamais stockés en clair
             dans l'application : elle ne compare que des empreintes.
           </p>
-
-          <ul className="codes">
+          <ul className="codes" data-liste="comptes">
             {COMPTES_ESSAI.map((c) => (
               <li key={c.id} className="codes__ligne">
                 <span className="codes__nom">{c.nom}</span>
@@ -186,6 +222,62 @@ export function EcranReglages({ retour }: { retour: () => void }) {
               Remettre les codes de l'essai
             </Bouton>
           </div>
+        </div>
+
+        {/* ---------- Qui gere quel rayon ----------
+
+            La regle tient en une ligne : une personne n'ouvre que
+            ses rayons. Elle ne peut pas changer, et elle ne voit
+            meme pas les autres.
+
+            Ce bloc sert a la surveillance et au depannage, pas a la
+            liberation : sans lui, un transfert de poste se ferait
+            en vidant la base. */}
+        <div className="carte">
+          <p className="section__titre">Qui gère quel rayon</p>
+          <p style={{ margin: '0 0 12px', fontSize: 13.5, color: 'var(--c-700)' }}>
+            Ce téléphone ne montre que les rayons de la personne.
+          </p>
+
+          <ul className="codes" data-liste="rayons">
+            {personnes.map((p) => (
+              <li key={p.id} className="codes__ligne" style={{ cursor: 'default' }}>
+                <span className="codes__nom">{p.nom}</span>
+                <span className="codes__peut">
+                  {p.rayonsAutorises.length === 0
+                    ? 'Aucun'
+                    : p.rayonsAutorises
+                        .map((id) => RAYONS_PAR_DEFAUT.find((r) => r.id === id)?.nom ?? id)
+                        .join(' · ')}
+                </span>
+              </li>
+            ))}
+          </ul>
+
+          {peutGererRayons && (
+            <div style={{ marginTop: 14 }}>
+              <p className="section__titre" style={{ margin: '0 0 8px' }}>Transférer</p>
+              <div className="grille-2">
+                {personnes.map((p) => (
+                  <select
+                    key={p.id}
+                    className="champ__saisie"
+                    value={p.rayonsAutorises[0] ?? ''}
+                    aria-label={`Rayon de ${p.nom}`}
+                    onChange={(e) => void transferer(p.id, e.target.value)}
+                  >
+                    {RAYONS_PAR_DEFAUT.map((r) => (
+                      <option key={r.id} value={r.id}>{r.nom}</option>
+                    ))}
+                  </select>
+                ))}
+              </div>
+              <p style={{ margin: '10px 0 0', fontSize: 12.5, color: 'var(--c-500)' }}>
+                Transférer quelqu'un vers un rayon qu'il ne gère pas ici ne
+                l'efface pas : cela retire simplement son accès.
+              </p>
+            </div>
+          )}
         </div>
 
         {/* ---------- Jeu d'essai ---------- */}

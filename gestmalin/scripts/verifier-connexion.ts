@@ -1,4 +1,5 @@
 import { chromium } from 'playwright'
+import { prepare } from './aide.ts'
 
 /* ============================================================
    LA CONNEXION, DANS UN VRAI NAVIGATEUR
@@ -19,6 +20,8 @@ page.on('console', (m) => { if (m.type() === 'error') erreurs.push(m.text().slic
 page.on('pageerror', (e) => erreurs.push((e.stack ?? e.message).slice(0, 900)))
 
 await page.goto('http://localhost:5173/', { waitUntil: 'networkidle' })
+
+await prepare(page)
 await page.waitForTimeout(1200)
 
 /* ---- 1. L'ecran de connexion est bien la ---- */

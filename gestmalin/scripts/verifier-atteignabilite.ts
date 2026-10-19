@@ -1,4 +1,5 @@
 import { chromium } from 'playwright'
+import { prepare } from './aide.ts'
 
 /* ============================================================
    QU'EST-CE QUI EST ATTEIGNABLE ?
@@ -29,6 +30,7 @@ for (const [nom, viewport] of [
 ] as const) {
   const page = await navigateur.newPage({ viewport })
   await page.goto('http://localhost:5173/', { waitUntil: 'networkidle' })
+    await prepare(page)
   await page.waitForTimeout(1000)
   for (const c of ['1', '2', '3', '4', '5']) {
     await page.getByRole('button', { name: c, exact: true }).click()

@@ -1,4 +1,5 @@
 import { chromium, type Page } from 'playwright'
+import { prepare } from './aide.ts'
 
 /* ============================================================
    LES COMPTES, PAS A PAS
@@ -38,6 +39,7 @@ function empreinte(id: string, code: string): string {
 
 const page = await navigateur.newPage({ viewport: { width: 1440, height: 900 } })
 await page.goto('http://localhost:5173/', { waitUntil: 'networkidle' })
+await prepare(page)
 await page.waitForTimeout(1400)
 
 const debut = await page.evaluate(async () => {

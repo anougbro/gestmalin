@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   aLeDroit, empreinte, codeCorrect, aLeMandat, peutValider,
-  peutUtiliser, roleEffectif, connecter, LONGUEUR_CODE, type Utilisateur,
+  peutUtiliser, rayonsUtilisables, roleEffectif, connecter, LONGUEUR_CODE, type Utilisateur,
 } from './acces'
 
 const MAINTENANT = '2026-06-15T12:00:00Z'
@@ -165,5 +165,59 @@ describe('la connexion hors ligne', () => {
     expect(peutUtiliser(amina, 'r-med')).toBe(false)
     expect(peutValider(amina, 'r-men', MAINTENANT)).toBe(true)
     expect(peutValider(amina, 'r-med', MAINTENANT)).toBe(false)
+  })
+})
+
+/* ============================================================
+   CE QUE VOIT LA PERSONNE
+
+   Une regle d'acces qui filtre l'affichage mais pas le clic est
+   une regle d'acces incomplete. On teste donc les deux ensemble,
+   parce que c'est leur COMBINAISON qui tient la porte.
+   ============================================================ */
+
+describe('les rayons visibles', () => {
+  const tous = [{ id: 'r-med' }, { id: 'r-men' }]
+
+  it('avant la connexion, tous les rayons sont visibles', () => {
+    /* L'accueil doit s'ouvrir sans code. Filtrer avant
+       d'identifier reviendrait a interdire a quelqu un de voir
+       ou il se trouve avant meme de s'identifier. */
+    expect(rayonsUtilisables(null, tous)).toEqual(['r-med', 'r-men'])
+  })
+
+  it('une personne de Menagers ne voit que Menagers', () => {
+    const gestmalinier = utilisateur({ id: 'u2', role: 'responsable', rayonsAutorises: ['r-men'] })
+    expect(rayonsUtilisables(gestmalinier, tous)).toEqual(['r-men'])
+  })
+
+  it('l ordre de la liste de reference est respecte', () => {
+    /* Si l'ordre venait de `rayonsAutorises`, il changerait selon
+       la personne. Le meme ecran doit se lire pareil pour tous. */
+    const g = utilisateur({ id: 'u', rayonsAutorises: ['r-men', 'r-med'] })
+    expect(rayonsUtilisables(g, tous)).toEqual(['r-med', 'r-men'])
+  })
+
+  it('un compte desactive ne voit plus rien', () => {
+    /* Inactif signifie inactif. Lui laisser voir les rayons
+       serait une porte entrouverte sur une base dont il ne peut
+       plus rien faire — mais dont il pourrait regarder. */
+    const g = utilisateur({ role: 'responsable', rayonsAutorises: ['r-med', 'r-men'], actif: false })
+    expect(rayonsUtilisables(g, tous)).toEqual([])
+  })
+
+  it('ce qui est invisible est aussi inaccessible', () => {
+    /* LA propriete qui compte. Il ne suffit pas de cacher une
+       pastille : la regle d'acces doit dire non aussi. C'est le
+       couple des deux qui ferme la porte, et c'est lui qu'on
+       teste. */
+    const gestmalinier = utilisateur({ role: 'responsable', rayonsAutorises: ['r-men'] })
+    const visibles = rayonsUtilisables(gestmalinier, tous)
+    for (const { id } of tous) {
+      /* Ce qui est visible est accessible, et — le point qui
+         compte — ce qui ne l'est pas ne l'est pas non plus. */
+      expect(peutUtiliser(gestmalinier, id)).toBe(visibles.includes(id))
+    }
+    expect(visibles).toEqual(['r-men'])
   })
 })

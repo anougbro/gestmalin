@@ -1,4 +1,5 @@
 import { chromium } from 'playwright'
+import { prepare } from './aide.ts'
 
 /* ============================================================
    LE FIL DES ETATS, DANS L'ORDRE
@@ -50,6 +51,7 @@ async function afficher(titre: string) {
 
 /* ---------- Etape 1 : premier demarrage ---------- */
 await page.goto('http://localhost:5173/', { waitUntil: 'networkidle' })
+await prepare(page)
 await page.waitForTimeout(1600)
 await afficher('ETAPE 1 — premier demarrage')
 

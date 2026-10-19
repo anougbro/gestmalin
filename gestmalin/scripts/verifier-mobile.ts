@@ -11,6 +11,7 @@
    ============================================================ */
 
 import { chromium, devices, type Page } from 'playwright'
+import { prepare } from './aide.ts'
 import { mkdirSync } from 'node:fs'
 
 const SORTIE = 'captures'
@@ -49,6 +50,7 @@ for (const t of TAILLES) {
   })
   const page = await contexte.newPage()
   await page.goto('http://localhost:5173/', { waitUntil: 'networkidle' })
+  await prepare(page)
   await connecter(page)
   await page.waitForTimeout(900)
 
@@ -136,7 +138,7 @@ for (const t of TAILLES) {
     /* Retour a l'accueil : on separe chaque ecran par une
        navigation complete, pas par un retour dans l'historique. */
     await page.goto('http://localhost:5173/', { waitUntil: 'networkidle' })
-  await connecter(page)
+      await connecter(page)
     await page.waitForTimeout(400)
   }
 

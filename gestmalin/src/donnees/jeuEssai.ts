@@ -59,13 +59,18 @@ const AU_QUAI = [
   { id: 'quai3', nom: 'Éponge grattante', unite: 'piece', seuil: 12, peremption: null, quantite: 24, lot: 'n5o6p', cat: 'c-men' },
 ]
 
-export async function chargerJeuEssai(rayonMed: string, rayonMen: string, auteurId: string): Promise<{ produits: number; mouvements: number }> {
+export async function chargerJeuEssai(rayonMed: string | null, rayonMen: string | null, auteurId: string): Promise<{ produits: number; mouvements: number }> {
   const maintenantISO = maintenant()
   const produits: ProduitRow[] = []
   const lots: LotRow[] = []
   const mouvements: MouvementRow[] = []
 
   for (const [rayonId, graines] of [[rayonMed, MEDICAMENTS], [rayonMen, MENAGERS]] as const) {
+    /* Un rayon nul, c'est un rayon que CE telephone ne gere pas.
+       On ne charge rien dedans : charger le jeu d'essai du
+       menager sur le telephone de la pharmacie remplirait
+       exactement ce que le cloisonnement vient d interdire. */
+    if (!rayonId) continue
     for (const g of graines) {
       produits.push({
         id: g.id, rayonId, categorieId: g.cat, nomFr: g.nom,
@@ -104,9 +109,16 @@ export async function chargerJeuEssai(rayonMed: string, rayonMen: string, auteur
     }
   }
 
+  /* Le quai n'appartient a aucun rayon : c'est la merchandise qui
+     attend d'etre posee. Mais elle doit bien etre rattachee a
+     celui que CE telephone gere, sinon elle n'apparait nulle part.
+     Sur un telephone menager, c'est donc le rayon menager. */
+  const rayonDuQuai = rayonMed ?? rayonMen
+  if (!rayonDuQuai) return { produits: 0, mouvements: 0 }
+
   for (const q of AU_QUAI) {
     produits.push({
-      id: q.id, rayonId: rayonMed, categorieId: q.cat, nomFr: q.nom,
+      id: q.id, rayonId: rayonDuQuai, categorieId: q.cat, nomFr: q.nom,
       codeBarres: q.cb, unite: q.unite as ProduitRow['unite'],
       seuil: q.seuil, actif: true, dci: q.dci, paysOrigine: q.pays,
     })
@@ -117,7 +129,7 @@ export async function chargerJeuEssai(rayonMed: string, rayonMen: string, auteur
       quantite: 0, emplacementId: ATTENTE_ID,
     })
     mouvements.push({
-      id: nouvelId(), type: 'reception', rayonId: rayonMed, produitId: q.id, lotId,
+      id: nouvelId(), type: 'reception', rayonId: rayonDuQuai, produitId: q.id, lotId,
       quantite: q.quantite, versEmplacementId: ATTENTE_ID,
       auteurId, date: maintenantISO, synchro: 0,
     })
@@ -145,11 +157,18 @@ export const COMPTES_ESSAI = [
   { id: 'u-3', nom: 'Dr Souley', role: 'pharmacien', code: '33333', peut: 'Valide tout' },
 ] as const
 
-export async function chargerPersonnes(rayonMed: string, rayonMen: string): Promise<void> {
+export async function chargerPersonnes(rayonMed: string | null, rayonMen: string | null): Promise<void> {
+  /* Les rayons nuls disparaissent. Sur un telephone qui ne gere que
+     les Menagers, le Dr Souley n y a pas acces non plus : il valide
+     « tout », mais « tout » ne vaut ici que ce que ce telephone
+     contient. C est moins flatteur, et c est exact. */
+  const sansNull = (r: Array<string | null>): string[] => r.filter((x): x is string => x !== null)
+
   const rayons: Record<string, string[]> = {
-    'u-1': [rayonMed, rayonMen],
-    'u-2': [rayonMen],
-    'u-3': [rayonMed, rayonMen],
+    'u-1': sansNull([rayonMed, rayonMen]),
+    
+'u-2': rayonMen ? [rayonMen] : [],
+    'u-3': sansNull([rayonMed, rayonMen]),
   }
 
   await base.utilisateurs.bulkPut(
@@ -157,7 +176,7 @@ export async function chargerPersonnes(rayonMed: string, rayonMen: string): Prom
       id: c.id,
       nom: c.nom,
       role: c.role,
-      rayonsAutorises: rayons[c.id] ?? [rayonMed],
+      rayonsAutorises: rayons[c.id] ?? sansNull([rayonMed]),
       actif: true,
       longueurCode: LONGUEUR_CODE,
       empreinte: empreinte(c.id, c.code),
@@ -167,7 +186,7 @@ export async function chargerPersonnes(rayonMed: string, rayonMen: string): Prom
   /* On ne rajoute la demande que si elle n'existe pas deja : la
      recharger ne doit pas effacer la decision deja prise. */
   const existe = await base.demandesApprobation.get('dem-1')
-  if (!existe) {
+  if (!existe && rayonMed) {
     await base.demandesApprobation.put({
       id: 'dem-1', type: 'quarantaine', rayonId: rayonMed, statut: 'en_attente',
       motif: 'Lot douteux signalé à la réception',

@@ -146,6 +146,36 @@ export function peutUtiliser(u: Utilisateur, rayonId: string): boolean {
   return u.actif && u.rayonsAutorises.includes(rayonId)
 }
 
+/* ---------- Les rayons d'une personne, vus de l'exterieur ----------
+
+   Le modèle ne connait que des identifiants de rayon ; l'ecran ne
+   connait que des noms et des couleurs. Cette fonction est le seul
+   endroit ou les deux se rencontrent.
+
+   Elle rend la LISTE des rayons utilisables, dans le bon ordre.
+   Deux raisons de ne pas la demander a l'interface :
+
+   1. Un rayon non autorise ne doit pas seulement etre refuse au
+      moment du clic — il ne doit pas etre AFFICHE. Une pastille
+      grise qu'on ne peut pas toucher apprend au contraire qu'il
+      existe un Menagers, ce qui n'a aucun interet pour la
+      personne qui ne le gere pas.
+
+   2. Sans connexion, c'est-a-dire avant toute identification, la
+      liste est celle de tout le monde. C'est ce qui permet
+      d'ouvrir l'application avant de taper son code, et de voir
+      ou l'on se trouve. */
+export function rayonsUtilisables(u: Utilisateur | null, tous: Array<{ id: string }>): string[] {
+  if (!u) return tous.map((r) => r.id)
+  /* On passe par `peutUtiliser` et non par une lecture directe
+     de `rayonsAutorises`. Les deux repondent a la meme question,
+     ils doivent donc venir du meme endroit : sinon il suffit
+     qu'un jour la premiere ajoute une condition — « actif »,
+     par exemple — pour que la liste montre un rayon que l'acces
+     refuse. Une pastille grise qui ne marche pas. */
+  return tous.filter((r) => peutUtiliser(u, r.id)).map((r) => r.id)
+}
+
 /** Le role effectif, pour l'affichage : le mandat remonte en tete. */
 export function roleEffectif(u: Utilisateur, rayonId: string, maintenant: string): string {
   if (aLeMandat(u, rayonId, maintenant)) return 'Mandat du pharmacien'

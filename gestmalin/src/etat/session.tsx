@@ -4,7 +4,7 @@ import { toutEffacer } from '../donnees/depots'
 import { calculerAlertes, compterAlertes, type Alerte } from '../domaine/alertes'
 import { aujourdhui } from '../domaine/temps'
 import { maintenantISO } from '../domaine/temps'
-import { connecter as verifierCode, type Utilisateur } from '../domaine/acces'
+import { connecter as verifierCode, peutUtiliser, rayonsUtilisables, type Utilisateur } from '../domaine/acces'
 import type { Mouvement } from '../domaine/types'
 import { Contexte, type Session } from './useSession'
 import { RAYONS_PAR_DEFAUT, type RayonTravail } from './rayons'
@@ -110,6 +110,18 @@ export function FournisseurSession({ children }: { children: ReactNode }) {
     setEnAttente(await base.demandesApprobation.where('statut').equals('en_attente').count())
   }
 
+  /* Ramener sur un rayon qui appartient a la personne.
+
+     Utilise a la connexion ET a la restauration de session : les
+     deux endroits ont la meme regle, donc le meme code. Sans
+     cela, on entre sur un ecran qui n est pas le sien, et on ne
+     comprend pas pourquoi il est vide. */
+  function rayonAutorise(u: Utilisateur, courant: RayonTravail): void {
+    if (peutUtiliser(u, courant.id)) return
+    const autre = RAYONS_PAR_DEFAUT.find((x) => peutUtiliser(u, x.id))
+    if (autre) setRayon(autre)
+  }
+
   /* La connexion est verifiee SUR PLACE, sans reseau : la base
      contient les empreintes, et le code saisi est compare a
      celle de la personne. */
@@ -123,11 +135,7 @@ export function FournisseurSession({ children }: { children: ReactNode }) {
         /* Si le rayon ouvert n'est pas le sien, on l'amene sur un
            rayon qui l'est. Sinon elle entre sur un écran qui n'est
            pas le sien, sans comprendre pourquoi c'est vide. */
-        const siens = r.utilisateur.rayonsAutorises
-        if (!siens.includes(rayon.id)) {
-          const autre = RAYONS_PAR_DEFAUT.find((x) => siens.includes(x.id))
-          if (autre) setRayon(autre)
-        }
+        rayonAutorise(r.utilisateur, rayon)
       }
       return r.ok
         ? { ok: true }
@@ -154,10 +162,7 @@ export function FournisseurSession({ children }: { children: ReactNode }) {
           const u = await base.utilisateurs.get(memorise)
           if (u?.actif) {
             setUtilisateur(u)
-            if (!u.rayonsAutorises.includes(rayon.id)) {
-              const autre = RAYONS_PAR_DEFAUT.find((x) => u.rayonsAutorises.includes(x.id))
-              if (autre) setRayon(autre)
-            }
+            rayonAutorise(u, rayon)
           } else {
             ecrireSession(null)
           }
@@ -178,11 +183,41 @@ export function FournisseurSession({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rayon, pret, maintenantISO().slice(0, 10)])
 
+  const rayonsVisibles = useMemo(
+    () => rayonsUtilisables(utilisateur, RAYONS_PAR_DEFAUT),
+    [utilisateur],
+  )
+
+  /* ---------- Le changement de rayon ----------
+
+     C'est ICI, et nulle part ailleurs, qu'une personne ne peut pas
+     aller dans un rayon qui n'est pas le sien.
+
+     Le modele possede `rayonsAutorises` depuis le debut, la regle
+     `peutUtiliser` aussi, et ses tests passent. Mais rien ne
+     l'appelait : changer de rayon consistait a `setRayon`, sans
+     question. Une pastille grise etait donc un simple bouton, et
+     la personne qui gere les Menagers pouvait basculer sur les
+     Medicaments et y ranger des produits qui n'etaient vus par
+     personne d'autre.
+
+     Le renvoi dit au tiroir pourquoi le geste n'a rien change :
+     un refus muet donne l'impression d'un ecran casse. */
+  function changer(id: string): boolean {
+    if (!utilisateur) {
+      setRayon(RAYONS_PAR_DEFAUT.find((r) => r.id === id) ?? RAYONS_PAR_DEFAUT[0])
+      return true
+    }
+    if (!peutUtiliser(utilisateur, id)) return false
+    setRayon(RAYONS_PAR_DEFAUT.find((r) => r.id === id) ?? RAYONS_PAR_DEFAUT[0])
+    return true
+  }
+
   const valeur = useMemo<Session>(
     () => ({
       rayon,
-      changeRayon: (id: string) =>
-        setRayon(RAYONS_PAR_DEFAUT.find((r) => r.id === id) ?? RAYONS_PAR_DEFAUT[0]),
+      changeRayon: changer,
+      rayonsVisibles,
       utilisateur,
       connecter,
       deconnecter: () => {
@@ -198,7 +233,7 @@ export function FournisseurSession({ children }: { children: ReactNode }) {
       demarrer,
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [rayon, alertes, pret, utilisateur, enAttente],
+    [rayon, alertes, pret, utilisateur, enAttente, rayonsVisibles],
   )
 
   return <Contexte.Provider value={valeur}>{children}</Contexte.Provider>

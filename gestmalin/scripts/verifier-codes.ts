@@ -1,4 +1,5 @@
 import { chromium } from 'playwright'
+import { prepare } from './aide.ts'
 
 /* ============================================================
    LES CODES SONT ECRITS DANS L'APPLICATION
@@ -52,6 +53,8 @@ async function lire() {
 }
 
 await page.goto('http://localhost:5173/', { waitUntil: 'networkidle' })
+
+await prepare(page)
 await page.waitForTimeout(1500)
 
 /* ---------- On fabrique le cas desagréable ---------- */
@@ -87,13 +90,13 @@ console.log('\n1. La liste des codes est ecrite dans l application')
 await page.getByRole('button', { name: 'Réglages' }).first().click()
 await page.waitForTimeout(800)
 
-const liste = await page.locator('.codes__ligne').count()
+const liste = await page.locator('[data-liste="comptes"] .codes__ligne').count()
 ok(liste === 3, `la liste affiche 3 personnes (${liste})`)
 
-const noms = await page.locator('.codes__nom').allTextContents()
+const noms = await page.locator('[data-liste="comptes"] .codes__nom').allTextContents()
 ok(noms.join(' | ') === 'Préparateur | Amina | Dr Souley', `les trois noms : ${noms.join(', ')}`)
 
-const codes = (await page.locator('.codes__code').allTextContents()).map((s) => s.trim())
+const codes = (await page.locator('[data-liste="comptes"] .codes__code').allTextContents()).map((s) => s.trim())
 ok(codes.join(',') === '12345,22222,33333', `les codes annonces : ${codes.join(', ')}`)
 
 const avant = await lire()

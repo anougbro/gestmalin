@@ -11,9 +11,16 @@ import type { toutEffacer } from '../donnees/depots'
 
 export type Session = {
   rayon: RayonTravail
-  changeRayon: (id: string) => void
+  /** Demande un changement de rayon. Renvoie faux si la personne
+      ne gere pas ce rayon : le refus n'est pas silencieux, il
+      remonte jusqu'a l'ecran. */
+  changeRayon: (id: string) => boolean
   /** La personne connectee, ou null tant qu'elle ne l'est pas. */
   utilisateur: Utilisateur | null
+  /** Les rayons que CETTE personne peut ouvrir, dans l'ordre.
+      Avant la connexion : tous les rayons, parce que l'ecran
+      d'accueil doit s'ouvrir sans code. */
+  rayonsVisibles: string[]
   connecter: (identifiant: string, code: string) => Promise<{ ok: boolean; message?: string }>
   deconnecter: () => void
   alertes: Alerte[]

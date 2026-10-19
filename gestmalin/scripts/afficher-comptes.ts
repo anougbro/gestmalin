@@ -1,4 +1,5 @@
 import { chromium } from 'playwright'
+import { prepare } from './aide.ts'
 
 /* ============================================================
    QUELS CODES, EXACTEMENT, SELON L'ETAT DE LA BASE
@@ -49,6 +50,8 @@ function retrouver(comptes: { id: string; nom: string; role: string; empreinte: 
 }
 
 await page.goto('http://localhost:5173/', { waitUntil: 'networkidle' })
+
+await prepare(page)
 await page.waitForTimeout(1500)
 
 console.log('=== ETAT 1 : premier demarrage, ou base ancienne reparee ===')

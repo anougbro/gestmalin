@@ -58,6 +58,15 @@ export type LigneInventaireRow = LigneInventaire & {
 export type UtilisateurRow = Utilisateur
 export type { Role }
 
+/* ---------- Un reglage de ce telephone ---------- */
+
+export type Reglage = {
+  cle: string
+  /** Le rayon que ce telephone gere. Vide tant que la question
+      n'a pas ete posee. */
+  rayon?: string
+}
+
 export type ReleveTemperatureRow = ReleveTemperature
 
 export type DemandeApprobationRow = DemandeApprobation & {
@@ -96,6 +105,25 @@ class BaseGestmalin extends Dexie {
   declare utilisateurs: Table<UtilisateurRow, string>
   declare relevesTemperature: Table<ReleveTemperatureRow, string>
   declare demandesApprobation: Table<DemandeApprobationRow, string>
+
+  /* ---------- Les reglages de CE telephone ----------
+
+     Une table clef-valeur, minuscule, mais qui porte une decision
+     qu'aucune autre table ne peut porter : sur quel rayon ce
+     telephone travaille.
+
+     Le savoir est ne cessaire parce que chaque personne a SON
+     telephone. Les medicaments d'un cote, les menagers de
+     l'autre, dans deux bases qui ne se parlent pas. Sans cette
+     information, le premier compte cree au lancement se voit
+     attribuer les deux rayons, et la personne qui gere les
+     menagers peut — sans le savoir — ranger ses produits sous
+     « Medicaments », ou personne n'ira les chercher.
+
+     La question n'est posee qu'une fois. Ensuite, le telephone
+     est rattache, et seul un `directeur` peut le changer depuis
+     Reglages. */
+  declare reglages: Table<Reglage, string>
 
   constructor() {
     super('gestmalin')
@@ -158,6 +186,33 @@ class BaseGestmalin extends Dexie {
              de depart, et de le dire a l'utilisateur. */
           if (!u.empreinte) u.codeARepartir = true
         })
+      })
+
+    /* ---------- Migration 3 : les reglages du telephone ----------
+
+       Nouvelle table, aucun contenu a reconvertir. Dexie la cree
+       vide. Le fait de ne pas y mettre de valeur est ce qui fera
+       poser la question « que gères-tu ? » au prochain lancement.
+
+       C'est le comportement voulu : une base deja installee mais
+       jamais rattachee doit poser la question, et une base
+       rattachee ne doit surtout pas la poser une seconde fois. */
+    this.version(3)
+      .stores({
+        rayons: 'id, nom, ordre',
+        zones: 'id, rayonId, type',
+        emplacements: 'id, zoneId, code, [zoneId+ordre]',
+        categories: 'id, rayonId, nom',
+        fournisseurs: 'id, rayonId, nom',
+        produits: 'id, rayonId, categorieId, codeBarres, nomFr, fournisseurId, [rayonId+nomFr]',
+        lots: 'id, produitId, peremption, [produitId+peremption]',
+        mouvements: 'id, produitId, lotId, rayonId, type, date, auteurId, synchro, [produitId+date], [lotId+date], [rayonId+date]',
+        inventaires: 'id, zoneId, statut, date',
+        lignesInventaire: 'id, inventaireId, produitId, [inventaireId+produitId]',
+        utilisateurs: 'id, nom, role',
+        relevesTemperature: 'id, zoneId, date',
+        demandesApprobation: 'id, statut, date, type, [statut+date]',
+        reglages: 'cle',
       })
   }
 }

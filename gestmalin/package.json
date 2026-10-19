@@ -29,6 +29,7 @@
     "verifier-site": "node --experimental-strip-types scripts/verifier-site-publie.ts",
     "verifier-scan": "node --experimental-strip-types scripts/verifier-scan.ts",
     "verifier-comptage": "node --experimental-strip-types scripts/verifier-comptage.ts",
+    "verifier-cloisonnement": "node --experimental-strip-types scripts/verifier-cloisonnement.ts",
     "remplir": "node --experimental-strip-types scripts/remplir-et-capturer.ts"
   },
   "dependencies": {

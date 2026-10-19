@@ -1,4 +1,5 @@
 import { chromium } from 'playwright'
+import { prepare } from './aide.ts'
 
 /* ============================================================
    LE PASSAGE A 5 CHIFFRES
@@ -39,6 +40,7 @@ const page = await navigateur.newPage({ viewport: { width: 1440, height: 900 } }
 
 /* ---------- On fabrique la base d'avant ---------- */
 await page.goto('http://localhost:5173/', { waitUntil: 'networkidle' })
+await prepare(page)
 await page.waitForTimeout(1400)
 
 const ANCIENS = [

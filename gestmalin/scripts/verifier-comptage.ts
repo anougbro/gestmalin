@@ -1,4 +1,5 @@
 import { chromium } from 'playwright'
+import { prepare } from './aide.ts'
 import { mkdirSync } from 'node:fs'
 
 /* ============================================================
@@ -51,6 +52,8 @@ async function connecter() {
 }
 
 await page.goto('http://localhost:5173/', { waitUntil: 'networkidle' })
+
+await prepare(page)
 await attendre(1500)
 await connecter()
 

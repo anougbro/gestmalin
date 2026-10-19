@@ -1,4 +1,5 @@
 import { chromium } from 'playwright'
+import { prepare } from './aide.ts'
 
 /* La longueur vient du domaine, pas du script : un test qui
    ecrit 5 en dur continue de passer quand l'application en
@@ -28,6 +29,8 @@ const surLePave = () => page.locator('.ecran--connexion').count()
 const tape = async (c: string) => page.getByRole('button', { name: c, exact: true }).click()
 
 await page.goto('http://localhost:5173/', { waitUntil: 'networkidle' })
+
+await prepare(page)
 await page.waitForTimeout(1200)
 
 /* ---------- 1. Effacer ---------- */

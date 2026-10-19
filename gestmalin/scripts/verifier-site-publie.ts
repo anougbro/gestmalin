@@ -1,4 +1,5 @@
 import { chromium } from 'playwright'
+import { prepare } from './aide.ts'
 
 /* ============================================================
    LE SITE PUBLIÉ, VRAIMENT EN LIGNE
@@ -27,6 +28,7 @@ page.on('console', (m) => { if (m.type() === 'error') erreurs.push(m.text().slic
 
 /* ---------- En ligne ---------- */
 await page.goto(url, { waitUntil: 'networkidle' })
+await prepare(page)
 await page.waitForTimeout(2000)
 ok((await page.locator('.ecran--connexion').count()) > 0, 'la page se charge depuis Internet')
 

@@ -9,6 +9,8 @@ import { EcranRanger } from './interface/EcranRanger'
 import { EcranSortie } from './interface/EcranSortie'
 import { EcranAlertes } from './interface/EcranAlertes'
 import { EcranCompter } from './interface/EcranCompter'
+import { EcranRayonDuTelephone } from './interface/EcranRayonDuTelephone'
+import { rayonDuTelephone } from './donnees/reglages'
 import { EcranChercher } from './interface/EcranChercher'
 import { EcranProduits } from './interface/EcranProduits'
 import { EcranFichiers } from './interface/EcranFichiers'
@@ -139,7 +141,7 @@ function BarreLaterale({
       l'ordinateur reste en place et n'en a rien. */
   surFermeture?: () => void
 }) {
-  const { compteurs, utilisateur, rayon, changeRayon, deconnecter } = useSession()
+  const { compteurs, utilisateur, rayon, changeRayon, rayonsVisibles, deconnecter } = useSession()
   const navRef = useRef<HTMLElement | null>(null)
   const [defile, setDefile] = useState(false)
 
@@ -181,6 +183,11 @@ function BarreLaterale({
       </button>
     ))
 
+  /* Les rayons que cette personne peut ouvrir, dans l'ordre de
+     la liste de reference. Une seule entree : ce sont eux qu'on
+     propose, dans cet ordre. */
+  const siens = RAYONS_PAR_DEFAUT.filter((r) => rayonsVisibles.includes(r.id))
+
   return (
     <aside className="barre">
       <div className="barre__marque">
@@ -188,23 +195,45 @@ function BarreLaterale({
         <span>Gestmalin</span>
       </div>
 
+      {/* Le choix du rayon n'a de sens que s'il y a un choix.
+
+          Une personne qui ne gere qu'un seul rayon n'a rien a
+          choisir : une pastille qui ne change rien est un bouton
+          qui ne marche pas, et elle finit par croire que
+          l'application est en panne. On montre alors le rayon,
+          sans lui donner l'air d'etre un bouton — exactement
+          comme le rayon dans la barre du haut.
+
+          Et on ne montre QUE ses rayons. Afficher un rayon
+          interdit apprend a la personne qu'il existe, ce qui ne
+          lui sert a rien et l'oblige a se demander pourquoi elle
+          n'y a pas acces. */}
       <div className="barre__rayon">
         <p className="barre__titre">Rayon</p>
-        <div className="seg seg--vertical" role="tablist">
-          {RAYONS_PAR_DEFAUT.map((r) => (
-            <button
-              key={r.id}
-              role="tab"
-              aria-selected={r.id === rayon.id}
-              className={`seg-item${r.id === rayon.id ? ' seg-item--actif' : ''}`}
-              data-ton={r.ton}
-              onClick={() => { changeRayon(r.id); surFermeture?.() }}
-            >
-              <Icone nom={r.ton === 'teal' ? 'capsule' : 'maison'} taille={17} />
-              {r.nom}
-            </button>
-          ))}
-        </div>
+        {siens.length > 1 ? (
+          <div className="seg seg--vertical" role="tablist">
+            {siens.map((r) => (
+              <button
+                key={r.id}
+                role="tab"
+                aria-selected={r.id === rayon.id}
+                className={`seg-item${r.id === rayon.id ? ' seg-item--actif' : ''}`}
+                data-ton={r.ton}
+                onClick={() => { changeRayon(r.id); surFermeture?.() }}
+              >
+                <Icone nom={r.ton === 'teal' ? 'capsule' : 'maison'} taille={17} />
+                {r.nom}
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div className="seg seg--vertical">
+            <div className="seg-item seg-item--actif" aria-current="true">
+              <Icone nom={rayon.ton === 'teal' ? 'capsule' : 'maison'} taille={17} />
+              {rayon.nom}
+            </div>
+          </div>
+        )}
       </div>
 
       <nav className={`barre__nav${defile ? ' barre__nav--defile' : ''}`} ref={navRef}>
@@ -236,6 +265,20 @@ function Coquille() {
   ])
   const [tiroir, setTiroir] = useState(false)
   const { pret, utilisateur } = useSession()
+  const [rayonRattache, setRayonRattache] = useState(false)
+
+  /* Tant que la base n'est pas prete, on ne peut pas savoir si ce
+     telephone a deja ete rattache. Une fois la base lue, on pose
+     la question — et plus jamais. */
+  useEffect(() => {
+    if (!pret) return
+    let annule = false
+    void (async () => {
+      const r = await rayonDuTelephone()
+      if (!annule) setRayonRattache(r !== null)
+    })()
+    return () => { annule = true }
+  }, [pret])
 
   const courant = pile[pile.length - 1]
   const definition = ECRANS_ECRAN[courant.ecran]
@@ -270,6 +313,13 @@ function Coquille() {
       </div>
     )
   }
+
+  /* La toute premiere question, posee une fois par telephone.
+
+     Elle vient AVANT le code : demander un code a quelqu'un dont
+     on ne sait pas encore sur quoi il travaille ne sert a rien. Et
+     elle ne se pose qu'une fois — la reponse est ecrite en base. */
+  if (!rayonRattache) return <EcranRayonDuTelephone surChoix={() => setRayonRattache(true)} />
 
   /* On entre par un code, pas par un mot de passe : quatre
      chiffres, tapes d'une seule main, avec des gants. */
