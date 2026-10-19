@@ -1,5 +1,5 @@
 import { chromium } from 'playwright'
-import { prepare } from './aide.ts'
+import { connecterParNom, prepare } from './aide.ts'
 
 /* ============================================================
    LE SITE PUBLIÉ, VRAIMENT EN LIGNE
@@ -69,12 +69,9 @@ await page.waitForTimeout(2500)
 
 ok((await page.locator('.ecran--connexion').count()) > 0, 'elle demarre SANS reseau')
 
-for (const c of '12345') {
-  await page.locator('.pave__touche', { hasText: new RegExp(`^${c}$`) }).first().click()
-  await page.waitForTimeout(60)
-}
-await page.getByRole('button', { name: 'Entrer' }).click()
-await page.waitForTimeout(1200)
+/* On passe par la liste des noms : c'est une vraie porte, et elle
+   n'a besoin d'aucun reseau — c'est ce que ce test verifie. */
+await connecterParNom(page, 'Préparateur', '12345')
 ok((await page.locator('.ecran--connexion').count()) === 0, 'on se connecte hors ligne')
 
 /* Le jeu d'essai complet, hors ligne : c'est le geste de travail. */
@@ -91,7 +88,11 @@ await page.waitForTimeout(2500)
 await page.locator('.entete__retour').click()
 await page.waitForTimeout(900)
 const auQuai = await page.locator('.stat').nth(2).innerText()
-ok(/46/.test(auQuai), `les donnees se chargent hors ligne (au quai : ${auQuai.replace(/\s+/g, ' ').trim()})`)
+/* Le quai compte les produits du rayon OUVERT. La session demarre
+   sur Medicaments : 14 + 8 = 22. Le troisieme produit du quai est
+   menager, et il n'apparait que sur l'autre rayon — c'est le
+   cloisonnement, pas une perte. */
+ok(/22/.test(auQuai), `les donnees se chargent hors ligne (au quai : ${auQuai.replace(/\s+/g, ' ').trim()})`)
 
 await page.screenshot({ path: 'captures/site-publie-hors-ligne.png', fullPage: true })
 
