@@ -1,52 +1,91 @@
 import { useEffect, useState } from 'react'
 import { useSession } from '../etat/useSession'
 import { base } from '../donnees/base'
-import { reparerComptes, CODE_INITIAL, CODE_PAR_DEFAUT, UTILISATEUR_INITIAL } from '../etat/preparation'
-import { LONGUEUR_CODE } from '../domaine/acces'
+import { reparerComptes, CODE_INITIAL, CODE_PAR_DEFAUT } from '../etat/preparation'
+import { LONGUEUR_CODE, LONGUEUR_TELEPHONE, normaliserTelephone, telephoneSaisi, type Utilisateur } from '../domaine/acces'
 import { Icone } from './Icones'
 import { PastillesCode, PavillonNumerique } from './Primitives'
 
 /* ============================================================
    LA CONNEXION
 
-   Un pave de chiffres. Pas de mot de passe : personne ne le
-   retient, et personne ne le tape d'une seule main avec des
-   gants. On choisit son nom, on tape quatre chiffres, on entre.
+   Son numero, puis son code. Deux tapes, sans liste a faire
+   defiler.
 
-   La connexion marche SANS RESEAU : le telephone contient la
-   liste des personnes et l'empreinte de leur code.
+   On ne demande PAS le nom : il est affiche quand le code est
+   bon, et le demander avant servirait a rien. Le nom, personne ne
+   le retient — c'est justement pour ca que le numero existe.
 
-   Deux details qui comptes :
-   - le bouton d'entree porte le mot « Entrer », pas une fleche
-     qui ressemble a un retour en arriere
-   - il existe TOUJOURS une sortie de secours. Une application
-     hors ligne, sans serveur, ne doit jamais pouvoir enfermer
-     quelqu'un devant son ecran.
+   LA LISTE DES NOMS N'A PAS DISPARU. Elle est la, derriere un
+   bouton discret, pour deux raisons :
+
+   - les comptes anterieurs a cette regle n'ont pas de numero ;
+   - dix chiffres, ca s'oublie. Etre bloque dehors un samedi
+     matin, devant une pharmacie qui ne peut plus dire ce qu'elle
+     a en rayon, n'est pas un detail.
+
+   Le mot « oublie » est donc deux fois sur la meme idee : ce que
+   la personne a perdu, c'est une information — pas son acces.
    ============================================================ */
 
-export function EcranConnexion() {
+type Etape = 'numero' | 'code' | 'noms'
+
+export function EcranConnexion({ surCreation }: { surCreation: () => void }) {
   const { connecter } = useSession()
-  const [liste, setListe] = useState<{ id: string; nom: string; role: string }[]>([])
+  const [etape, setEtape] = useState<Etape>('numero')
+
+  /* Les comptes entiers, pas seulement le nom affiche : le numero
+     doit etre recherche ICI, a l entree, pour savoir s il existe
+     avant de demander un code.
+
+     Chercher le compte apres coup — c est a dire tenter la
+     connexion avec un code vide — afficherait « code incorrect »
+     alors que la personne n en a pas encore tape. Elle
+     recommencerait son code cinq fois. */
+  const [comptes, setComptes] = useState<Utilisateur[]>([])
+
+  const [numero, setNumero] = useState('')
   const [choisi, setChoisi] = useState<string | null>(null)
   const [code, setCode] = useState('')
   const [erreur, setErreur] = useState<string | null>(null)
-  const [secours, setSecours] = useState(false)
 
-  const recharger = () =>
-    base.utilisateurs.toArray().then((tous) =>
-      setListe(tous.filter((u) => u.actif).map((u) => ({ id: u.id, nom: u.nom, role: u.role }))),
-    )
+  const liste = comptes
+    .filter((u) => u.actif)
+    .map((u) => ({ id: u.id, nom: u.nom, role: u.role }))
+
+  const recharger = () => base.utilisateurs.toArray().then(setComptes)
 
   useEffect(() => { void recharger() }, [])
 
-  /* Un ecran de connexion qui avale ses erreurs est un ecran qui
-     laisse croire a un code faux quand la base est cassee. On
-     attrape, et on montre ce qui s'est reellement passe. */
+  /* ---------- Etape 1 : ce numero est-il connu ? ---------- */
+
+  function chercherParNumero() {
+    setErreur(null)
+    const voulu = normaliserTelephone(numero)
+    const trouves = comptes.filter((u) => u.telephone && normaliserTelephone(u.telephone) === voulu)
+
+    if (trouves.length === 0) {
+      setErreur('Numéro inconnu.')
+      return
+    }
+    if (trouves.length > 1) {
+      /* Deux comptes pour un numero : on ne sait pas lequel
+         ouvrir, et choisir le premier reviendrait a laisser le
+         code de l un ouvrir le mauvais rayon. */
+      setErreur('Ce numéro est utilisé deux fois. Demande à un responsable.')
+      return
+    }
+    setChoisi(trouves[0].id)
+    setEtape('code')
+  }
+
+  /* ---------- Etape 2 : le code ---------- */
+
   async function tenter(id: string) {
     try {
       const r = await connecter(id, code)
       if (r.ok) { setErreur(null); return }
-      setErreur(r.message ?? 'Code incorrect.')
+      setErreur(r.raison === 'inactif' ? 'Ce compte est désactivé.' : 'Code incorrect.')
     } catch {
       setErreur('Connexion impossible. Réessaie.')
     } finally {
@@ -62,12 +101,24 @@ export function EcranConnexion() {
       `À n'utiliser que si personne ne peut plus entrer.`,
     )) return
     await reparerComptes()
-    setSecours(false)
     setErreur(null)
     await recharger()
   }
 
-  function chiffre(c: string) {
+  /* ---------- Chiffres ---------- */
+
+  function chiffreNumero(c: string) {
+    setErreur(null)
+    if (numero.length >= LONGUEUR_TELEPHONE) return
+    const suivant = numero + c
+    setNumero(suivant)
+    /* Des que le numero est complet, on cherche la personne. Pas
+       de bouton a presser : il n'y a rien a choisir, et un
+       bouton « Suivant » ne ferait qu'ajouter une erreur de
+       frappe possible. */
+  }
+
+  function chiffreCode(c: string) {
     setErreur(null)
     /* Le garde est DANS la mise a jour fonctionnelle, pas a cote.
 
@@ -81,24 +132,17 @@ export function EcranConnexion() {
     setCode((v) => (v.length >= LONGUEUR_CODE ? v : v + c))
   }
 
-  /* Effacer le dernier chiffre. Sans cette touche, une erreur
-     de frappe est irrattrapable : il faut retaper les quatre
-     chiffres. J'avais supprime cette touche en nettoyant une
-     erreur de compilation — une erreur de typage qui a supprime
-     une fonction. Le test ne l'a pas vu : il n'y avait aucun test
-     sur ce pave. */
   function effacer() {
     setErreur(null)
-    setCode((v) => v.slice(0, -1))
+    if (etape === 'code') setCode((v) => v.slice(0, -1))
+    else setNumero((v) => v.slice(0, -1))
   }
 
   function toutEffacer() {
     setErreur(null)
     setCode('')
+    if (etape === 'numero') setNumero('')
   }
-
-  const seul = liste.length <= 1
-  const idCourant = seul ? (liste[0]?.id ?? UTILISATEUR_INITIAL.id) : choisi
 
   /* Sur ordinateur, on tape au clavier : chiffres, retour
      arriere, entree. C'est plus rapide que viser trois touches,
@@ -108,19 +152,16 @@ export function EcranConnexion() {
       if (e.key === 'Enter') {
         /* Une touche du pave garde le focus apres avoir ete
            touchee. Sans cet empirement, « Entrer » au clavier
-           declenche la DERNIERE touche touchee au doigt : on
-           ajoute un chiffre ou on en efface un, et le code tapé
-           devient faux sans qu'on voie pourquoi.
-
-           On neutralise donc toujours le comportement par defaut
-           d'Entree, et on ne valide que si le code est complet. */
+           declenche la DERNIERE touche touchee au doigt. */
         e.preventDefault()
-        if (idCourant && code.length === LONGUEUR_CODE) void tenter(idCourant)
+        if (etape === 'numero' && telephoneSaisi(numero)) chercherParNumero()
+        else if (etape === 'code' && code.length === LONGUEUR_CODE && choisi) void tenter(choisi)
         return
       }
 
       if (e.key >= '0' && e.key <= '9') {
-        chiffre(e.key)
+        if (etape === 'code') chiffreCode(e.key)
+        else if (etape === 'numero') chiffreNumero(e.key)
       } else if (e.key === 'Backspace') {
         e.preventDefault()
         effacer()
@@ -132,6 +173,8 @@ export function EcranConnexion() {
     return () => window.removeEventListener('keydown', auClavier)
   })
 
+  const enCode = etape === 'code' && choisi
+
   return (
     <div className="ecran ecran--connexion">
       <div className="connexion">
@@ -140,68 +183,95 @@ export function EcranConnexion() {
           <span>Gestmalin</span>
         </div>
 
-        {!seul && !idCourant && (
+        {/* ---------- Etape 1 : le numero ---------- */}
+        {etape === 'numero' && (
+          <>
+            <p className="connexion__titre">Ton numéro</p>
+            <PastillesCode code={numero} total={LONGUEUR_TELEPHONE} />
+            <PavillonNumerique
+              onChiffre={chiffreNumero}
+              onEffacer={effacer}
+              onValider={chercherParNumero}
+              peutValider={telephoneSaisi(numero)}
+            />
+            {erreur && <p className="connexion__erreur">{erreur}</p>}
+            <button className="btn btn--discret" style={{ color: 'rgba(255,255,255,.55)', minHeight: 40 }} onClick={() => { setEtape('noms'); setErreur(null) }}>
+              J’ai oublié le numéro
+            </button>
+          </>
+        )}
+
+        {/* ---------- Etape 2 : le code ---------- */}
+        {enCode && (
+          <>
+            <p className="connexion__titre">Ton code</p>
+            <p className="connexion__indices">
+              {liste.find((u) => u.id === choisi)?.nom ?? 'Préparateur'}
+            </p>
+            <PastillesCode code={code} />
+            <PavillonNumerique
+              onChiffre={chiffreCode}
+              onEffacer={effacer}
+              onValider={() => void tenter(choisi!)}
+              peutValider={code.length === LONGUEUR_CODE}
+            />
+            {erreur && <p className="connexion__erreur">{erreur}</p>}
+            <button
+              className="btn btn--discret"
+              style={{ color: 'rgba(255,255,255,.7)' }}
+              onClick={() => { setEtape(numero ? 'numero' : 'noms'); setCode(''); setErreur(null) }}
+            >
+              Retour
+            </button>
+          </>
+        )}
+
+        {/* ---------- Secours : la liste des noms ---------- */}
+        {etape === 'noms' && (
           <>
             <p className="connexion__titre">Qui est-ce&nbsp;?</p>
             <div className="colonne" style={{ width: '100%' }}>
               {liste.map((u) => (
-                <button key={u.id} className="personne" onClick={() => setChoisi(u.id)}>
+                <button key={u.id} className="personne" onClick={() => { setChoisi(u.id); setEtape('code'); setErreur(null) }}>
                   <Icone nom="capsule" taille={20} />
                   <span>{u.nom}</span>
                 </button>
               ))}
             </div>
-            <button className="btn btn--discret" style={{ color: 'rgba(255,255,255,.7)' }} onClick={reparer}>
-              Code oublié ?
-            </button>
-          </>
-        )}
-
-        {idCourant && (
-          <>
-            <p className="connexion__titre">Code</p>
-            <p className="connexion__indices">
-              {liste.find((u) => u.id === idCourant)?.nom ?? 'Préparateur'}
-            </p>
-
-            {/* Une personne tape un code qui n'existe pas, elle
-                conclut que l'application est cassee. Elle ne peut
-                pas deviner qu'il manque des comptes a creer. */}
-            {seul && liste.length === 1 && (
-              <p className="connexion__note">Seule personne — Réglages pour en ajouter</p>
-            )}
-
-            <PastillesCode code={code} />
-
-            <PavillonNumerique
-              onChiffre={chiffre}
-              onEffacer={effacer}
-              onValider={() => void tenter(idCourant)}
-              peutValider={code.length === LONGUEUR_CODE}
-            />
-
-            {erreur && <p className="connexion__erreur">{erreur}</p>}
-
-            {!seul && (
-              <button className="btn btn--discret" style={{ color: 'rgba(255,255,255,.7)' }} onClick={() => { setChoisi(null); setCode(''); setErreur(null) }}>
-                Retour
-              </button>
-            )}
-
-            {secours && (
-              <p className="connexion__erreur">
-                Code du premier compte : {CODE_INITIAL}. Autres comptes : {CODE_PAR_DEFAUT}.
-              </p>
-            )}
             <button
               className="btn btn--discret"
-              style={{ color: 'rgba(255,255,255,.5)', minHeight: 40 }}
-              onClick={() => void reparer()}
+              style={{ color: 'rgba(255,255,255,.7)' }}
+              onClick={() => { setEtape(numero ? 'numero' : 'code'); setErreur(null) }}
             >
-              Code oublié ?
+              Retour
             </button>
           </>
         )}
+
+        {etape !== 'noms' && (
+          <button
+            className="btn btn--discret"
+            style={{ color: 'rgba(255,255,255,.5)', minHeight: 40 }}
+            onClick={() => void reparer()}
+          >
+            Code oublié ?
+          </button>
+        )}
+
+        {/* ---------- Creer son compte ----------
+
+            La deuxieme personne — celle des menagers — n attend
+            pas que la premiere lui prepare une place. Elle ouvre
+            l application, elle cree son compte, elle est
+            prete. Aucun acces n est accorde a l'avance, et donc
+            aucun n est a demander. */}
+        <button
+          className="btn btn--discret"
+          style={{ color: 'rgba(255,255,255,.55)', minHeight: 44 }}
+          onClick={surCreation}
+        >
+          Créer mon compte
+        </button>
       </div>
     </div>
   )

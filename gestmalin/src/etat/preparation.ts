@@ -1,7 +1,7 @@
 import { base, ATTENTE_ID } from '../donnees/base'
 import { toutEffacer } from '../donnees/depots'
 import { RAYONS_PAR_DEFAUT, ZONES_PAR_DEFAUT, emplacementsDeZone } from './rayons'
-import { empreinte, LONGUEUR_CODE, type Utilisateur } from '../domaine/acces'
+import { empreinte, LONGUEUR_CODE, normaliserTelephone, type Utilisateur } from '../domaine/acces'
 
 /* ============================================================
    LE PREMIER AMORCAGE
@@ -26,6 +26,10 @@ export const UTILISATEUR_INITIAL: Omit<Utilisateur, 'empreinte'> = {
   nom: 'Préparateur',
   role: 'preparateur',
   rayonsAutorises: ['r-med', 'r-men'],
+  /* Pas de numero : ce compte existe depuis avant que le numero
+     soit l'identite. Il se connecte par son nom, ce qui est
+     exactement le chemin de secours prevu pour lui. */
+  independant: true,
   actif: true,
   longueurCode: LONGUEUR_CODE,
 }
@@ -67,11 +71,7 @@ async function amorger(): Promise<void> {
        a aucune zone. Tout ce qui arrive passe par la avant d'etre pose. */
     await base.emplacements.put({ id: ATTENTE_ID, zoneId: '', code: 'QUAI', ordre: 0 })
 
-    await base.utilisateurs.put({
-      ...UTILISATEUR_INITIAL,
-      longueurCode: LONGUEUR_CODE,
-      empreinte: empreinte(UTILISATEUR_INITIAL.id, CODE_INITIAL),
-    })
+    await base.utilisateurs.put(nouveauCompteInitial())
   })
 }
 
@@ -123,21 +123,53 @@ export async function reparerComptes(): Promise<number> {
      Sans personne, l'ecran de connexion montre un pave que
      personne ne peut valider. On en recree une. */
   if (tous.length === 0) {
-    await base.utilisateurs.put({
-      ...UTILISATEUR_INITIAL,
-      longueurCode: LONGUEUR_CODE,
-      empreinte: empreinte(UTILISATEUR_INITIAL.id, CODE_INITIAL),
-    })
+    await base.utilisateurs.put(nouveauCompteInitial())
     return 1
   }
 
   const aReparer = tous.filter((u) => !empreinteBienFormee(u.empreinte) || u.longueurCode !== LONGUEUR_CODE)
+
+  /* ---------- Les numeros ----------
+
+     Une base anterieure n'a pas de numero : ces comptes se
+     connectent encore par leur nom, et c'est voulu — la liste
+     reste la porte de secours de precisement ceux-la.
+
+     En revanche, il faut savoir si deux comptes portent le meme
+     numero. Un numero partage est un acces qui ouvre la mauvaise
+     personne : `independant` passe a faux, et la connexion refuse
+     les DEUX, meme avec le bon code. Mieux vaut deux portes
+     fermees qu'une porte qui ouvre le mauvais rayon. */
+  const parNumero = new Map<string, number>()
+  for (const u of tous) {
+    if (!u.telephone) continue
+    const cle = normaliserTelephone(u.telephone)
+    parNumero.set(cle, (parNumero.get(cle) ?? 0) + 1)
+  }
+  for (const u of tous) {
+    if (!u.telephone) continue
+    const partage = (parNumero.get(normaliserTelephone(u.telephone)) ?? 0) > 1
+    if (u.independant === partage) continue
+    await base.utilisateurs.put({ ...u, independant: !partage })
+  }
+
   for (const u of aReparer) {
     await base.utilisateurs.put({
       ...u,
       longueurCode: LONGUEUR_CODE,
+      independant: u.independant ?? true,
       empreinte: empreinte(u.id, u.id === UTILISATEUR_INITIAL.id ? CODE_INITIAL : CODE_PAR_DEFAUT),
     })
   }
   return aReparer.length
+}
+
+/** Le compte du tout premier lancement. */
+export function nouveauCompteInitial(): Utilisateur {
+  return {
+    ...UTILISATEUR_INITIAL,
+    longueurCode: LONGUEUR_CODE,
+    independant: true,
+    empreinte: empreinte(UTILISATEUR_INITIAL.id, CODE_INITIAL),
+  }
 }

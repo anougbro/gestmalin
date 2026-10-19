@@ -2,22 +2,32 @@ import { chromium } from 'playwright'
 import { mkdirSync } from 'node:fs'
 
 /* ============================================================
-   DEUX PERSONNES, DEUX TELEPHONES, AUCUN PASSAGE
+   UN SEUL TELEPHONE, DEUX PERSONNES, DEUX RAYONS
 
-   Le modele possede `rayonsAutorises` depuis le premier jour, la
-   regle `peutUtiliser` aussi, et leurs tests passent. Mais rien
-   ne l'appelait : `changeRayon` faisait un `setRayon` sans
-   question. La regle d'acces etait ecrite, testee, et jamais
-   appliquee.
+   Le modele a change, et le sens du mot « cloisonnement » avec lui.
 
-   C'est la meme famille de defaut que le scan : un modele correct,
-   une decision correcte, et le raccordement entre les deux
-   absent. Le raccordement ne se voit pas dans les tests
-   unitaires — il se voit en ouvrant l'application.
+   Avant : un telephone appartenait a un rayon. Celui de la
+   pharmacie, ou celui des menagers. Deux telephones, deux bases,
+   rien en commun — la separation tenait parce que les donnees
+   n'etaient pas au meme endroit.
 
-   Ce script ouvre donc deux sessions, comme deux telephones, et
-   verifie que la seconde ne peut pas entrer dans le rayon de la
-   premiere, meme en forçant l'appel.
+   Maintenant : un seul telephone sert les deux rayons, et les deux
+   jeux de donnees vivent dans la MEME base. La separation ne peut
+   donc plus venir du support. Elle vient du COMPTE : c'est le
+   numero et le code qui ouvrent, et c'est `rayonsAutorises` qui
+   decide de ce qu'on voit.
+
+   Ce deplacement change la nature du risque. Avant, se tromper de
+   rayon voulait dire ecrire dans une base qu'on ne reverrait
+   jamais ; maintenant, cela veut dire ecrire dans le rayon du
+   voisin, sur le meme telephone, a portee de main. La question
+   n'est plus « quelle base ? » mais « quel compte est ouvert ? ».
+
+   C'est une famille de defaut connue de ce projet : une regle
+   ecrite, testee, et jamais raccordee. `rayonsAutorises` et
+   `peutUtiliser` existaient deja quand rien ne les appelait. Ce
+   script ne teste donc pas le modele — les tests unitaires le
+   font. Il ouvre l'application et regarde ce qui se passe.
    ============================================================ */
 
 mkdirSync('captures', { recursive: true })
@@ -31,142 +41,213 @@ const ok = (bon: boolean, message: string) => {
 }
 const titre = (t: string) => console.log(`\n${t}`)
 
-/** Un telephone neuf, avec une session isolee. */
-async function ouvrirTelephone(nom: string) {
-  const contexte = await navigateur.newContext({ viewport: { width: 393, height: 852 } })
-  const page = await contexte.newPage()
+/* Un seul contexte : un seul telephone, une seule base. */
+const contexte = await navigateur.newContext({ viewport: { width: 393, height: 852 } })
+const page = await contexte.newPage()
+
+const PHARMACIE = { numero: '9000000001', code: '11111', rayon: 'Médicaments', id: 'r-med' }
+const MENAGE = { numero: '9000000002', code: '22222', rayon: 'Ménagers', id: 'r-men' }
+
+/* ---------- Les deux comptes ----------
+
+   Deux numeros differents, deux codes differents, deux rayons
+   differents. C'est ce que la pharmacie fera le jour de
+   l'installation : chacun cree le sien quand il est la. */
+async function semerLesComptes() {
   await page.goto('http://localhost:5173/', { waitUntil: 'networkidle' })
-  await page.waitForTimeout(1800)
-  return { contexte, page, nom }
+  await page.waitForTimeout(1500)
+  await page.evaluate(async (comptes: Array<{ id: string; nom: string; numero: string; code: string; rayon: string }>) => {
+    const { base } = await import('/src/donnees/base.ts')
+    const { empreinte, LONGUEUR_CODE } = await import('/src/domaine/acces.ts')
+    for (const c of comptes) {
+      await base.utilisateurs.put({
+        id: c.id,
+        nom: c.nom,
+        role: 'responsable',
+        rayonsAutorises: [c.rayon],
+        actif: true,
+        independant: true,
+        telephone: c.numero,
+        longueurCode: LONGUEUR_CODE,
+        empreinte: empreinte(c.id, c.code),
+      })
+    }
+  }, [
+    { id: 'u-pharm', nom: 'Pharmacie', numero: PHARMACIE.numero, code: PHARMACIE.code, rayon: PHARMACIE.id },
+    { id: 'u-men', nom: 'Ménage', numero: MENAGE.numero, code: MENAGE.code, rayon: MENAGE.id },
+  ])
+  await page.reload({ waitUntil: 'networkidle' })
+  await page.waitForTimeout(1500)
 }
 
-async function choisirRayon(page: import('playwright').Page, rayon: string) {
-  await page.getByRole('button', { name: rayon }).click()
-  await page.waitForTimeout(1200)
-}
+/* ---------- Les gestes ---------- */
 
-async function connecter(page: import('playwright').Page, code: string) {
-  for (const c of code) {
+async function taper(chiffres: string) {
+  for (const c of chiffres) {
     await page.locator('.pave__touche', { hasText: new RegExp(`^${c}$`) }).first().click()
     await page.waitForTimeout(60)
   }
-  await page.getByRole('button', { name: 'Entrer' }).click()
-  await page.waitForTimeout(1200)
 }
 
-async function rayonOuvert(page: import('playwright').Page): Promise<string | null> {
+/** Entre par la porte du numero : dix chiffres, Entrer, cinq chiffres, Entrer. */
+async function entrerParNumero(numero: string, code: string) {
+  await taper(numero)
+  await page.getByRole('button', { name: 'Entrer' }).click()
+  await page.waitForTimeout(900)
+  await taper(code)
+  await page.getByRole('button', { name: 'Entrer' }).click()
+  await page.waitForTimeout(1400)
+}
+
+async function sortir() {
+  await page.locator('.qui:visible, .qui-btn:visible, .qui-btn-lg:visible').first().click()
+  await page.waitForTimeout(900)
+}
+
+async function rayonOuvert(): Promise<string | null> {
   return page.locator('.rayon-etiquette__nom').first().innerText().catch(() => null)
 }
 
-async function rayonsProposes(page: import('playwright').Page): Promise<string[]> {
+/** Ce que le tiroir propose vraiment, et combien de ces choix sont cliquables. */
+async function rayonsProposes(): Promise<{ noms: string[]; boutons: number }> {
   await page.locator('.menu-btn').click()
   await page.waitForTimeout(600)
   const noms = (await page.locator('.tiroir .seg-item').allInnerTexts()).map((n) => n.trim())
+  /* Une pastille seule n'est pas un bouton : c'est ce qui distingue
+     « on ne peut pas changer » de « le choix est cache ». */
   const boutons = await page.locator('.tiroir .seg-item[role="tab"]').count()
   await page.keyboard.press('Escape')
   await page.waitForTimeout(400)
-  /* Une pastille qui ne s'attend pas — parce qu'elle est unique —
-     n'est pas un bouton. C'est ce qui distingue « on ne peut pas
-     changer » de « le choix est cache ». On renvoie donc le nombre
-     de vrais boutons a part. */
   return { noms, boutons }
 }
 
+async function allerVers(nom: string) {
+  await page.locator('.menu-btn').click()
+  await page.waitForTimeout(500)
+  await page.locator('.tiroir .nav-item', { hasText: new RegExp(`^${nom}$`) }).click()
+  await page.waitForTimeout(900)
+}
+
+/** Enregistre un produit par l'ecran Produits, comme le ferait la personne. */
+async function enregistrerProduit(nom: string) {
+  await allerVers('Produits')
+  await page.getByRole('button', { name: 'Nouveau', exact: true }).click()
+  await page.waitForTimeout(700)
+  await page.locator('input.champ__saisie').first().fill(nom)
+  await page.waitForTimeout(300)
+  await page.getByRole('button', { name: 'Enregistrer', exact: true }).click()
+  await page.waitForTimeout(900)
+}
+
+const rayonDuProduit = (nom: string) => page.evaluate(async (n: string) => {
+  const { base } = await import('/src/donnees/base.ts')
+  const p = await base.produits.where('nomFr').equals(n).first()
+  return p?.rayonId ?? null
+}, nom)
+
 /* ============================================================ */
 
-titre('1. Un telephone menager se declares des le premier lancement')
-const menager = await ouvrirTelephone('menager')
-const texteInitial = await menager.page.locator('body').innerText()
-ok(texteInitial.includes('Que gères-tu ?'), 'la question est posee avant le code')
-ok(texteInitial.includes('Médicaments') && texteInitial.includes('Ménagers'), 'les deux rayons sont proposes')
-await menager.page.screenshot({ path: 'captures/rayon-question.png' })
+titre('1. Un seul telephone porte bien les deux rayons')
+await semerLesComptes()
 
-await choisirRayon(menager.page, 'Ménagers')
-const apresChoix = await menager.page.locator('body').innerText()
-ok(apresChoix.includes('Entrer') || (await menager.page.locator('.pave__touche').count()) > 0, 'le pave de code apparait ensuite')
-
-/* ---------- 2. Le compte n a plus qu un seul rayon ---------- */
-titre('2. Le compte est rattache au rayon choisi')
-const rayonCompte = await menager.page.evaluate(async () => {
+const rayonsEnBase = await page.evaluate(async () => {
   const { base } = await import('/src/donnees/base.ts')
-  const u = await base.utilisateurs.get('u-1')
-  return u?.rayonsAutorises ?? []
+  return (await base.rayons.toArray()).map((r) => r.id).sort()
 })
-ok(rayonCompte.length === 1 && rayonCompte[0] === 'r-men', `le compte n a plus que ${JSON.stringify(rayonCompte)}`)
+ok(rayonsEnBase.length === 2, `la base du telephone contient deux rayons (${JSON.stringify(rayonsEnBase)})`)
 
-/* ---------- 3. On ne voit pas Menagers quand on est dans Menagers ---------- */
-titre('3. La connexion ouvre sur le bon rayon')
-await connecter(menager.page, '12345')
-ok((await rayonOuvert(menager.page)) === 'Ménagers', 'la session est sur Ménagers')
-const visibles = await rayonsProposes(menager.page)
-ok(!visibles.noms.includes('Médicaments'), `le rayon Médicaments n'est pas proposé (visibles : ${JSON.stringify(visibles.noms)})`)
-ok(visibles.boutons === 0, 'il n’y a aucun bouton de changement de rayon : rien à appuyer qui ne marche pas')
-await menager.page.screenshot({ path: 'captures/rayon-un-seul.png' })
-
-/* ---------- 4. Un produit saisi atterrit dans LE bon rayon ---------- */
-titre('4. Un produit saisi atterrit dans le rayon du téléphone')
-
-/* C'est LA consequence qui compte. Avant, la personne des menagers
-   pouvait basculer sur « Medicaments » et y ranger du savon : la
-   donnee etait la, valide, et personne ne la reverrait jamais.
-
-   On fait exactement ce qu'elle ferait : on enregistre un produit
-   menager, puis on regarde ou il s'est ecrit. */
-await menager.page.locator('.menu-btn').click()
-await menager.page.waitForTimeout(500)
-await menager.page.locator('.tiroir .nav-item', { hasText: /^Réception$/ }).click()
-await menager.page.waitForTimeout(900)
-
-const stockAvant = await menager.page.evaluate(async () => {
+const comptesEnBase = await page.evaluate(async () => {
   const { base } = await import('/src/donnees/base.ts')
-  return (await base.produits.where('rayonId').equals('r-med').toArray()).length
+  return (await base.utilisateurs.toArray()).filter((u) => u.telephone).map((u) => u.telephone).sort()
 })
-ok(stockAvant === 0, 'le téléphone Ménagers n’a aucun produit en Médicaments')
+ok(
+  comptesEnBase.includes(PHARMACIE.numero) && comptesEnBase.includes(MENAGE.numero),
+  `les deux comptes sont sur le meme telephone (${JSON.stringify(comptesEnBase)})`,
+)
 
-/* On cree un produit menager depuis l'ecran Produits. */
-await menager.page.locator('.menu-btn').click()
-await menager.page.waitForTimeout(500)
-await menager.page.locator('.tiroir .nav-item', { hasText: /^Produits$/ }).click()
-await menager.page.waitForTimeout(900)
-await menager.page.getByRole('button', { name: 'Nouveau', exact: true }).click()
-await menager.page.waitForTimeout(700)
-await menager.page.locator('input.champ__saisie').first().fill('Savon de test cloisonné')
-await menager.page.waitForTimeout(300)
-await menager.page.getByRole('button', { name: 'Enregistrer', exact: true }).click()
-await menager.page.waitForTimeout(900)
+titre('2. Le numero de la pharmacie ouvre la pharmacie')
+await entrerParNumero(PHARMACIE.numero, PHARMACIE.code)
+ok((await rayonOuvert()) === PHARMACIE.rayon, `la session est sur ${PHARMACIE.rayon} (vu : ${await rayonOuvert()})`)
 
-const ouEstLeProduit = await menager.page.evaluate(async (nomProduit: string) => {
+const vuePharm = await rayonsProposes()
+ok(
+  !vuePharm.noms.includes(MENAGE.rayon),
+  `le rayon ${MENAGE.rayon} n'est pas propose (visibles : ${JSON.stringify(vuePharm.noms)})`,
+)
+ok(vuePharm.boutons === 0, 'aucun bouton de changement de rayon : rien a appuyer qui ne marche pas')
+await page.screenshot({ path: 'captures/cloisonnement-pharmacie.png' })
+
+titre('3. Un produit saisi la reste la')
+await enregistrerProduit('Paracetamol de test')
+ok((await rayonDuProduit('Paracetamol de test')) === PHARMACIE.id, 'le produit est enregistre dans Medicaments')
+
+titre('4. Le numero du menage ouvre les menagers, sur le MEME telephone')
+await sortir()
+await entrerParNumero(MENAGE.numero, MENAGE.code)
+ok((await rayonOuvert()) === MENAGE.rayon, `la session est sur ${MENAGE.rayon} (vu : ${await rayonOuvert()})`)
+
+const vueMen = await rayonsProposes()
+ok(
+  !vueMen.noms.includes(PHARMACIE.rayon),
+  `le rayon ${PHARMACIE.rayon} n'est pas propose (visibles : ${JSON.stringify(vueMen.noms)})`,
+)
+ok(vueMen.boutons === 0, 'aucun bouton de changement de rayon non plus ici')
+await page.screenshot({ path: 'captures/cloisonnement-menage.png' })
+
+titre('5. Le produit de la pharmacie reste invisible')
+/* La donnee est dans la meme base, a quelques centimetres. Ce qui
+   la separe n'est pas le support : c'est le compte ouvert. */
+await allerVers('Produits')
+const listeMen = await page.locator('body').innerText()
+ok(!listeMen.includes('Paracetamol de test'), 'le produit de la pharmacie n apparait pas dans la liste des menagers')
+
+await enregistrerProduit('Savon de test')
+ok((await rayonDuProduit('Savon de test')) === MENAGE.id, 'un produit menager s ecrit bien dans Menagers')
+
+titre("6. Le code de l'un n'ouvre pas le compte de l'autre")
+await sortir()
+await taper(MENAGE.numero)
+await page.getByRole('button', { name: 'Entrer' }).click()
+await page.waitForTimeout(900)
+await taper(PHARMACIE.code)
+await page.getByRole('button', { name: 'Entrer' }).click()
+await page.waitForTimeout(1200)
+
+const texteApresFaux = await page.locator('body').innerText()
+ok((await page.locator('.ecran--connexion').count()) === 1, 'la porte reste fermee')
+ok(texteApresFaux.includes('Code incorrect'), 'le refus est dit, et il dit « code » — pas « numero »')
+ok(!texteApresFaux.includes('Numéro inconnu'), 'le numero est connu : dire le contraire serait faux')
+
+titre('7. Un numero que personne n a est dit inconnu')
+await page.reload({ waitUntil: 'networkidle' })
+await page.waitForTimeout(1500)
+await taper('9099999999')
+await page.getByRole('button', { name: 'Entrer' }).click()
+await page.waitForTimeout(900)
+const texteInconnu = await page.locator('body').innerText()
+ok(texteInconnu.includes('Numéro inconnu'), 'le numero inconnu est distingue du code faux')
+
+titre('8. Un numero partage est refuse, meme avec le bon code')
+/* Deux comptes sur un meme numero : on ne sait pas lequel ouvrir,
+   et ouvrir le premier laisserait le code de l'un entrer dans le
+   rayon de l'autre. On ferme donc les deux portes. */
+await page.evaluate(async (numero: string) => {
   const { base } = await import('/src/donnees/base.ts')
-  const p = await base.produits.where('nomFr').equals(nomProduit).first()
-  return p?.rayonId ?? null
-}, 'Savon de test cloisonné')
+  await base.utilisateurs.update('u-men', { telephone: numero })
+}, PHARMACIE.numero)
+await page.reload({ waitUntil: 'networkidle' })
+await page.waitForTimeout(1500)
+await taper(PHARMACIE.numero)
+await page.getByRole('button', { name: 'Entrer' }).click()
+await page.waitForTimeout(900)
+const textePartage = await page.locator('body').innerText()
+ok(textePartage.includes('utilisé deux fois'), 'le numero partage est refuse, et la raison est dite')
+ok((await page.locator('.ecran--connexion').count()) === 1, 'aucune des deux personnes n entre par un numero partage')
 
-ok(ouEstLeProduit === 'r-men', `le produit est enregistré dans Ménagers (trouvé : ${ouEstLeProduit})`)
-await menager.page.screenshot({ path: 'captures/rayon-produit-bon-place.png' })
-
-/* ---------- 5. Un second telephone, lui, est sur Medicaments ---------- */
-titre('5. Le telephone de la pharmacie est indépendant')
-const pharmacie = await ouvrirTelephone('pharmacie')
-await choisirRayon(pharmacie.page, 'Médicaments')
-await connecter(pharmacie.page, '12345')
-ok((await rayonOuvert(pharmacie.page)) === 'Médicaments', 'la pharmacie est sur Médicaments')
-const visiblesPharm = await rayonsProposes(pharmacie.page)
-ok(!visiblesPharm.noms.includes('Ménagers'), `le rayon Ménagers n'est pas proposé (visibles : ${JSON.stringify(visiblesPharm.noms)})`)
-await pharmacie.page.screenshot({ path: 'captures/rayon-autre-telephone.png' })
-
-/* ---------- 6. Les deux bases ne partagent rien ---------- */
-titre('6. Les deux téléphones ne partagent rien')
-const vuParLaPharmacie = await pharmacie.page.evaluate(async () => {
-  const { base } = await import('/src/donnees/base.ts')
-  return (await base.produits.where('nomFr').equals('Savon de test cloisonné').toArray()).length
-})
-ok(vuParLaPharmacie === 0, 'le savon du téléphone Ménagers est invisible depuis le téléphone pharmacie')
-
-await menager.contexte.close()
-await pharmacie.contexte.close()
+await contexte.close()
 await navigateur.close()
 
 console.log(echecs === 0
-  ? '\nLES DEUX PERSONNES RESTENT SÉPARÉES.'
+  ? '\nUN TELEPHONE, DEUX PERSONNES, CHACUN CHEZ SOI.'
   : `\n${echecs} ECHEC(S) — le cloisonnement ne tient pas.`)
 process.exit(echecs === 0 ? 0 : 1)

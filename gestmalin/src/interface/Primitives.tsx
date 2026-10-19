@@ -252,12 +252,16 @@ export function PavillonNumerique({
 
 /* ---------- Les pastilles du code saisi ---------- */
 
-export function PastillesCode({ code, sur }: { code: string; sur?: 'sombre' | 'clair' }) {
+export function PastillesCode({ code, sur, total }: { code: string; sur?: 'sombre' | 'clair'; total?: number }) {
   /* Le nombre de pastilles suit la longueur reelle du code. Un
      ecran qui en dessine quatre pour un code a cinq chiffres ne
      montre pas a la personne ou elle en est : elle ne sait plus
      combien il lui en reste a taper. */
-  const place = Math.max(LONGUEUR_CODE, code.length)
+    /* Pour le numero, la longueur est dix : on ne la deduit pas
+       de ce qui est tape, sinon l ecran s elargit sous les yeux
+       a chaque chiffre, et la personne ne sait plus combien il
+       lui en reste. */
+    const place = total ?? Math.max(LONGUEUR_CODE, code.length)
 
   return (
     <div className={`pastilles${sur === 'clair' ? ' pastilles--clair' : ''}`}>

@@ -1,4 +1,5 @@
 import { chromium } from 'playwright'
+import { connecterParNom } from './aide.ts'
 
 /* ============================================================
    CHANGER DE PERSONNE
@@ -26,11 +27,7 @@ for (const c of CAS) {
   await page.waitForTimeout(1200)
 
   /* ---- connexion ---- */
-  for (const chiffre of ['1', '2', '3', '4', '5']) {
-    await page.getByRole('button', { name: chiffre, exact: true }).click()
-  }
-  await page.getByRole('button', { name: 'Entrer' }).click()
-  await page.waitForTimeout(800)
+  await connecterParNom(page, 'Préparateur', '12345')
 
   if ((await page.locator('.ecran--connexion').count()) > 0) {
     console.log(`ECHEC ${c.nom} : connexion impossible`)
@@ -126,11 +123,7 @@ async function verifierAccueil(surMobile: boolean) {
   await page.goto('http://localhost:5173/', { waitUntil: 'networkidle' })
   await page.waitForTimeout(1200)
 
-  for (const chiffre of ['1', '2', '3', '4', '5']) {
-    await page.getByRole('button', { name: chiffre, exact: true }).click()
-  }
-  await page.getByRole('button', { name: 'Entrer' }).click()
-  await page.waitForTimeout(900)
+  await connecterParNom(page, 'Préparateur', '12345')
 
   const bouton = page.locator(ACCUEIL)
   if ((await bouton.count()) === 0) {

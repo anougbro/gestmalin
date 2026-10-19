@@ -58,12 +58,16 @@ export type LigneInventaireRow = LigneInventaire & {
 export type UtilisateurRow = Utilisateur
 export type { Role }
 
-/* ---------- Un reglage de ce telephone ---------- */
+/* ---------- Un reglage de ce telephone ----------
+
+   Le telephone a porte UN rayon, choisi a sa premiere ouverture.
+   Ce n'est plus le modele : un seul telephone sert les deux
+   rayons, et c'est le compte qui decide de ce qu'on voit. Le type
+   reste parce que la migration 3 l'a ecrit en base, et qu'une
+   migration decrit un passe qu'on ne reecrit pas. */
 
 export type Reglage = {
   cle: string
-  /** Le rayon que ce telephone gere. Vide tant que la question
-      n'a pas ete posee. */
   rayon?: string
 }
 
@@ -108,21 +112,13 @@ class BaseGestmalin extends Dexie {
 
   /* ---------- Les reglages de CE telephone ----------
 
-     Une table clef-valeur, minuscule, mais qui porte une decision
-     qu'aucune autre table ne peut porter : sur quel rayon ce
-     telephone travaille.
+     La table a existe : elle portait le rayon du telephone, quand
+     un telephone ne servait qu'un rayon. Elle est supprimee par la
+     migration 4.
 
-     Le savoir est ne cessaire parce que chaque personne a SON
-     telephone. Les medicaments d'un cote, les menagers de
-     l'autre, dans deux bases qui ne se parlent pas. Sans cette
-     information, le premier compte cree au lancement se voit
-     attribuer les deux rayons, et la personne qui gere les
-     menagers peut — sans le savoir — ranger ses produits sous
-     « Medicaments », ou personne n'ira les chercher.
-
-     La question n'est posee qu'une fois. Ensuite, le telephone
-     est rattache, et seul un `directeur` peut le changer depuis
-     Reglages. */
+     La declaration reste pour que la migration 3 — qui l'a creee —
+     reste lisible, et parce que Dexie a besoin du nom pour la
+     retirer. Aucun code ne doit plus y ecrire. */
   declare reglages: Table<Reglage, string>
 
   constructor() {
@@ -214,6 +210,21 @@ class BaseGestmalin extends Dexie {
         demandesApprobation: 'id, statut, date, type, [statut+date]',
         reglages: 'cle',
       })
+
+    /* ---------- Migration 4 : le telephone n'est plus rattache ----------
+
+       Le telephone portait UN rayon, choisi a la premiere ouverture.
+       Ce n'est plus le modele : un seul telephone sert les deux
+       rayons, et c'est le COMPTE qui decide de ce qu'on voit.
+
+       On supprime donc la table. La laisser vide serait pire que de
+       la retirer : quelqu'un la relirait un jour en croyant qu'elle
+       sert encore, et rebatirait une regle qu'on vient d'enlever.
+
+       Rien n'est perdu : la seule chose qu'elle contenait est
+       precisement ce qu'on ne veut plus. */
+    this.version(4)
+      .stores({ reglages: null })
   }
 }
 

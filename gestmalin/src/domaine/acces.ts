@@ -35,6 +35,59 @@ export type Role = 'preparateur' | 'responsable' | 'pharmacien' | 'directeur'
    ============================================================ */
 export const LONGUEUR_CODE = 5
 
+/* ============================================================
+   LE NUMERO DE TELEPHONE
+
+   Il remplace le choix du nom a la connexion. On tape son numero,
+   on tape son code, on entre : deux tapes, sans liste a faire
+   defiler.
+
+   DIX CHIFFRES, sans l'indicatif pays. L'indicatif est le meme
+   pour tout le monde au Niger : le demander ne sert a rien et
+   allonge la frappe de trois caracteres.
+
+   Le numero EST l'identite de la personne. Deux consequences
+   qu'on ne peut pas contourner :
+
+   1. Il doit etre UNIQUE. Deux personnes ne peuvent pas porter le
+      meme numero : sinon le code de l'une ouvre le compte de
+      l'autre, et le cloisonnement des rayons ne vaut plus rien.
+
+   2. On ne devine pas un numero. Un numero faux, c'est un numero
+      inconnu — jamais un code faux, qui ferait croire a une
+      erreur de frappe alors qu'on s est trompe de numero. */
+export const LONGUEUR_TELEPHONE = 10
+
+/**
+ * Ne garde que les chiffres, et complete a gauche si besoin.
+ *
+ * « +227 90 12 34 56 » et « 9012345678 » doivent etre LE MEME
+ * compte. Sinon la meme personne se cree deux comptes en changeant
+ * la maniere d'ecrire son numero, et elle perd l'acces a son
+ * propre stock sans comprendre pourquoi.
+ */
+export function normaliserTelephone(texte: string): string {
+  const chiffres = texte.replace(/\D/g, '')
+  return chiffres.length > LONGUEUR_TELEPHONE
+    ? chiffres.slice(-LONGUEUR_TELEPHONE)
+    : chiffres.padStart(LONGUEUR_TELEPHONE, '0')
+}
+
+/** Vrai si le texte peut devenir un numero complet. */
+export function telephoneSaisi(texte: string): boolean {
+  return texte.replace(/\D/g, '').length === LONGUEUR_TELEPHONE
+}
+
+/** Un numero libre, ou null s'il est deja pris. */
+export function numeroLibre(
+  utilisateurs: readonly Utilisateur[],
+  telephone: string,
+  saufId?: string,
+): boolean {
+  const voulu = normaliserTelephone(telephone)
+  return !utilisateurs.some((u) => u.id !== saufId && u.telephone && normaliserTelephone(u.telephone) === voulu)
+}
+
 export type Utilisateur = {
   id: string
   nom: string
@@ -42,6 +95,25 @@ export type Utilisateur = {
   rayonsAutorises: string[]
   actif: boolean
   empreinte: string
+
+  /**
+   * Le numero de telephone : dix chiffres, sans indicatif.
+   *
+   * Vide pour les comptes anterieurs a cette regle, qui se
+   * connectent encore par leur nom. Un compte sans numero n'est
+   * pas un compte sans identite : la liste des noms reste la
+   * porte de secours, justement pour eux.
+   *
+   * `independant` parce qu'un numero non unique ne trouve pas
+   * UN compte, et en trouve potentiellement plusieurs. La regle
+   * d'unicite est appliquee a l'ecriture ; la base doit pouvoir
+   * contenir le cas impossible sans que la lecture echoue.
+   */
+  telephone?: string
+  /** Deux comptes portent-ils le meme numero ? Ne doit jamais
+      arriver ; si c'est vrai, on ne fait confiance a aucun des
+      deux tant que la situation n'est pas corrigee. */
+  independant: boolean
   /** Longueur du code AU MOMENT ou l'empreinte a ete calculee.
 
       Indispensable. Changer la longueur sans ce nombre revient a
@@ -186,7 +258,9 @@ export function roleEffectif(u: Utilisateur, rayonId: string, maintenant: string
 
 export type ResultatConnexion =
   | { ok: true; utilisateur: Utilisateur }
-  | { ok: false; raison: 'code-incorrect' | 'inactif' }
+  | { ok: false; raison: 'code-incorrect' | 'inactif' | 'numero-inconnu' | 'numero-partage' }
+
+const ECHEC_CODE = { ok: false as const, raison: 'code-incorrect' as const }
 
 /**
  * Le code identifie UNE PERSONNE, pas une personne sur un rayon.
@@ -197,9 +271,9 @@ export type ResultatConnexion =
  * que l'application s'ouvre sur le rayon precedent. Elle serait
  * bloquee par un detail d'ecran, sans aucun moyen de s'en sortir.
  *
- * Donc : le code dit QUI VOUS ETES. Ce que vous pouvez faire sur
- * chaque rayon se verifie ensuite, a chaque ecran (peutUtiliser,
- * peutValider).
+ * Donc : le numero et le code disent QUI VOUS ETES. Ce que vous
+ * pouvez faire sur chaque rayon se verifie ensuite, a chaque ecran
+ * (peutUtiliser, peutValider).
  */
 export function connecter(
   utilisateurs: readonly Utilisateur[],
@@ -207,11 +281,36 @@ export function connecter(
   code: string,
 ): ResultatConnexion {
   const u = utilisateurs.find((x) => x.id === identifiant)
+  return verifier(u, code)
+}
 
+/** La porte principale : son numero, puis son code. */
+export function connecterParNumero(
+  utilisateurs: readonly Utilisateur[],
+  telephone: string,
+  code: string,
+): ResultatConnexion {
+  const voulu = normaliserTelephone(telephone)
+  const trouves = utilisateurs.filter((u) => u.telephone && normaliserTelephone(u.telephone) === voulu)
+
+  if (trouves.length === 0) return { ok: false, raison: 'numero-inconnu' }
+  if (trouves.length > 1) return { ok: false, raison: 'numero-partage' }
+
+  return verifier(trouves[0], code)
+}
+
+/**
+ * La regle unique, appliquee par les deux portes.
+ *
+ * Les deux chemins — par le numero, par le nom — finissent ici.
+ * Deux fonctions qui verifient chacune de leur cote finissent
+ * toujours par diverger sur un cas forget : une porte ouverte la
+ * ou l'autre ne se voit pas.
+ */
+function verifier(u: Utilisateur | undefined, code: string): ResultatConnexion {
   /* Meme message dans tous les cas d'echec : sinon on permet de
      deviner quels identifiants existent. */
-  const echec = { ok: false as const, raison: 'code-incorrect' as const }
-  if (!u) return echec
+  if (!u) return ECHEC_CODE
 
   /* Un compte enregistre avec un autre nombre de chiffres n'est
      pas utilisable : son empreinte ne correspond a rien de
@@ -221,15 +320,20 @@ export function connecter(
      Sans cette garde, une base a moitie migree accepterait encore
      un ancien code a quatre chiffres. La migration aurait l'air
      d'avoir marche tout en laissant une porte ouverte. */
-  if (u.longueurCode !== LONGUEUR_CODE) return echec
+  if (u.longueurCode !== LONGUEUR_CODE) return ECHEC_CODE
 
   /* Idem pour la longueur saisie : un code de trois chiffres ne
      peut pas etre le bon. On ne le demande pas, mais on ne le
      laisse pas passer non plus. */
-  if (code.length !== LONGUEUR_CODE) return echec
+  if (code.length !== LONGUEUR_CODE) return ECHEC_CODE
 
-  if (!codeCorrect(u.id, code, u.empreinte)) return echec
+  if (!codeCorrect(u.id, code, u.empreinte)) return ECHEC_CODE
   if (!u.actif) return { ok: false, raison: 'inactif' }
+
+  /* Un numero partage par deux comptes : ni l'un ni l'autre n'est
+     fiable. On refuse, meme avec le BON code. C'est la seule
+     facon de ne pas laisser un code ouvrir le mauvais rayon. */
+  if (u.independant === false) return { ok: false, raison: 'numero-partage' }
 
   return { ok: true, utilisateur: u }
 }

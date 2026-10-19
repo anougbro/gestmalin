@@ -21,7 +21,7 @@ export type Session = {
       Avant la connexion : tous les rayons, parce que l'ecran
       d'accueil doit s'ouvrir sans code. */
   rayonsVisibles: string[]
-  connecter: (identifiant: string, code: string) => Promise<{ ok: boolean; message?: string }>
+  connecter: (identifiant: string, code: string, numero?: string) => Promise<{ ok: boolean; raison: string | null }>
   deconnecter: () => void
   alertes: Alerte[]
   compteurs: CompteursAlertes

@@ -1,5 +1,5 @@
 import { chromium } from 'playwright'
-import { prepare } from './aide.ts'
+import { connecter } from './aide.ts'
 
 /* ============================================================
    LA BARRE DU HAUT
@@ -21,13 +21,7 @@ const CAS = [
 const navigateur = await chromium.launch()
 const page = await navigateur.newPage({ viewport: { width: 393, height: 852 } })
 await page.goto('http://localhost:5173/', { waitUntil: 'networkidle' })
-    await prepare(page)
-await page.waitForTimeout(1000)
-for (const c of ['1', '2', '3', '4', '5']) {
-  await page.getByRole('button', { name: c, exact: true }).click()
-}
-await page.getByRole('button', { name: 'Entrer' }).click()
-await page.waitForTimeout(900)
+await connecter(page)
 
 let problemes = 0
 
@@ -36,7 +30,11 @@ for (const c of CAS) {
   await page.waitForTimeout(350)
 
   const m = await page.evaluate(() => {
-    const rayon = document.querySelector('.app__barre .seg-item') as HTMLElement | null
+    /* Le rayon se lit, il ne se choisit pas : sur un telephone qui
+       ne gere qu'un seul rayon, la barre du haut en affiche le
+       NOM, sans bouton. Un bouton unique qui ne change rien est
+       un bouton casse. */
+    const rayon = document.querySelector('.rayon-etiquette') as HTMLElement | null
     const qui = document.querySelector('.qui-btn') as HTMLElement | null
     const barre = document.querySelector('.app__barre') as HTMLElement | null
 

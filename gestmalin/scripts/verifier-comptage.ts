@@ -1,5 +1,5 @@
 import { chromium } from 'playwright'
-import { prepare } from './aide.ts'
+import { connecterSiBesoin, prepare } from './aide.ts'
 import { mkdirSync } from 'node:fs'
 
 /* ============================================================
@@ -38,24 +38,12 @@ async function allerVers(nom: string) {
   await attendre(900)
 }
 
-/* On recharge pour que l'ecran relise les mouvements ajoutes.
-   La session survit au rechargement : on ne remet le code que si
-   le pave est vraiment la. */
-async function connecter() {
-  if ((await page.locator('.pave__touche').count()) === 0) return
-  for (const c of '12345') {
-    await page.locator('.pave__touche', { hasText: new RegExp(`^${c}$`) }).first().click()
-    await attendre(60)
-  }
-  await page.getByRole('button', { name: 'Entrer' }).click()
-  await attendre(1200)
-}
-
+/* On recharge pour que l'ecran relise les mouvements ajoutes. La
+   session survit au rechargement : on ne remet le code que si
+   l application le demande. */
 await page.goto('http://localhost:5173/', { waitUntil: 'networkidle' })
-
 await prepare(page)
-await attendre(1500)
-await connecter()
+await connecterSiBesoin(page)
 
 await allerVers('Réglages')
 await page.getByRole('button', { name: /Charger le jeu/ }).click()
@@ -111,7 +99,7 @@ const effectif = await page.evaluate(async () => {
 console.log(`  ${effectif.existants} produits du jeu d'essai, ${effectif.ajoutes} ajoutes pour le test`)
 await page.reload({ waitUntil: 'networkidle' })
 await attendre(1500)
-await connecter()
+await connecterSiBesoin(page)
 
 /* ---------- 1. Le badge est affiche ---------- */
 titre('1. Le badge ABC est affiche')

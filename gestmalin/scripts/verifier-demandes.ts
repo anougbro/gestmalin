@@ -1,5 +1,5 @@
 import { chromium, type Page } from 'playwright'
-import { prepare } from './aide.ts'
+import { connecterParNom, prepare } from './aide.ts'
 
 /* ============================================================
    TROIS DEMANDES
@@ -16,18 +16,7 @@ const ok = (bon: boolean, message: string) => {
   console.log(`  ${bon ? 'OK  ' : 'ECHEC'} ${message}`)
 }
 
-async function connecter(page: Page, code = '12345') {
-  if ((await page.locator('.personne').count()) > 0) {
-    await page.locator('.personne').first().click()
-    await page.waitForTimeout(300)
-  }
-  for (const c of code) {
-    await page.locator('.pave__touche', { hasText: new RegExp(`^${c}$`) }).first().click()
-    await page.waitForTimeout(50)
-  }
-  await page.getByRole('button', { name: 'Entrer' }).click()
-  await page.waitForTimeout(1000)
-}
+const connecter = (page: Page, code = '12345') => connecterParNom(page, 'Préparateur', code)
 
 /* ---------- 1. Les rayons ---------- */
 console.log('1. Ne plus basculer de rayon par erreur')
@@ -63,16 +52,17 @@ for (const [nom, vp] of [
   ok(apres === nomEtiquette, `${nom} : cinq tapes dans le coin ne changent pas de rayon`)
 
   const dansMenu = page.locator('.barre__rayon .seg-item')
-  /* Ce telephone ne gere qu'un seul rayon. Le tiroir montre donc
-     UNE pastille, et elle ne doit pas etre un bouton : un bouton
-     unique qui ne change rien est un bouton casse. La regle
-     « ne pas basculer par megarde » tient mieux ainsi qu'avec
-     deux pastilles dont une seule separe vraiment les gens. */
-  ok((await dansMenu.count()) === 1, `${nom} : le rayon du telephone est montre`)
+  /* Ce qui est montre, ce sont les rayons du COMPTE ouvert — plus
+     ceux du telephone, qui n'en a plus. Le Preparateur tient les
+     deux : le menu en montre donc deux, et chacun est un vrai
+     bouton, parce que basculer de l'un a l'autre est exactement ce
+     qu'il a le droit de faire. La personne des menagers, elle,
+     n'en verra qu'un — et c'est ce que verifie le cloisonnement. */
+  ok((await dansMenu.count()) === 2, `${nom} : les deux rayons du compte sont montres (${await dansMenu.count()})`)
   const boutonsRayon = page.locator('.barre__rayon .seg-item[role="tab"]')
-  ok((await boutonsRayon.count()) === 0, `${nom} : rien a cliquer pour changer de rayon`)
-  const nomAffiche = (await dansMenu.first().innerText()).trim()
-  ok(nomAffiche === nomEtiquette, `${nom} : la pastille porte le bon nom (« ${nomAffiche} »)`)
+  ok((await boutonsRayon.count()) === 2, `${nom} : les deux sont cliquables, ce compte gere les deux`)
+  const nomsAffiches = (await dansMenu.allInnerTexts()).map((t) => t.trim())
+  ok(nomsAffiches.includes(nomEtiquette), `${nom} : le rayon ouvert (« ${nomEtiquette} ») est dans la liste`)
 
   await page.close()
 }
@@ -133,21 +123,13 @@ await saisirCode('56782', 'Valider')
 await page.waitForTimeout(900)
 ok((await page.getByText(/Code changé/).count()) > 0, 'le nouveau code est accepte')
 
-await page.getByRole('button', { name: /Changer/ }).last().click()
+await page.locator('.qui:visible, .qui-btn:visible, .qui-btn-lg:visible').first().click()
 await page.waitForTimeout(800)
 ok((await page.locator('.ecran--connexion').count()) === 1, 'on est deconnecte')
 
-/* Un seul compte : l'ecran va droit au pave, sans liste. */
-if ((await page.locator('.personne').count()) > 0) {
-  await page.locator('.personne').first().click()
-  await page.waitForTimeout(300)
-}
-for (const c of '56782') {
-  await page.locator('.pave__touche', { hasText: new RegExp(`^${c}$`) }).first().click()
-  await page.waitForTimeout(60)
-}
-await page.getByRole('button', { name: 'Entrer' }).click()
-await page.waitForTimeout(1000)
+/* On rentre avec le nouveau code, par la porte de secours : la
+   liste des noms, puis le code. */
+await connecterParNom(page, 'Préparateur', '56782')
 ok((await page.locator('.ecran--connexion').count()) === 0, 'le nouveau code ouvre la porte')
 
 await page.close()

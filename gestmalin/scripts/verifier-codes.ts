@@ -1,5 +1,5 @@
 import { chromium } from 'playwright'
-import { prepare } from './aide.ts'
+import { connecter, connecterParNom, prepare } from './aide.ts'
 
 /* ============================================================
    LES CODES SONT ECRITS DANS L'APPLICATION
@@ -64,24 +64,17 @@ await page.evaluate(async () => {
   const tx = db.transaction('utilisateurs', 'readwrite')
   const s = tx.objectStore('utilisateurs')
   s.clear()
-  s.put({ id: 'u-1', nom: 'Préparateur', role: 'preparateur', rayonsAutorises: ['r-med', 'r-men'], actif: true, longueurCode: 4, empreinte: 'vieille' })
-  s.put({ id: 'u-2', nom: 'Amina', role: 'responsable', rayonsAutorises: ['r-men'], actif: true, longueurCode: 4, empreinte: 'vieille' })
+  s.put({ id: 'u-1', nom: 'Préparateur', role: 'preparateur', rayonsAutorises: ['r-med', 'r-men'], actif: true, independant: true, longueurCode: 4, empreinte: 'vieille' })
+  s.put({ id: 'u-2', nom: 'Amina', role: 'responsable', rayonsAutorises: ['r-men'], actif: true, independant: true, longueurCode: 4, empreinte: 'vieille' })
   await new Promise<void>((r) => { tx.oncomplete = () => r() })
 })
 
 await page.reload({ waitUntil: 'networkidle' })
 await page.waitForTimeout(2000)
 
+
 /* ---------- D'abord on entre ---------- */
-if ((await page.locator('.personne').count()) > 0) {
-  await page.locator('.personne').first().click()
-  await page.waitForTimeout(300)
-}
-for (const c of '12345') {
-  await page.locator('.pave__touche', { hasText: new RegExp(`^${c}$`) }).first().click()
-  await page.waitForTimeout(50)
-}
-await page.getByRole('button', { name: 'Entrer' }).click()
+await connecter(page)
 await page.waitForTimeout(1100)
 ok((await page.locator('.ecran--connexion').count()) === 0, 'le code 12345 entre')
 
@@ -120,16 +113,12 @@ ok(bonne, 'Amina a bien le code annonce')
 ok(bonne3, 'Dr Souley a bien le code annonce')
 
 /* ---------- Et ils ouvrent vraiment la porte ---------- */
-await page.getByRole('button', { name: /Changer/ }).last().click()
-await page.waitForTimeout(800)
-const amina = page.locator('.personne', { hasText: 'Amina' })
-if ((await amina.count()) > 0) { await amina.first().click(); await page.waitForTimeout(300) }
-for (const c of '22222') {
-  await page.locator('.pave__touche', { hasText: new RegExp(`^${c}$`) }).first().click()
-  await page.waitForTimeout(50)
-}
-await page.getByRole('button', { name: 'Entrer' }).click()
-await page.waitForTimeout(1100)
+/* Le bouton de sortie est dans la barre du haut sur telephone,
+   dans la barre laterale sur ordinateur. On prend celui qui est
+   visible plutot que de deviner lequel. */
+await page.locator('.qui:visible, .qui-btn:visible').first().click()
+await page.waitForTimeout(900)
+await connecterParNom(page, 'Amina', '22222')
 ok((await page.locator('.ecran--connexion').count()) === 0, 'Amina entre avec le code annonce')
 
 console.log(echecs === 0 ? '\nLES CODES SONT LISIBLES ET VRAIS.' : `\n${echecs} ECHEC(S).`)

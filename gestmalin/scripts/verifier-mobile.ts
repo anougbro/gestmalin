@@ -11,7 +11,7 @@
    ============================================================ */
 
 import { chromium, devices, type Page } from 'playwright'
-import { prepare } from './aide.ts'
+import { connecterParNom, prepare } from './aide.ts'
 import { mkdirSync } from 'node:fs'
 
 const SORTIE = 'captures'
@@ -26,18 +26,11 @@ const problemes: string[] = []
    Les tests doivent donc se connecter : sinon ils explorent un
    ecran de connexion et concluent que tout est inaccessible. */
 async function connecter(page: Page) {
+  /* La session survit au rechargement. Si on est deja entre, il
+     n'y a plus de pave : demander une connexion echouerait sur un
+     ecran qui n'existe pas. */
   if ((await page.locator('.pave__touche').count()) === 0) return
-  /* Si plusieurs personnes sont creeees, il faut d'abord choisir. */
-  const personne = page.locator('.personne').first()
-  if (await personne.count()) {
-    await personne.click()
-    await page.waitForTimeout(200)
-  }
-  for (const chiffre of ['1', '2', '3', '4', '5']) {
-    await page.getByRole('button', { name: chiffre, exact: true }).click()
-  }
-  await page.getByRole('button', { name: 'Entrer' }).click()
-  await page.waitForTimeout(600)
+  await connecterParNom(page, 'Préparateur', '12345')
 }
 
 for (const t of TAILLES) {

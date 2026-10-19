@@ -1,5 +1,5 @@
 import { chromium } from 'playwright'
-import { prepare } from './aide.ts'
+import { connecter, prepare } from './aide.ts'
 
 /* ============================================================
    AUCUN NOM DE VARIABLE A L'ECRAN
@@ -37,12 +37,7 @@ await prepare(page)
 await page.waitForTimeout(1400)
 await inspecter('connexion')
 
-for (const c of '12345') {
-  await page.locator('.pave__touche', { hasText: new RegExp(`^${c}$`) }).first().click()
-  await page.waitForTimeout(50)
-}
-await page.getByRole('button', { name: 'Entrer' }).click()
-await page.waitForTimeout(1100)
+await connecter(page)
 await inspecter('accueil')
 
 /* Tous les ecrans du menu. */

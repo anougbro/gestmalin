@@ -1,5 +1,5 @@
 import { chromium } from 'playwright'
-import { prepare } from './aide.ts'
+import { connecterParNom, prepare } from './aide.ts'
 
 /* ============================================================
    LA VERSION PUBLIEE, HORS LIGNE
@@ -75,13 +75,11 @@ const ecranVide = await page.locator('#root').innerHTML().catch(() => '')
 ok(ecranVide.trim().length > 0, 'le code demarre SANS reseau')
 ok((await page.locator('.ecran--connexion').count()) > 0, 'l ecran de connexion est la, hors ligne')
 
-/* Et on peut se connecter hors ligne, base comprise. */
-for (const c of '12345') {
-  await page.locator('.pave__touche', { hasText: new RegExp(`^${c}$`) }).first().click()
-  await page.waitForTimeout(50)
-}
-await page.getByRole('button', { name: 'Entrer' }).click()
-await page.waitForTimeout(1200)
+/* Et on peut se connecter hors ligne, base comprise. On passe par
+   la liste des noms : c'est une vraie porte, et elle n'a besoin
+   d'aucun reseau — c'est ce que ce test verifie. La porte du
+   numero, elle, est verifiee par `verifier-connexion`. */
+await connecterParNom(page, 'Préparateur', '12345')
 ok((await page.locator('.ecran--connexion').count()) === 0, 'on se connecte hors ligne')
 
 /* Et les donnees restent la apres rechargement hors ligne. */

@@ -9,8 +9,7 @@ import { EcranRanger } from './interface/EcranRanger'
 import { EcranSortie } from './interface/EcranSortie'
 import { EcranAlertes } from './interface/EcranAlertes'
 import { EcranCompter } from './interface/EcranCompter'
-import { EcranRayonDuTelephone } from './interface/EcranRayonDuTelephone'
-import { rayonDuTelephone } from './donnees/reglages'
+import { EcranCreationCompte } from './interface/EcranCreationCompte'
 import { EcranChercher } from './interface/EcranChercher'
 import { EcranProduits } from './interface/EcranProduits'
 import { EcranFichiers } from './interface/EcranFichiers'
@@ -265,20 +264,10 @@ function Coquille() {
   ])
   const [tiroir, setTiroir] = useState(false)
   const { pret, utilisateur } = useSession()
-  const [rayonRattache, setRayonRattache] = useState(false)
 
-  /* Tant que la base n'est pas prete, on ne peut pas savoir si ce
-     telephone a deja ete rattache. Une fois la base lue, on pose
-     la question — et plus jamais. */
-  useEffect(() => {
-    if (!pret) return
-    let annule = false
-    void (async () => {
-      const r = await rayonDuTelephone()
-      if (!annule) setRayonRattache(r !== null)
-    })()
-    return () => { annule = true }
-  }, [pret])
+  /* Creation ou connexion. Une personne sur deux cree son compte
+     elle-meme : personne n attend personne a la porte. */
+  const [creer, setCreer] = useState(false)
 
   const courant = pile[pile.length - 1]
   const definition = ECRANS_ECRAN[courant.ecran]
@@ -314,16 +303,18 @@ function Coquille() {
     )
   }
 
-  /* La toute premiere question, posee une fois par telephone.
+  /* Le tout premier demarrage, c'est-a-dire le cas ou il n'y a
+     encore AUCUN compte. On ne le devine pas d'ici : l'ecran de
+     connexion, quand il n'y a personne a ouvrir, propose lui-meme
+     de creer un compte. */
 
-     Elle vient AVANT le code : demander un code a quelqu'un dont
-     on ne sait pas encore sur quoi il travaille ne sert a rien. Et
-     elle ne se pose qu'une fois — la reponse est ecrite en base. */
-  if (!rayonRattache) return <EcranRayonDuTelephone surChoix={() => setRayonRattache(true)} />
-
-  /* On entre par un code, pas par un mot de passe : quatre
-     chiffres, tapes d'une seule main, avec des gants. */
-  if (!utilisateur) return <EcranConnexion />
+  /* Creation ou connexion ? Chacun cree son compte quand il est
+     la. La seconde personne n'attend pas la premiere, et la
+     premiere n'attend pas la seconde. */
+  if (!utilisateur) {
+    if (creer) return <EcranCreationCompte surFin={() => setCreer(false)} />
+    return <EcranConnexion surCreation={() => setCreer(true)} />
+  }
 
   const Composant = definition.composant
 

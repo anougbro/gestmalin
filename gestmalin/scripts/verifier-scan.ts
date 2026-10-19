@@ -1,5 +1,5 @@
 import { chromium } from 'playwright'
-import { prepare } from './aide.ts'
+import { connecterSiBesoin, prepare } from './aide.ts'
 import { mkdirSync } from 'node:fs'
 
 /* ============================================================
@@ -139,21 +139,17 @@ await attendre(1500)
 
 /* ---------- Connexion ---------- */
 titre('0. Connexion')
+
+/* Entre si l'application demande un code : la session survit a
+   un rechargement, donc elle est tantot ouverte, tantot a
+   refaire. Demander une connexion dans les deux cas echouerait
+   une fois sur deux, sur un ecran qui n'existe pas. */
+async function connecterSession() {
+  await connecterSiBesoin(page)
+}
+
 await connecterSession()
 ok((await texteEcran()).includes('Réception') || (await page.locator('.menu-btn').count()) > 0, 'la session est ouverte')
-
-/** Entre si le pave est devant. Le pave est la preuve qu'on n'est
-    pas encore connecte : apres un rechargement, la session est
-    morte et il revient, et il faut retaper le code. */
-async function connecterSession() {
-  if ((await page.locator('.pave__touche').count()) === 0) return
-  for (const c of '12345') {
-    await page.locator('.pave__touche', { hasText: new RegExp(`^${c}$`) }).first().click()
-    await attendre(60)
-  }
-  await page.getByRole('button', { name: 'Entrer' }).click()
-  await attendre(1400)
-}
 
 await allerVers('Réglages')
 await page.getByRole('button', { name: /Charger le jeu/ }).click()

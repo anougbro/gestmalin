@@ -1,5 +1,5 @@
 import { chromium } from 'playwright'
-import { prepare } from './aide.ts'
+import { connecter } from './aide.ts'
 
 /* ============================================================
    QU'EST-CE QUI EST ATTEIGNABLE ?
@@ -30,14 +30,7 @@ for (const [nom, viewport] of [
 ] as const) {
   const page = await navigateur.newPage({ viewport })
   await page.goto('http://localhost:5173/', { waitUntil: 'networkidle' })
-    await prepare(page)
-  await page.waitForTimeout(1000)
-  for (const c of ['1', '2', '3', '4', '5']) {
-    await page.getByRole('button', { name: c, exact: true }).click()
-  }
-  await page.getByRole('button', { name: 'Entrer' }).click()
-  await page.waitForTimeout(900)
-
+  await connecter(page)
   /* Une tuile porte le titre ET l'aide : « Trouver Où est un
      produit ». On cherche le titre dans le texte.
      La coupure de defilement ne concerne QUE la barre

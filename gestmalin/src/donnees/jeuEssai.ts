@@ -59,18 +59,18 @@ const AU_QUAI = [
   { id: 'quai3', nom: 'Éponge grattante', unite: 'piece', seuil: 12, peremption: null, quantite: 24, lot: 'n5o6p', cat: 'c-men' },
 ]
 
-export async function chargerJeuEssai(rayonMed: string | null, rayonMen: string | null, auteurId: string): Promise<{ produits: number; mouvements: number }> {
+export async function chargerJeuEssai(auteurId: string): Promise<{ produits: number; mouvements: number }> {
   const maintenantISO = maintenant()
   const produits: ProduitRow[] = []
   const lots: LotRow[] = []
   const mouvements: MouvementRow[] = []
 
-  for (const [rayonId, graines] of [[rayonMed, MEDICAMENTS], [rayonMen, MENAGERS]] as const) {
-    /* Un rayon nul, c'est un rayon que CE telephone ne gere pas.
-       On ne charge rien dedans : charger le jeu d'essai du
-       menager sur le telephone de la pharmacie remplirait
-       exactement ce que le cloisonnement vient d interdire. */
-    if (!rayonId) continue
+  /* Les deux rayons, toujours. Le telephone ne choisit plus ce
+     qu'il contient : il contient les deux, et c'est le COMPTE
+     ouvert qui decide de ce qu'on voit. Un jeu d'essai qui
+     n'aurait charge qu'un rayon ne testerait plus la seule chose
+     qui compte ici — que l'autre rayon reste invisible. */
+  for (const [rayonId, graines] of [['r-med', MEDICAMENTS], ['r-men', MENAGERS]] as const) {
     for (const g of graines) {
       produits.push({
         id: g.id, rayonId, categorieId: g.cat, nomFr: g.nom,
@@ -109,16 +109,18 @@ export async function chargerJeuEssai(rayonMed: string | null, rayonMen: string 
     }
   }
 
-  /* Le quai n'appartient a aucun rayon : c'est la merchandise qui
-     attend d'etre posee. Mais elle doit bien etre rattachee a
-     celui que CE telephone gere, sinon elle n'apparait nulle part.
-     Sur un telephone menager, c'est donc le rayon menager. */
-  const rayonDuQuai = rayonMed ?? rayonMen
-  if (!rayonDuQuai) return { produits: 0, mouvements: 0 }
+  /* Le quai n'appartient a aucun rayon : c'est la marchandise qui
+     attend d'etre posee. Mais chaque produit du quai, lui, vient
+     d'un rayon : les menagers du rayon menager, le reste de la
+     pharmacie.
+
+     On le deduit de sa categorie, pas du telephone. Le telephone
+     ne decide plus rien — il contient les deux rayons. */
+  const rayonDuQuai = (cat: string) => (cat === 'c-men' ? 'r-men' : 'r-med')
 
   for (const q of AU_QUAI) {
     produits.push({
-      id: q.id, rayonId: rayonDuQuai, categorieId: q.cat, nomFr: q.nom,
+      id: q.id, rayonId: rayonDuQuai(q.cat), categorieId: q.cat, nomFr: q.nom,
       codeBarres: q.cb, unite: q.unite as ProduitRow['unite'],
       seuil: q.seuil, actif: true, dci: q.dci, paysOrigine: q.pays,
     })
@@ -129,7 +131,7 @@ export async function chargerJeuEssai(rayonMed: string | null, rayonMen: string 
       quantite: 0, emplacementId: ATTENTE_ID,
     })
     mouvements.push({
-      id: nouvelId(), type: 'reception', rayonId: rayonDuQuai, produitId: q.id, lotId,
+      id: nouvelId(), type: 'reception', rayonId: rayonDuQuai(q.cat), produitId: q.id, lotId,
       quantite: q.quantite, versEmplacementId: ATTENTE_ID,
       auteurId, date: maintenantISO, synchro: 0,
     })
@@ -152,23 +154,36 @@ export async function chargerJeuEssai(rayonMed: string | null, rayonMen: string 
    d'entrer. */
 
 export const COMPTES_ESSAI = [
-  { id: 'u-1', nom: 'Préparateur', role: 'preparateur', code: '12345', peut: 'Stock, inventaire' },
-  { id: 'u-2', nom: 'Amina', role: 'responsable', code: '22222', peut: 'Valide sur Ménagers' },
-  { id: 'u-3', nom: 'Dr Souley', role: 'pharmacien', code: '33333', peut: 'Valide tout' },
+  { id: 'u-1', nom: 'Préparateur', role: 'preparateur', code: '12345', telephone: '9000000001', peut: 'Stock, inventaire' },
+  { id: 'u-2', nom: 'Amina', role: 'responsable', code: '22222', telephone: '9000000002', peut: 'Valide sur Ménagers' },
+  { id: 'u-3', nom: 'Dr Souley', role: 'pharmacien', code: '33333', telephone: '9000000003', peut: 'Valide tout' },
 ] as const
 
-export async function chargerPersonnes(rayonMed: string | null, rayonMen: string | null): Promise<void> {
-  /* Les rayons nuls disparaissent. Sur un telephone qui ne gere que
-     les Menagers, le Dr Souley n y a pas acces non plus : il valide
-     « tout », mais « tout » ne vaut ici que ce que ce telephone
-     contient. C est moins flatteur, et c est exact. */
-  const sansNull = (r: Array<string | null>): string[] => r.filter((x): x is string => x !== null)
+/* Les numeros de l'essai font exactement dix chiffres, comme
+   tous les autres.
 
+   C'etait tentant de les raccourcir pour que la recopie soit
+   rapide. C'etait une mauvaise idee : le pave n'accepte que dix
+   chiffres, alors un compte de huit chiffres ne serait plus
+   joignable par son numero — seulement par la liste des noms. La
+   regle serait vraie pour tout le monde sauf pour la
+   demonstration.
+
+   Une regle qui s'applique au reel mais pas a la demonstration
+   n'est pas une regle. */
+
+export async function chargerPersonnes(): Promise<void> {
+  /* Chacun ses rayons, sur le meme telephone.
+      - le Preparateur tient les deux ;
+      - Amina ne tient que les Menagers ;
+      - le Dr Souley valide partout.
+
+     C'est ce qui rend le cloisonnement visible : le meme
+     telephone, deux comptes, deux contenus. */
   const rayons: Record<string, string[]> = {
-    'u-1': sansNull([rayonMed, rayonMen]),
-    
-'u-2': rayonMen ? [rayonMen] : [],
-    'u-3': sansNull([rayonMed, rayonMen]),
+    'u-1': ['r-med', 'r-men'],
+    'u-2': ['r-men'],
+    'u-3': ['r-med', 'r-men'],
   }
 
   await base.utilisateurs.bulkPut(
@@ -176,8 +191,10 @@ export async function chargerPersonnes(rayonMed: string | null, rayonMen: string
       id: c.id,
       nom: c.nom,
       role: c.role,
-      rayonsAutorises: rayons[c.id] ?? sansNull([rayonMed]),
+      rayonsAutorises: rayons[c.id] ?? ['r-med'],
       actif: true,
+      independant: true,
+      telephone: c.telephone,
       longueurCode: LONGUEUR_CODE,
       empreinte: empreinte(c.id, c.code),
     })),
@@ -186,9 +203,9 @@ export async function chargerPersonnes(rayonMed: string | null, rayonMen: string
   /* On ne rajoute la demande que si elle n'existe pas deja : la
      recharger ne doit pas effacer la decision deja prise. */
   const existe = await base.demandesApprobation.get('dem-1')
-  if (!existe && rayonMed) {
+  if (!existe) {
     await base.demandesApprobation.put({
-      id: 'dem-1', type: 'quarantaine', rayonId: rayonMed, statut: 'en_attente',
+      id: 'dem-1', type: 'quarantaine', rayonId: 'r-med', statut: 'en_attente',
       motif: 'Lot douteux signalé à la réception',
       detail: 'Amoxicilline 500 mg — lot C1D3E — périmé depuis 4 jours',
       demandeurId: 'u-1', date: maintenant(),

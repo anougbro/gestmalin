@@ -5,11 +5,17 @@ import { prepare } from './aide.ts'
    LA CONNEXION, DANS UN VRAI NAVIGATEUR
 
    Les tests unitaires prouvent que la comparaison du code est
-   juste. Ils ne prouvent pas qu'un doigt peut se connecter sur
-   un ecran reel.
+   juste. Ils ne prouvent pas qu'un doigt peut se connecter sur un
+   ecran reel.
 
-   Ce script fait exactement ce que fait un humain : il appuie
-   sur les touches du pave, puis sur « Entrer ».
+   Ce script fait exactement ce que fait un humain : il appuie sur
+   les touches du pave. D'abord dix chiffres pour le numero, puis
+   cinq pour le code.
+
+   Il teste aussi ce qui a change et qu'aucun test unitaire ne
+   voit : un numero inconnu dit « Numéro inconnu » et non « Code
+   incorrect ». La personne ne doit pas chercher son code pendant
+   qu'elle s'est trompee de numero.
    ============================================================ */
 
 const navigateur = await chromium.launch()
@@ -19,78 +25,143 @@ const erreurs: string[] = []
 page.on('console', (m) => { if (m.type() === 'error') erreurs.push(m.text().slice(0, 160)) })
 page.on('pageerror', (e) => erreurs.push((e.stack ?? e.message).slice(0, 900)))
 
+const echoues: string[] = []
+const ok = (bon: boolean, message: string) => {
+  if (!bon) echoues.push(message)
+  console.log(`  ${bon ? 'OK   ' : 'ECHEC'} ${message}`)
+}
+const titre = (t: string) => console.log(`\n${t}`)
+const attendre = (ms: number) => page.waitForTimeout(ms)
+
+const NUMERO = '9000000001'
+const CODE = '12345'
+
+async function taper(chiffres: string) {
+  for (const c of chiffres) {
+    await page.locator('.pave__touche', { hasText: new RegExp(`^${c}$`) }).first().click()
+    await attendre(60)
+  }
+}
+
+/** Repart d'un ecran de connexion vierge.
+
+    Effacer chiffre par chiffre est fragile : si le pave refuse un
+    effacer de trop, le reste du script teste autre chose. On
+    recharge, ce qui remet le pave a zero — exactement comme le
+    fait une personne qui ferme et rouvre l'application. */
+async function ecranVierge() {
+  await page.goto('http://localhost:5173/', { waitUntil: 'networkidle' })
+  await prepare(page)
+  await attendre(1000)
+}
+
 await page.goto('http://localhost:5173/', { waitUntil: 'networkidle' })
 
+/* On attend que le pave soit pret : l'application demarre. */
 await prepare(page)
-await page.waitForTimeout(1200)
+await attendre(1200)
 
-/* ---- 1. L'ecran de connexion est bien la ---- */
+/* On prepare la porte avant de la tester : un compte avec un
+   numero connu et un code connu. Sans cela, le script devrait
+   charger le jeu d'essai, ce qui exige deja d'etre connecte —
+   donc de passer par la porte qu'on veut justement tester. */
+await page.evaluate(async () => {
+  const { base } = await import('/src/donnees/base.ts')
+  const { empreinte, LONGUEUR_CODE } = await import('/src/domaine/acces.ts')
+  const id = 'u-test'
+  await base.utilisateurs.put({
+    id,
+    nom: 'Personne de test',
+    role: 'responsable',
+    rayonsAutorises: ['r-med', 'r-men'],
+    actif: true,
+    independant: true,
+    telephone: '9000000001',
+    longueurCode: LONGUEUR_CODE,
+    empreinte: empreinte(id, '12345'),
+  })
+})
+await page.reload({ waitUntil: 'networkidle' })
+await prepare(page)
+await attendre(1000)
+
+/* ---------- 1. L ecran du numero ---------- */
+titre('1. Ton numero')
 const pave = page.locator('.pave__touche')
-if ((await pave.count()) === 0) {
-  console.log('ECHEC : pas d ecran de connexion')
-  await navigateur.close()
-  process.exit(1)
-}
-console.log('OK  pavé de chiffres affiché, ' + (await pave.count()) + ' touches')
+ok((await pave.count()) === 11, `le pave est affiche (${await pave.count()} touches)`)
 
-/* ---- 2. Le bouton « Entrer » existe et commence inactif ---- */
+const pastilles = await page.locator('.pastilles--clair .pastille-point, .pastille-point').count()
+ok(pastilles >= 10, `il y a de la place pour dix chiffres (${pastilles} pastilles)`)
+
 const entrer = page.getByRole('button', { name: 'Entrer' })
-if (!(await entrer.isDisabled())) {
-  console.log('ECHEC : « Entrer » est actif avec un code incomplet')
-  process.exit(1)
-}
-console.log('OK  « Entrer » inactif tant que le code est incomplet')
+ok(await entrer.isDisabled(), '« Entrer » est inactif tant que le numero est incomplet')
 
-/* ---- 3. Un code faux doit etre refuse, et le dire ---- */
-for (const c of ['9', '9', '9', '9', '9']) {
-  await page.getByRole('button', { name: c, exact: true }).click()
-}
-if (await entrer.isDisabled()) {
-  console.log('ECHEC : « Entrer » reste inactif avec un code incomplet')
-  process.exit(1)
-}
+/* Un numero incomplet n entre pas. */
+await taper(NUMERO.slice(0, 8))
+ok(await entrer.isDisabled(), 'huit chiffres ne suffisent pas : on refuse avant d enregistrer')
+await page.screenshot({ path: 'captures/connexion-numero.png' })
+
+/* ---------- 2. Un numero inconnu ---------- */
+titre('2. Un numero qui n existe pas')
+await ecranVierge()
+await taper('9012345678')
+ok(!(await entrer.isDisabled()), '« Entrer » s active a dix chiffres')
 await entrer.click()
-await page.waitForTimeout(600)
+await attendre(700)
 
-const erreurAffichee = await page.locator('.connexion__erreur').count()
-if (erreurAffichee === 0) {
-  console.log('ECHEC : un code faux ne donne aucun message')
-  console.log('  erreurs console : ' + JSON.stringify(erreurs, null, 2))
-  console.log('  HTML du pave     : ' + (await page.locator('.connexion').innerHTML()).slice(0, 900))
-  await page.screenshot({ path: 'captures/connexion-echec.png' })
-  process.exit(1)
-}
-console.log('OK  un code faux affiche un message')
+const messageInconnu = (await page.locator('.connexion__erreur').first().innerText().catch(() => '')).trim()
+ok(messageInconnu === 'Numéro inconnu.', `un numero inconnu dit « Numéro inconnu » (« ${messageInconnu} »), pas « code incorrect »`)
+await page.screenshot({ path: 'captures/connexion-inconnu.png' })
 
-/* ---- 4. Le bon code doit laisser entrer ---- */
-for (const c of ['1', '2', '3', '4', '5']) {
-  await page.getByRole('button', { name: c, exact: true }).click()
-}
-await page.getByRole('button', { name: 'Entrer' }).click()
-await page.waitForTimeout(900)
+/* ---------- 3. Le bon numero ---------- */
+titre('3. Ton numero, puis ton code')
+await ecranVierge()
+await taper(NUMERO)
+await entrer.click()
+await attendre(900)
 
-const connexion = await page.locator('.ecran--connexion').count()
-if (connexion > 0) {
-  console.log('ECHEC : le bon code n a pas laisse entrer')
-  await page.screenshot({ path: 'captures/connexion-echec.png' })
-  process.exit(1)
-}
-console.log('OK  le code 12345 laisse entrer')
+const titreCode = await page.locator('.connexion__titre').innerText().catch(() => '')
+ok(titreCode.includes('code'), `l ecran passe a l etape du code (« ${titreCode} »)`)
 
-/* ---- 5. Une fois dedans, on voit l'accueil ---- */
-const accueil = await page.locator('.accueil').count()
-if (accueil === 0) {
-  console.log('ECHEC : pas d accueil apres connexion')
-  process.exit(1)
-}
-console.log('OK  accueil affiché')
+const nomAffiche = await page.locator('.connexion__indices').innerText().catch(() => '')
+ok(nomAffiche.trim().length > 0, `le nom de la personne est affiche (« ${nomAffiche.trim()} »)`)
 
+/* ---------- 4. Un code faux ---------- */
+titre('4. Un code faux')
+ok(await entrer.isDisabled(), '« Entrer » inactif tant que le code est incomplet')
+await taper('99999')
+ok(!(await entrer.isDisabled()), '« Entrer » s active a cinq chiffres')
+await entrer.click()
+await attendre(700)
+ok((await page.locator('.connexion__erreur').count()) > 0, 'un code faux affiche un message')
+await page.screenshot({ path: 'captures/connexion-code-faux.png' })
+
+/* ---------- 5. Le bon code ---------- */
+titre('5. Le bon code')
+await taper(CODE)
+await entrer.click()
+await attendre(1200)
+ok((await page.locator('.ecran--connexion').count()) === 0, 'le bon numero et le bon code laissent entrer')
+ok((await page.locator('.accueil').count()) > 0, 'l accueil est affiche')
 await page.screenshot({ path: 'captures/connexion-ok.png' })
+
+/* ---------- 6. La porte de secours ---------- */
+titre('6. J ai oublie le numero')
+await page.locator('.qui-btn').click()
+await attendre(1200)
+const secours = page.getByRole('button', { name: /oublié le numéro/ })
+ok((await secours.count()) > 0, 'le bouton de secours est la')
+await secours.click()
+await attendre(700)
+const personnes = await page.locator('.personne').count()
+ok(personnes > 0, `la liste des noms est accessible (${personnes} personne(s))`)
+await page.screenshot({ path: 'captures/connexion-secours.png' })
 
 if (erreurs.length > 0) {
   console.log('\nERREURS CONSOLE :')
   for (const e of erreurs) console.log('  ' + e)
 }
 
-console.log('\nLA CONNEXION FONCTIONNE.')
+console.log(echoues.length === 0 ? '\nLA CONNEXION FONCTIONNE.' : `\n${echoues.length} ECHEC(S).`)
 await navigateur.close()
+process.exit(echoues.length === 0 ? 0 : 1)

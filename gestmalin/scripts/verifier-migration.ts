@@ -1,5 +1,5 @@
 import { chromium } from 'playwright'
-import { prepare } from './aide.ts'
+import { connecterParNom, prepare } from './aide.ts'
 
 /* ============================================================
    LE PASSAGE A 5 CHIFFRES
@@ -94,75 +94,69 @@ for (const u of apres) console.log(`     ${String(u.nom).padEnd(12)} longueurCod
 ok(apres.every((u) => u.longueurCode === 5), 'la migration a remis chaque compte a 5 chiffres')
 
 /* ---------- Et on entre ---------- */
-async function viderCode() {
-  for (let i = 0; i < 8; i++) {
-    const b = page.locator('.pave__touche--effacer')
-    if (!(await b.isEnabled())) break
-    await b.click()
-    await page.waitForTimeout(40)
-  }
-}
-
 async function entrer(nom: string, code: string) {
-  /* On choisit d'abord la personne : quand plusieurs comptes
-     existent, l'ecran montre une liste et le pave n'existe pas
-     encore. */
-  if ((await page.locator('.personne').count()) > 0) {
-    const p = page.locator('.personne', { hasText: nom })
-    if ((await p.count()) > 0) { await p.first().click(); await page.waitForTimeout(350) }
-  }
-
-  await viderCode()
-
-  for (const c of code) {
-    await page.locator('.pave__touche', { hasText: new RegExp(`^${c}$`) }).first().click()
-    await page.waitForTimeout(50)
-  }
-  /* Un code trop court ne doit meme pas rendre « Entrer » actif :
-     on ne tente rien, on reste dehors. */
-  const actif = await page.getByRole('button', { name: 'Entrer' }).isEnabled()
-  if (!actif) {
-    console.log('     diagnostic : « Entrer » inactif, pastilles pleines = ' + String(await page.locator('.pastille-point--plein').count()))
-    return false
-  }
-
-  await page.getByRole('button', { name: 'Entrer' }).click()
-  await page.waitForTimeout(1100)
-
-  if ((await page.locator('.ecran--connexion').count()) !== 0) {
-    console.log('     diagnostic : ' + JSON.stringify(await page.locator('.connexion__erreur').allTextContents()))
-    console.log('     pastilles pleines : ' + String(await page.locator('.pastille-point--plein').count()))
-  }
+  /* La porte de secours — la liste des noms — puis le code. C est
+     le chemin qu'utilise une personne dont le numero est perdu,
+     et il ouvre exactement les memes comptes que l'autre porte. */
+  await connecterParNom(page, nom, code)
   return (await page.locator('.ecran--connexion').count()) === 0
 }
 
+/* Un code trop court ne rend meme pas « Entrer » actif : le pave
+   lui-meme refuse, on ne tente rien. Le refus par le noyau est
+   verifie par les tests unitaires — ici on verifie l'ecran. */
+async function quatreChiffresRefuses(nom: string) {
+  await prepare(page)
+  await page.getByRole('button', { name: /oublié le numéro/ }).click()
+  await page.waitForTimeout(500)
+  await page.locator('.personne', { hasText: nom }).first().click()
+  await page.waitForTimeout(500)
+  for (const c of '1234') {
+    await page.locator('.pave__touche', { hasText: new RegExp(`^${c}$`) }).first().click()
+    await page.waitForTimeout(50)
+  }
+  const refuse = !(await page.getByRole('button', { name: 'Entrer' }).isEnabled())
+
+  /* On revient a un ecran de connexion neuf : l essai laisse la
+     personne au milieu du pave du code, et la suite suppose un
+     ecran vierge. Recharger fait exactement ce que ferait
+     quelqu un qui ferme et rouvre l application. */
+  await page.reload({ waitUntil: 'networkidle' })
+  return refuse
+}
+
 console.log('\n2. Un code de 4 chiffres ne valide meme pas')
-ok((await entrer('Préparateur', '1234')) === false, 'l ancien code 1234 est refuse')
-await viderCode()
+ok(await quatreChiffresRefuses('Préparateur'), 'quatre chiffres n activent pas « Entrer »')
 
 console.log('\n3. Les nouveaux codes passent')
 ok(await entrer('Préparateur', '12345'), 'Préparateur entre avec 12345')
 
-await page.getByRole('button', { name: /Changer/ }).last().click()
+await page.locator('.qui:visible, .qui-btn:visible').first().click()
 await page.waitForTimeout(700)
 ok(await entrer('Amina', '00000'), 'Amina entre avec le code de secours')
 
-await page.getByRole('button', { name: /Changer/ }).last().click()
+await page.locator('.qui:visible, .qui-btn:visible').first().click()
 await page.waitForTimeout(700)
 ok(await entrer('Dr Souley', '00000'), 'Dr Souley entre avec le code de secours')
 
 /* ---------- Et l'ecran montre bien cinq pastilles ---------- */
-await page.getByRole('button', { name: /Changer/ }).last().click()
+await page.locator('.qui:visible, .qui-btn:visible').first().click()
 await page.waitForTimeout(800)
 
-/* Avec plusieurs comptes, l'ecran demande d'abord QUI on est. */
+/* Le pave du numero precede le pave du code. On passe par la
+   porte de secours pour choisir la personne, et on compte alors
+   les pastilles du CODE. */
+await prepare(page)
+await page.getByRole('button', { name: /oublié le numéro/ }).click()
+await page.waitForTimeout(500)
+
 if ((await page.locator('.personne').count()) > 0) {
   await page.locator('.personne').first().click()
   await page.waitForTimeout(400)
 }
 
 const pastilles = await page.locator('.pastilles .pastille-point').count()
-ok(pastilles === 5, `l'ecran de connexion montre 5 pastilles (${pastilles})`)
+ok(pastilles === 5, `le pave du code montre 5 pastilles (${pastilles})`)
 
 console.log(echecs === 0 ? '\nLE PASSAGE A 5 CHIFFRES MARCHE.' : `\n${echecs} ECHEC(S).`)
 await navigateur.close()

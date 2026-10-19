@@ -4,7 +4,11 @@ import { toutEffacer } from '../donnees/depots'
 import { calculerAlertes, compterAlertes, type Alerte } from '../domaine/alertes'
 import { aujourdhui } from '../domaine/temps'
 import { maintenantISO } from '../domaine/temps'
-import { connecter as verifierCode, peutUtiliser, rayonsUtilisables, type Utilisateur } from '../domaine/acces'
+import {
+  connecter as verifierCode,
+  connecterParNumero as verifierNumero,
+  peutUtiliser, rayonsUtilisables, type Utilisateur,
+} from '../domaine/acces'
 import type { Mouvement } from '../domaine/types'
 import { Contexte, type Session } from './useSession'
 import { RAYONS_PAR_DEFAUT, type RayonTravail } from './rayons'
@@ -125,24 +129,28 @@ export function FournisseurSession({ children }: { children: ReactNode }) {
   /* La connexion est verifiee SUR PLACE, sans reseau : la base
      contient les empreintes, et le code saisi est compare a
      celle de la personne. */
-  async function connecter(identifiant: string, code: string) {
+  async function connecter(identifiant: string, code: string, numero?: string) {
     try {
       const tous = await base.utilisateurs.toArray()
-      const r = verifierCode(tous, identifiant, code)
+      /* Deux portes, une seule verification : le numero quand on
+         l'a tape, le nom sinon. La regle est dans `acces.ts` pour
+         les deux — c'est le meme code qui tourne, donc aucune des
+         deux ne peut devenir plus permissive que l'autre. */
+      const r = numero !== undefined
+        ? verifierNumero(tous, numero, code)
+        : verifierCode(tous, identifiant, code)
       if (r.ok) {
         setUtilisateur(r.utilisateur)
         ecrireSession(r.utilisateur.id)
         /* Si le rayon ouvert n'est pas le sien, on l'amene sur un
-           rayon qui l'est. Sinon elle entre sur un écran qui n'est
+           rayon qui l'est. Sinon elle entre sur un ecran qui n'est
            pas le sien, sans comprendre pourquoi c'est vide. */
         rayonAutorise(r.utilisateur, rayon)
       }
-      return r.ok
-        ? { ok: true }
-        : { ok: false, message: r.raison === 'inactif' ? 'Ce compte est désactivé.' : 'Code incorrect.' }
+      return { ok: r.ok, raison: r.ok ? null : r.raison }
     } catch (e) {
       console.error('Connexion impossible', detailErreur(e))
-      return { ok: false, message: 'Connexion impossible.' }
+      return { ok: false, raison: 'code-incorrect' as const }
     }
   }
 

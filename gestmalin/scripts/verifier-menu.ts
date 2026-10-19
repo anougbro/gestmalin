@@ -1,5 +1,5 @@
 import { chromium } from 'playwright'
-import { prepare } from './aide.ts'
+import { connecter } from './aide.ts'
 
 /* ============================================================
    LE MENU SUR TELEPHONE
@@ -26,15 +26,7 @@ const tiroirOuvert = () => page.locator('.tiroir').count()
 const titre = () => page.locator('.entete__titre').first().innerText()
 
 await page.goto('http://localhost:5173/', { waitUntil: 'networkidle' })
-    await prepare(page)
-await page.waitForTimeout(1200)
-for (const c of ['1', '2', '3', '4', '5']) {
-  await page.getByRole('button', { name: c, exact: true }).click()
-}
-await page.getByRole('button', { name: 'Entrer' }).click()
-await page.waitForTimeout(900)
-
-console.log('1. Le bouton menu')
+  await connecter(page)
 
 const menu = page.getByRole('button', { name: /Ouvrir le menu/ })
 ok((await menu.count()) === 1, 'le bouton menu existe')
@@ -86,12 +78,7 @@ await page.keyboard.press('Escape')
 console.log('\n7. Sur ordinateur, pas de tiroir : la barre laterale est la')
 const bureau = await navigateur.newPage({ viewport: { width: 1440, height: 900 } })
 await bureau.goto('http://localhost:5173/', { waitUntil: 'networkidle' })
-  await prepare(bureau)
-await bureau.waitForTimeout(1200)
-for (const c of ['1', '2', '3', '4', '5']) {
-  await bureau.getByRole('button', { name: c, exact: true }).click()
-}
-await bureau.getByRole('button', { name: 'Entrer' }).click()
+await connecter(bureau)
 await bureau.waitForTimeout(900)
 ok((await bureau.locator('.menu-btn').isVisible()) === false, 'le bouton menu est masque sur ordinateur')
 ok((await bureau.locator('.barre').isVisible()) === true, 'la barre laterale est presente sur ordinateur')

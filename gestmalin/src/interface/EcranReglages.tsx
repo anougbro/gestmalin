@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useSession } from '../etat/useSession'
 import { base } from '../donnees/base'
-import { deplacerVersRayon } from '../donnees/personnes'
-import { aLeDroit, type Utilisateur } from '../domaine/acces'
+import { changerNumero, deplacerVersRayon } from '../donnees/personnes'
+import { aLeDroit, LONGUEUR_TELEPHONE, telephoneSaisi, type Utilisateur } from '../domaine/acces'
 import { RAYONS_PAR_DEFAUT } from '../etat/rayons'
 import { chargerJeuEssai, chargerPersonnes, COMPTES_ESSAI } from '../donnees/jeuEssai'
 import { empreinte, LONGUEUR_CODE } from '../domaine/acces'
@@ -18,16 +18,8 @@ import { Bouton, Entete, PastillesCode, PavillonNumerique } from './Primitives'
    ============================================================ */
 
 export function EcranReglages({ retour }: { retour: () => void }) {
-  const { rayon, utilisateur, rafraichir, rayonsVisibles, toutEffacer: vider } = useSession()
+  const { utilisateur, rafraichir, toutEffacer: vider } = useSession()
   const [message, setMessage] = useState<string | null>(null)
-
-  /* Le second rayon a charger dans le jeu d'essai, s'il existe.
-     On NE peut pas le deviner : sur un telephone qui ne gere qu'un
-     rayon, l'autre appartient a quelqu'un d'autre, et y ecrire des
-     produits d'essai reviendrait a remplir une base qui n'a rien a
-     y faire. On passe donc `null`, et le chargeur ne remplira rien. */
-  const rayonMed = rayonsVisibles.find((id) => id !== rayon.id) ?? (rayon.id === 'r-med' ? rayon.id : null)
-  const rayonMen = rayonsVisibles.find((id) => id !== rayon.id) ?? (rayon.id === 'r-men' ? rayon.id : null)
 
   /* ---------- Changer son code ----------
 
@@ -89,8 +81,8 @@ export function EcranReglages({ retour }: { retour: () => void }) {
   /* ---------- Le reste ---------- */
 
   async function charger() {
-    const r = await chargerJeuEssai(rayonMed, rayonMen, utilisateur?.id ?? 'u-1')
-    await chargerPersonnes(rayonMed, rayonMen)
+    const r = await chargerJeuEssai(utilisateur?.id ?? 'u-1')
+    await chargerPersonnes()
     setMessage(`${r.produits} produits et ${r.mouvements} mouvements chargés.`)
     await rafraichir()
   }
@@ -100,7 +92,7 @@ export function EcranReglages({ retour }: { retour: () => void }) {
      longueur : tout le monde est alors passe a 00000, et la
      liste ci-dessus ne dit plus vrai. */
   async function remettreLesComptes() {
-    await chargerPersonnes(rayonMed, rayonMen)
+    await chargerPersonnes()
     setMessage('Les codes de l\'essai sont remis.')
     await rafraichir()
   }
@@ -134,10 +126,70 @@ async function transferer(id: string, rayonId: string) {
   setMessage('Rayon changé.')
 }
 
+/* ---------- Mon numero ---------- */
+
+const [numero, setNumero] = useState('')
+const [erreurNumero, setErreurNumero] = useState<string | null>(null)
+const [numeroOuvert, setNumeroOuvert] = useState(false)
+
+async function validerNumero() {
+  if (!utilisateur) return
+  if (!telephoneSaisi(numero)) {
+    setErreurNumero(`Le numéro doit faire ${LONGUEUR_TELEPHONE} chiffres.`)
+    return
+  }
+  const r = await changerNumero(utilisateur.id, numero)
+  if (!r.ok) {
+    setErreurNumero(r.raison)
+    setNumero('')
+    return
+  }
+  setErreurNumero(null)
+  setNumero('')
+  setNumeroOuvert(false)
+  setMessage('Numéro changé. Il te faut l\'entrer à la prochaine connexion.')
+  await lirePersonnes()
+}
+
+/* ---------- L'ecran du numero ----------
+
+    Un pave, une question. Le meme ecran que la connexion, sans la
+    marque : dix chiffres, puis on revient aux reglages.
+
+    Il n'est pas melange a l'ecran des reglages parce qu'un pave
+    qui ne sert qu'a une chose doit etre seul avec cette chose. */
+if (numeroOuvert) {
+  return (
+    <div className="ecran">
+      <Entete titre="Mon numéro" surRetour={() => { setNumeroOuvert(false); setNumero(''); setErreurNumero(null) }} />
+
+      <div className="contenu">
+        <p style={{ margin: '0 0 12px', fontSize: 13.5, color: 'var(--c-500)' }}>
+          Dix chiffres, sans l’indicatif du pays.
+        </p>
+
+        <PastillesCode code={numero} sur="clair" total={LONGUEUR_TELEPHONE} />
+        <PavillonNumerique
+          ton="clair"
+          onChiffre={(c) => {
+            setErreurNumero(null)
+            setNumero((v) => (v.length >= LONGUEUR_TELEPHONE ? v : v + c))
+          }}
+          onEffacer={() => { setErreurNumero(null); setNumero((v) => v.slice(0, -1)) }}
+          onValider={() => void validerNumero()}
+          peutValider={telephoneSaisi(numero)}
+          libelleValider="Enregistrer"
+        />
+        {erreurNumero && <p className="reglage__erreur">{erreurNumero}</p>}
+      </div>
+    </div>
+  )
+}
+
 async function effacerTout() {
     if (!confirm('Effacer TOUT : produits, lots, mouvements, alertes ?\n\nCette action est définitive.')) return
     await vider()
-    await chargerPersonnes(rayonMed, rayonMen)
+    await chargerPersonnes()
     setMessage('Tout a été effacé. Les zones et les emplacements sont conservés.')
     await rafraichir()
   }
@@ -155,7 +207,34 @@ async function effacerTout() {
           </div>
         )}
 
-        {/* ---------- Le code ---------- */}
+        {/* ---------- Mon numero ----------
+
+            Le numero EST l'identite : c'est par lui qu'on entre.
+            On le montre en clair, en gros, pour que la personne
+            le verifie d'un coup d'oeil — un numero mal recopie
+            par ailleurs est la cause la plus probable d'un
+            « je n'arrive pas a entrer ». */}
+        <div className="carte">
+          <p className="section__titre">Mon numéro</p>
+          <p className="num" style={{ margin: '0 0 4px', fontSize: 26, fontWeight: 700, letterSpacing: '0.02em' }}>
+            {utilisateur?.telephone ?? '—'}
+          </p>
+          <p style={{ margin: '0 0 12px', fontSize: 12.5, color: 'var(--c-500)' }}>
+            {utilisateur?.telephone
+              ? 'Tu entres avec ce numéro, puis ton code.'
+              : 'Pas encore de numéro. Ajoute-le : sans lui, tu entres par ton nom.'}
+          </p>
+
+          {/* Le pave du numero vit sur SON ecran, pas ici. Deux
+              paves identiques l'un sous l'autre, c'est deux fois le
+              meme dessin avec deux sens differents : personne ne
+              sait lequel remplit quoi. */}
+          <Bouton surClick={() => { setNumero(''); setErreurNumero(null); setNumeroOuvert(true) }}>
+            {utilisateur?.telephone ? 'Changer mon numéro' : 'Ajouter mon numéro'}
+          </Bouton>
+        </div>
+
+        {/* ---------- Mon code ---------- */}
         <div className="carte">
           <p className="section__titre">Mon code</p>
           <p style={{ margin: '0 0 4px', fontSize: 13.5, color: 'var(--c-700)' }}>
@@ -244,11 +323,11 @@ async function effacerTout() {
               <li key={p.id} className="codes__ligne" style={{ cursor: 'default' }}>
                 <span className="codes__nom">{p.nom}</span>
                 <span className="codes__peut">
-                  {p.rayonsAutorises.length === 0
-                    ? 'Aucun'
-                    : p.rayonsAutorises
-                        .map((id) => RAYONS_PAR_DEFAUT.find((r) => r.id === id)?.nom ?? id)
-                        .join(' · ')}
+                  {p.telephone ? (
+                    <span className="num">{p.telephone}</span>
+                  ) : (
+                    <span style={{ color: 'var(--wrn-700)' }}>Pas de numéro</span>
+                  )}
                 </span>
               </li>
             ))}

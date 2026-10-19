@@ -10,6 +10,8 @@ function utilisateur(p: Partial<Utilisateur> = {}): Utilisateur {
   return {
     id: 'u1', nom: 'Amina', role: 'preparateur',
     rayonsAutorises: ['r-med', 'r-men'], actif: true,
+      independant: true,
+      telephone: '9012345678',
     longueurCode: LONGUEUR_CODE,
     empreinte: empreinte('u1', '12345'),
     ...p,

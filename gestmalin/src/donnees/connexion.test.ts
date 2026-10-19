@@ -54,6 +54,7 @@ describe('une base ancienne, sans empreinte', () => {
       role: 'preparateur',
       rayonsAutorises: ['r-med', 'r-men'],
       actif: true,
+      independant: true,
       longueurCode: 4,
       empreinte: '',
     })
@@ -132,6 +133,7 @@ describe("le changement de longueur du code", () => {
         role: 'preparateur',
         rayonsAutorises: ['r-med', 'r-men'],
         actif: true,
+        independant: true,
         longueurCode: 4,
         empreinte: empreinte('u-1', '1234'),
       },
@@ -141,6 +143,7 @@ describe("le changement de longueur du code", () => {
         role: 'responsable',
         rayonsAutorises: ['r-men'],
         actif: true,
+        independant: true,
         longueurCode: 4,
         empreinte: empreinte('u-2', '1111'),
       },

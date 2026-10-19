@@ -33,6 +33,15 @@ await page.goto('http://localhost:5173/', { waitUntil: 'networkidle' })
 await prepare(page)
 await page.waitForTimeout(1200)
 
+/* L'ecran a deux etapes : le numero, puis le code. On passe
+   directement au code par la liste des noms — c'est le chemin
+   court, et c'est celui qui montre le pave du CODE, le seul que
+   ce script mesure. */
+await page.getByRole('button', { name: /oublié le numéro/ }).click()
+await page.waitForTimeout(500)
+await page.locator('.personne').first().click()
+await page.waitForTimeout(500)
+
 /* ---------- 1. Effacer ---------- */
 console.log('1. Effacer un chiffre')
 
@@ -127,7 +136,7 @@ ok(!/12345|22222|33333/.test(contenuSession), 'aucun code dans la session conser
 /* ---------- 4. La deconnexion, elle, coupe ---------- */
 console.log('\n4. La deconnexion coupe-t-elle vraiment ?')
 
-await page.locator('.qui-btn-lg').click()
+await page.locator('.qui:visible, .qui-btn:visible, .qui-btn-lg:visible').first().click()
 await page.waitForTimeout(700)
 ok((await surLePave()) === 1, '« Changer » deconnecte')
 
