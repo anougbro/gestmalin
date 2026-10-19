@@ -428,6 +428,37 @@ body {
 
 /* ---------- Pastille ---------- */
 
+
+/* ---------- Le badge ABC ----------
+   Trois degres de gris, du plus fonce au plus clair.
+
+   Un badge ABC colore serait une faute. La couleur est la seule
+   ressource de l'ecran pour dire « fais quelque chose » ; un
+   rouge, un ambre et un vert deployes ici signaleraient une
+   urgence qui n'existe pas. Le classement ABC parle de
+   rotation, pas de danger.
+
+   Le degrade porte donc l'information : A est le plus fonce
+   parce que c est celui qui se trompe le plus vite. Trois
+   nuances de gris suffisent a lire l ordre sans le lire du
+   tout — c est exactement ce qu on veut quand on compte. */
+.badge-abc {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 9px;
+  border-radius: var(--r-pill);
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: var(--c-700);
+  background: var(--c-100);
+  border: 1px solid var(--c-200);
+}
+.badge-abc .num { font-size: 12.5px; font-weight: 700; opacity: 0.85; }
+.badge-abc--a { background: var(--c-200); border-color: var(--c-300); color: var(--c-900); }
+.badge-abc--b { background: var(--c-100); border-color: var(--c-300); color: var(--c-700); }
+.badge-abc--c { background: var(--c-25);  border-color: var(--c-200); color: var(--c-500); }
 .pastille {
   position: absolute;
   top: 9px;
@@ -756,6 +787,13 @@ body {
 }
 .bandeau--wrn { border-color: var(--wrn-200); background: var(--wrn-50); color: var(--wrn-700); }
 .bandeau--neutre { border-color: var(--line); background: var(--c-25); color: var(--c-600); }
+/* Le rouge ne sert qu'a une chose dans toute l'application :
+   dire qu'il faut AGIR maintenant. Au comptage, c'est l'ecart
+   qui depasse le seuil — la seule action possible etant de
+   recompter. Le distinguer de l'ambre est ce qui evite qu'un
+   bandeau rouge decoratif perde toute credibilite le jour ou
+   une vraie perte de marchandise est signalee. */
+.bandeau--dgr { border-color: var(--dgr-200); background: var(--dgr-50); color: var(--dgr-700); }
 .bandeau__compte {
   font-size: 26px;
   font-weight: 700;
@@ -1521,6 +1559,22 @@ body {
   letter-spacing: 0.08em;
   color: var(--teal-700);
 }
+
+/* ============================================================
+   LES MEDIA QUERIES — EN DERNIER
+
+   Une regle ecrite apres un @media gagne sur lui. Ces blocs
+   doivent donc rester les derniers du fichier : deplace, un style
+   d'ordinateur disparait sans qu'on le voie.
+   ============================================================ */
+
+/* ============================================================
+   LES MEDIA QUERIES — EN DERNIER
+
+   Une regle ecrite apres un @media gagne sur lui. Ces blocs
+   doivent donc rester les derniers du fichier : deplace, un style
+   d'ordinateur disparait sans qu'on le voie.
+   ============================================================ */
 
 /* ============================================================
    LES MEDIA QUERIES — EN DERNIER
