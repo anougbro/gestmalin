@@ -27,6 +27,7 @@
     "fil-des-etats": "node --experimental-strip-types scripts/fil-des-etats.ts",
     "verifier-hors-ligne": "node --experimental-strip-types scripts/verifier-hors-ligne.ts",
     "verifier-site": "node --experimental-strip-types scripts/verifier-site-publie.ts",
+    "verifier-scan": "node --experimental-strip-types scripts/verifier-scan.ts",
     "remplir": "node --experimental-strip-types scripts/remplir-et-capturer.ts"
   },
   "dependencies": {

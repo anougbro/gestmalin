@@ -1,5 +1,5 @@
 /* ============================================================
-   LE LECTEUR DE CODE-BARRES
+   LA CAMERA
 
    Deux chemins, tous les deux hors ligne :
 
@@ -13,57 +13,26 @@
    On ne demande au decodeur que quatre formats. Forcer la
    recherche de tous les formats possibles est la premiere
    cause d'un scan lent et peu fiable.
+
+   Ce fichier ne fait QUEBrancher une camera. Le decoupage du code
+   est dans `domaine/codeBarres.ts`, et la decision sur le code
+   dans `domaine/reception.ts`. Les deux se testent sans camera.
    ============================================================ */
 
-import { BrowserMultiFormatReader } from '@zxing/browser'
+import { BarcodeFormat, BrowserMultiFormatReader } from '@zxing/browser'
+import { analyserGS1, type CodeLu } from '../domaine/codeBarres'
 
-export const FORMATS_SOUHAITES = ['EAN_13', 'UPC_A', 'CODE_128', 'DATA_MATRIX'] as const
+export const FORMATS_SOUHAITES: BarcodeFormat[] = [
+  BarcodeFormat.EAN_13,
+  BarcodeFormat.UPC_A,
+  BarcodeFormat.CODE_128,
+  BarcodeFormat.DATA_MATRIX,
+]
 
-export type CodeLu = {
-  brut: string
-  gtin?: string
-  lot?: string
-  peremption?: string
-  serie?: string
-}
-
-/* ---------- Un code GS1 contient plusieurs informations ----------
-   On ne se contente pas de lire : on DECOUPE.
-
-   (01) GTIN        le produit
-   (10) lot         le numero de lot
-   (17) peremption  la date, en AAMMJJ
-   (21) serie       le numero unique de la boite
-
-   C'est ce qui permet de remplir quatre champs d'un seul scan. */
-
-export function analyserGS1(brut: string): CodeLu {
-  const code: CodeLu = { brut }
-  /* Format element-string : (01)3400930...(17)270331(10)A2X9F */
-  const elements = brut.match(/\((\d{2,4})\)([^(]*)/g)
-  if (!elements) return code
-
-  for (const element of elements) {
-    const cle = element.slice(1, 3)
-    const valeur = element.slice(4, -1)
-    switch (cle) {
-      case '01': code.gtin = valeur; break
-      case '10': code.lot = valeur; break
-      case '17': code.peremption = convertirDateGS1(valeur); break
-      case '21': code.serie = valeur; break
-    }
-  }
-  return code
-}
-
-/* GS1 utilise AAMMJJ. On rend 'AAAA-MM-JJ', le format qu'on
-   stocke partout ailleurs. */
-export function convertirDateGS1(aammjj: string): string {
-  const annee = aammjj.slice(0, 2)
-  return `20${annee}-${aammjj.slice(2, 4)}-${aammjj.slice(4, 6)}`
-}
-
-/* ---------- La detection ---------- */
+/* Renvoye depuis ce fichier par commodite : tout ce qui lit un
+   code passe par la, et un seul endroit decide de sa forme. */
+export { analyserGS1, convertirDateGS1, LONGUEUR_PLAUSIBLE } from '../domaine/codeBarres'
+export type { CodeLu } from '../domaine/codeBarres'
 
 type ConstructeurCodeLu = (code: CodeLu) => void
 
@@ -77,6 +46,17 @@ export class LecteurCodeBarres {
     this.video = video
     this.surCode = surCode
     this.lecteur = new BrowserMultiFormatReader()
+
+    /* La liste des formats est ecrite en haut de ce fichier, avec
+       un commentaire expliquant pourquoi — mais elle n'etait
+       jamais passee au decodeur. Sans cette ligne, il essaie
+       TOUS les formats a chaque image. Sur un telephone lent,
+       il n'a pas le temps d'aller au bout de la liste avant
+       l'image suivante : le code est bien cadre, et pourtant il
+       passe. L'ecran parait fige, et la personne en conclut que
+       le scan est casse. Le genre de bug qui ne se voit
+       qu'en tenant le telephone en main. */
+    this.lecteur.possibleFormats = [...FORMATS_SOUHAITES]
   }
 
   async demarrer(): Promise<void> {

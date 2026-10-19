@@ -8,7 +8,9 @@ import type { Lot } from '../domaine/types'
 import { Icone } from './Icones'
 import { Bouton, Champ, Entete, Stepper } from './Primitives'
 import { FenetreScan } from './FenetreScan'
-import type { CodeLu } from './Scan'
+import type { CodeLu } from '../domaine/codeBarres'
+import { suiteDuCode } from '../domaine/reception'
+import { RAYONS_PAR_DEFAUT } from '../etat/rayons'
 
 /* ============================================================
    LA SORTIE — ce qui part vers un patient, ou qui se casse
@@ -36,6 +38,7 @@ export function EcranSortie({ retour }: { retour: () => void }) {
   const [quantite, setQuantite] = useState(0)
   const [motif, setMotif] = useState('delivrance')
   const [reste, setReste] = useState(0)
+  const [message, setMessage] = useState<string | null>(null)
 
   useEffect(() => {
     ;(async () => setResultats(await rechercher(rayon.id, texte)))()
@@ -56,9 +59,41 @@ export function EcranSortie({ retour }: { retour: () => void }) {
 
   async function surCode(code: CodeLu) {
     setScanner(false)
-    if (code.gtin) {
-      const p = (await base.produits.where('codeBarres').equals(code.gtin).first()) ?? undefined
-      if (p && p.rayonId === rayon.id) { setChoisi(p); setResultats([]); setTexte('') }
+
+    /* Meme decision qu'a la reception — meme code, memes quatre
+       destinations possibles. Elle est ecrite une fois, en
+       `domaine/reception.ts`.
+
+       La difference ici : on ne peut pas creer un produit au
+       moment de sortir. Quelque chose qu'on n'a pas recu ne se
+       sort pas. Le message le dit, plutot que de ne rien
+       afficher comme avant. */
+    const trouve = code.gtin
+      ? ((await base.produits.where('codeBarres').equals(code.gtin).first()) ?? undefined)
+      : undefined
+    const suite = suiteDuCode(code, rayon.id, trouve, (id) =>
+      RAYONS_PAR_DEFAUT.find((r) => r.id === id)?.nom,
+    )
+
+    switch (suite.cas) {
+      case 'produit':
+        setChoisi(suite.produit as ProduitRow)
+        setResultats([])
+        setTexte('')
+        setMessage(null)
+        return
+
+      case 'autre-rayon':
+        setMessage(`${suite.produit.nomFr} est dans ${suite.nomRayon}, pas ici.`)
+        return
+
+      case 'a-creer':
+        setMessage('Pas au catalogue. Reçois-le d’abord.')
+        return
+
+      case 'illisible':
+        setMessage(`Code non reconnu : ${suite.brut}. Cherche par nom.`)
+        return
     }
   }
 
@@ -174,11 +209,17 @@ export function EcranSortie({ retour }: { retour: () => void }) {
           <input
             className="champ__saisie"
             value={texte}
-            onChange={(e) => setTexte(e.target.value)}
+            onChange={(e) => { setTexte(e.target.value); setMessage(null) }}
             placeholder="Paracétamol…"
             autoFocus
           />
         </Champ>
+
+        {message && (
+          <div className="bandeau bandeau--neutre">
+            <span className="bandeau__texte"><span className="bandeau__titre">{message}</span></span>
+          </div>
+        )}
 
         {resultats.length > 0 && (
           <div className="liste">
