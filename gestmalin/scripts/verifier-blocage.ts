@@ -57,7 +57,7 @@ async function entrer() {
   await page.waitForTimeout(400)
 }
 
-async function ouvrirLogin(numero: string) {
+async function ouvrirNumero(numero: string) {
   await chiffres(numero)
   await entrer()
   await page.waitForTimeout(300)
@@ -95,7 +95,7 @@ async function etat(id: string) {
   }, id)
 }
 
-async function reviserLogin() {
+async function reviserNumero() {
   const retour = page.getByRole('button', { name: 'Retour' })
   if (await retour.count()) {
     await retour.click()
@@ -108,7 +108,7 @@ await prepare(page)
 await semerComptes(page, [DIRECTRICE, BLOQUE])
 
 console.log('1. Cinq mauvais mots de passe')
-await ouvrirLogin(BLOQUE.telephone)
+await ouvrirNumero(BLOQUE.telephone)
 
 const messages: string[] = []
 for (let i = 1; i <= 5; i++) {
@@ -130,15 +130,15 @@ console.log('\n2. Un compte bloque refuse le BON mot de passe')
 await essayer(BLOQUE.code)
 ok((await corps()).includes('Compte bloqué'), 'meme le bon mot de passe est refuse pendant le blocage')
 
-/* On revient a l'etape du login : le numero doit etre vide, sinon
+/* On revient a l'etape du numéro : le numero doit etre vide, sinon
    on ne peut plus taper celui de quelqu'un d'autre. */
 await page.getByRole('button', { name: 'Retour' }).click()
 await page.waitForTimeout(500)
 const affiche = (await page.locator('.numero-affiche').innerText()).replace(/\s/g, '')
-ok(!/\d/.test(affiche), 'le retour vide le login : on peut saisir quelqu un d autre')
+ok(!/\d/.test(affiche), 'le retour vide le numéro : on peut saisir quelqu un d autre')
 
 console.log('\n3. La directrice debloque, depuis les reglages')
-await ouvrirLogin(DIRECTRICE.telephone)
+await ouvrirNumero(DIRECTRICE.telephone)
 await essayer(DIRECTRICE.code)
 await page.waitForTimeout(900)
 ok((await page.locator('.ecran--connexion').count()) === 0, 'la directrice entre')
@@ -157,14 +157,14 @@ ok(apresDeblocage?.tentatives === 0, 'le compteur est remis a zero')
 
 console.log('\n4. La personne bloquee rentre avec son mot de passe')
 await sortir()
-await ouvrirLogin(BLOQUE.telephone)
+await ouvrirNumero(BLOQUE.telephone)
 await essayer(BLOQUE.code)
 await page.waitForTimeout(900)
 ok((await page.locator('.ecran--connexion').count()) === 0, 'Ibrahim entre avec son mot de passe, sans le changer')
 
 console.log('\n5. Remettre 00000')
 await sortir()
-await ouvrirLogin(DIRECTRICE.telephone)
+await ouvrirNumero(DIRECTRICE.telephone)
 await essayer(DIRECTRICE.code)
 await page.waitForTimeout(900)
 await reglages()
@@ -173,12 +173,12 @@ await page.waitForTimeout(900)
 ok((await corps()).includes('Mot de passe remis'), 'le message annonce le mot de passe provisoire')
 
 await sortir()
-await ouvrirLogin(BLOQUE.telephone)
+await ouvrirNumero(BLOQUE.telephone)
 await essayer('54321')
 ok((await corps()).includes('Mot de passe incorrect'), 'l ancien mot de passe ne marche plus')
 
-await reviserLogin()
-await ouvrirLogin(BLOQUE.telephone)
+await reviserNumero()
+await ouvrirNumero(BLOQUE.telephone)
 await essayer('00000')
 await page.waitForTimeout(900)
 ok((await page.locator('.ecran--connexion').count()) === 0, 'le mot de passe provisoire 00000 ouvre')

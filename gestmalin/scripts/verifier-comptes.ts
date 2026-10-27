@@ -126,8 +126,8 @@ await page.getByRole('button', { name: 'Entrer' }).click()
 await page.waitForTimeout(700)
 
 ok(
-  (await page.getByText('Ton mail', { exact: true }).count()) > 0,
-  'le mail est demande a la fin, apres le mot de passe',
+  (await page.getByText('Ton courriel', { exact: true }).count()) > 0,
+  'le courriel est demande a la fin, apres le mot de passe',
 )
 await page.getByRole('button', { name: 'Passer', exact: true }).click()
 await page.waitForTimeout(1600)
@@ -140,7 +140,7 @@ ok(
 const directrice = await compteNomme('Directrice')
 ok(!!directrice, 'le compte existe vraiment en base')
 ok(directrice?.role === 'directeur', `le premier compte est directeur (${directrice?.role})`)
-ok(directrice?.telephone === '9000000009', `son login est enregistre (${directrice?.telephone})`)
+ok(directrice?.telephone === '9000000009', `son numéro est enregistre (${directrice?.telephone})`)
 ok(directrice?.empreinte === empreinte(directrice.id, '12345'), 'le mot de passe est stocke en empreinte, pas en clair')
 
 /* ============================================================
@@ -218,11 +218,11 @@ ok(creee?.empreinte === empreinte(creee!.id, '44444'), 'le code est stocke en em
    son compte, son rayon, ni son code. Et il ne doit pas pouvoir
    prendre celui d'un autre — c'est la seule regle qui empeche un
    code d'ouvrir la mauvaise personne. */
-console.log('\n6. Changer son login, quand on veut')
+console.log('\n6. Changer son numéro, quand on veut')
 
 await page.getByRole('button', { name: 'Réglages' }).first().click()
 await page.waitForTimeout(900)
-await page.getByRole('button', { name: /Changer mon login/ }).click()
+await page.getByRole('button', { name: /Changer mon numéro/ }).click()
 await page.waitForTimeout(700)
 await taperPave('9000000008')
 await page.getByRole('button', { name: 'Enregistrer', exact: true }).click()
@@ -233,7 +233,7 @@ ok(renumerotee?.telephone === '9000000008', `le numero est change (${renumerotee
 ok(renumerotee?.id === creee?.id, 'c est le meme compte : le rayon et le code suivent')
 
 /* Le numero d'une autre personne est refuse, au moment d'ecrire. */
-await page.getByRole('button', { name: /Changer mon login/ }).click()
+await page.getByRole('button', { name: /Changer mon numéro/ }).click()
 await page.waitForTimeout(700)
 await taperPave('9000000002')
 await page.getByRole('button', { name: 'Enregistrer', exact: true }).click()
@@ -257,7 +257,7 @@ await taperPave('9000000007')
 await page.getByRole('button', { name: 'Entrer' }).click()
 await page.waitForTimeout(900)
 const texteAncien = await page.locator('body').innerText()
-ok(texteAncien.includes('Login inconnu'), "l'ancien login n ouvre plus : il est vraiment remplace")
+ok(texteAncien.includes('Numéro inconnu'), "l'ancien numéro n ouvre plus : il est vraiment remplace")
 
 console.log(echecs === 0 ? '\nLES COMPTES MARCHENT, DE L INSTALLATION AU CHANGEMENT DE NUMERO.' : `\n${echecs} ECHEC(S).`)
 await navigateur.close()

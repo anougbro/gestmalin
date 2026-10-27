@@ -48,7 +48,6 @@ const ALIAS: Record<string, NomColonne> = {
   rayon: 'rayon', nom_rayon: 'rayon', rayon_nom: 'rayon',
   categorie: 'categorie', nom_categorie: 'categorie', categorie_nom: 'categorie',
   nom: 'nom_fr', nom_fr: 'nom_fr', designation: 'nom_fr', libelle: 'nom_fr',
-  nom_en: 'nom_en', nom_anglais: 'nom_en',
   code_barres: 'code_barres', codebarres: 'code_barres', barcode: 'code_barres', ean: 'code_barres',
   unite: 'unite',
   seuil: 'seuil', seuil_alerte: 'seuil', stock_min: 'seuil',
@@ -61,6 +60,14 @@ const ALIAS: Record<string, NomColonne> = {
 }
 
 export type Correspondance = Partial<Record<NomColonne, number>>
+
+/* Colonnes d'anciens exports, encore acceptees mais ignorees.
+
+   Le nom anglais a disparu du format. Les sauvegardes faites avant
+   cette suppression le portent encore : les refuser ferait perdre
+   le seul moyen de recharger un stock. On laisse donc tomber la
+   colonne, sans refuser le fichier. */
+const COLONNES_IGNOREES = new Set(['nom_en', 'nom_anglais'])
 
 /** Devine la correspondance a partir de l'entete du fichier. */
 export function devinerCorrespondance(entetes: string[]): Correspondance {
@@ -111,7 +118,11 @@ export async function simulerImport(
   const [entetes, ...corps] = tableau
   if (!entetes) throw new Error('Le fichier est vide.')
 
-  const inconnues = entetes.filter((_, i) => !Object.values(correspondance).includes(i))
+  const inconnues = entetes.filter(
+    (entete, i) =>
+      !Object.values(correspondance).includes(i) &&
+      !COLONNES_IGNOREES.has(entete.trim().toLowerCase().replace(/\s+/g, '_')),
+  )
   if (inconnues.length > 0) {
     throw new Error(
       `Colonnes non reconnues : ${inconnues.join(', ')}. ` +
@@ -255,7 +266,6 @@ export async function appliquerImport(
       rayonId: produit?.rayonId ?? rayon.id,
       categorieId: produit?.categorieId ?? 'c-defaut',
       nomFr: ligne.valeurs.nom_fr ?? produit?.nomFr ?? 'Sans nom',
-      nomEn: ligne.valeurs.nom_en ?? produit?.nomEn,
       codeBarres: ligne.valeurs.code_barres ?? produit?.codeBarres,
       unite: (ligne.valeurs.unite as ProduitRow['unite']) ?? produit?.unite ?? 'boite',
       seuil: Number(ligne.valeurs.seuil ?? produit?.seuil ?? 5) || 5,
@@ -334,7 +344,7 @@ export async function exporterProduits(format: 'csv' | 'xlsx', rayonId: string):
       const premier = mesLots.find((l) => l.peremption)
 
       return [
-        rayon?.nom ?? '', '', p.nomFr, p.nomEn ?? '', p.codeBarres ?? '',
+        rayon?.nom ?? '', '', p.nomFr, p.codeBarres ?? '',
         p.unite, String(p.seuil), String(stock),
         premier?.numero ?? '', premier?.peremption ?? '',
         '', '', p.emplacementId ? (parCode.get(p.emplacementId) ?? '') : '',

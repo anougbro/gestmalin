@@ -10,6 +10,7 @@ import {
   ESSAIS_MAX,
   estBloque,
   LONGUEUR_CODE,
+  mailLibre,
   mailValide,
   type Role,
   type Utilisateur,
@@ -167,7 +168,7 @@ describe('le deblocage', () => {
   })
 })
 
-describe('le mail', () => {
+describe('le courriel', () => {
   it('ne retient pas une adresse evidentment fausse', () => {
     expect(mailValide('amina@exemple.com')).toBe(true)
     expect(mailValide('amina@exemple.ne')).toBe(true)
@@ -190,5 +191,31 @@ describe('le mail', () => {
     const u = await base.utilisateurs.get('u-01')
     expect(u?.mail).toBeUndefined()
     expect('mail' in u!).toBe(false)
+  })
+
+  it('mailLibre compare sans tenir compte de la casse', () => {
+    const avec = { ...compte('u-01', 'preparateur', 'Amina'), mail: 'Amina@Exemple.com' }
+    const sans = compte('u-02', 'preparateur', 'Ibrahim')
+
+    expect(mailLibre([avec, sans], ' amina@exemple.COM ')).toBe(false)
+    expect(mailLibre([avec, sans], 'amina@exemple.com', 'u-01')).toBe(true)
+    expect(mailLibre([avec, sans], 'ibrahim@exemple.com')).toBe(true)
+    /* Un compte sans courriel ne reserve rien. */
+    expect(mailLibre([sans], 'amina@exemple.com')).toBe(true)
+  })
+
+  it('refuse une adresse deja prise, sans rien ecrire', async () => {
+    await base.utilisateurs.put({ ...compte('u-01', 'preparateur', 'Amina'), mail: 'Amina@Exemple.com' })
+    await base.utilisateurs.put(compte('u-02', 'preparateur', 'Ibrahim'))
+
+    expect(await changerMail('u-02', ' amina@exemple.com ')).toBe('Ce courriel est déjà pris.')
+    expect((await base.utilisateurs.get('u-02'))?.mail).toBeUndefined()
+  })
+
+  it('laisse remettre sa propre adresse', async () => {
+    await base.utilisateurs.put({ ...compte('u-01', 'preparateur', 'Amina'), mail: 'amina@exemple.com' })
+
+    expect(await changerMail('u-01', 'AMINA@exemple.com')).toBeNull()
+    expect((await base.utilisateurs.get('u-01'))?.mail).toBe('AMINA@exemple.com')
   })
 })

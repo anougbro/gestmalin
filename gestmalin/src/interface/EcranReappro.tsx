@@ -14,7 +14,7 @@ import { Bouton, Entete, Vide } from './Primitives'
 
    Groupée par fournisseur : on commande a quelqu'un, pas « un peu
    de tout ». Le texte est copiable tel quel pour etre envoye
-   par message ou par mail, meme sans reseau.
+   par message ou par courriel, meme sans reseau.
    ============================================================ */
 
 export function EcranReappro({ retour }: { retour: () => void }) {

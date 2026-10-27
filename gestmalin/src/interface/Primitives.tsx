@@ -268,7 +268,7 @@ export function PastillesCode({ code, sur }: { code: string; sur?: 'sombre' | 'c
   )
 }
 
-/* ---------- Le login, chiffre par chiffre ----------
+/* ---------- Le numéro, chiffre par chiffre ----------
 
    Dix points ne disent rien : on ne peut pas relire ce qu'on vient
    de taper, et une faute sur un numero ne se voit qu'au refus, une
@@ -285,7 +285,7 @@ export function NumeroAffiche({ numero, sur }: { numero: string; sur?: 'sombre' 
     <div
       className={`numero-affiche${sur === 'clair' ? ' numero-affiche--clair' : ''}`}
       role="status"
-      aria-label={`Login : ${chiffres || 'vide'}`}
+      aria-label={`Numéro : ${chiffres || 'vide'}`}
     >
       {Array.from({ length: LONGUEUR_TELEPHONE }, (_, i) => (
         <span

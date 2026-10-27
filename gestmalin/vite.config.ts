@@ -58,11 +58,16 @@ export default defineConfig(({ mode }) => {
       },
 
       manifest: {
-        name: 'Gestmalin — Stock pharmacie',
+        name: 'Gestmalin - Stock pharmacie',
         short_name: 'Gestmalin',
         description:
           'Gestion de stock hors ligne pour pharmacie : médicaments et produits ménagers.',
         lang: 'fr',
+        /* `id` fixe l'identite de l'application. Sans lui, le
+           navigateur en fabrique une a partir de `start_url`, et
+           une installation deja faite n'est plus reconnue comme la
+           meme application si le chemin change. */
+        id: base,
         /* `start_url` et `scope` doivent porter le chemin de base.
            Ecrits en `/`, ils ouvrent la racine du domaine — la
            page blanche de GitHub, pas l'application. */

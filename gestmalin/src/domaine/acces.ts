@@ -122,12 +122,17 @@ export type Utilisateur = {
       personne ne peut entrer. C'est precisement ce qui est
       arrive au passage de 4 a 5 chiffres. */
   longueurCode: number
-  /** Le mail de la personne, s'il en a donne un.
+  /** Le courriel de la personne, s'il en a donne un.
 
       Facultatif et purement indicatif : l'application n'envoie
       rien, elle n'a pas de serveur. Il sert a reconnaitre la
       personne quand elle demande un nouveau mot de passe, et a la
-      joindre hors de la pharmacie. */
+      joindre hors de la pharmacie.
+
+      UNIQUE quand il est present : deux comptes sur la meme
+      adresse, et le responsable ne sait plus qui joindre quand
+      l'un des deux oublie son mot de passe. L'unicite est
+      verifiee a l'ecriture, comme pour le numero. */
   mail?: string
   /** Essais de mot de passe rates depuis la derniere reussite. */
   tentatives?: number
@@ -290,6 +295,28 @@ export function estBloque(u: Utilisateur, maintenant = Date.now()): boolean {
     evidente — un espace, pas d'arobase, pas de point. */
 export function mailValide(mail: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(mail.trim())
+}
+
+/**
+ * Un courriel libre, ou false s'il est deja pris.
+ *
+ * Les adresses ne sont pas sensibles a la casse : `Amina@Exemple.com`
+ * et `amina@exemple.com` designent la meme boite. Les comparer
+ * telles quelles laisserait passer deux comptes pour une seule
+ * adresse — et le responsable ne saurait plus qui joindre.
+ *
+ * Un compte sans courriel ne reserve rien : il ne doit pas empecher
+ * quelqu'un d'autre de donner le sien.
+ */
+export function mailLibre(
+  utilisateurs: readonly Utilisateur[],
+  mail: string,
+  saufId?: string,
+): boolean {
+  const voulu = mail.trim().toLowerCase()
+  return !utilisateurs.some(
+    (u) => u.id !== saufId && u.mail && u.mail.trim().toLowerCase() === voulu,
+  )
 }
 
 /* ---------- La connection, sans reseau ---------- */

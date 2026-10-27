@@ -48,10 +48,6 @@ export function EcranProduits({
             <input className="champ__saisie" value={p?.nomFr ?? ''} onChange={(e) => maj({ nomFr: e.target.value })} autoFocus />
           </Champ>
 
-          <Champ label="Nom en anglais" aide="Facultatif">
-            <input className="champ__saisie" value={p?.nomEn ?? ''} onChange={(e) => maj({ nomEn: e.target.value })} />
-          </Champ>
-
           <Champ label="Code-barres" aide="Facultatif">
             <input className="champ__saisie" value={p?.codeBarres ?? ''} onChange={(e) => maj({ codeBarres: e.target.value })} inputMode="numeric" />
           </Champ>
@@ -60,7 +56,7 @@ export function EcranProduits({
             <Stepper valeur={p?.seuil ?? 5} surChangement={(n) => maj({ seuil: n })} minimum={0} />
           </Champ>
 
-          <Champ label="Unite">
+          <Champ label="Unité">
             <select className="champ__saisie" value={p?.unite ?? 'boite'} onChange={(e) => maj({ unite: e.target.value as ProduitRow['unite'] })}>
               <option value="boite">Boîte</option>
               <option value="plaquette">Plaquette</option>

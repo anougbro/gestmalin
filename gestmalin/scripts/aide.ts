@@ -102,7 +102,7 @@ export async function prepare(page: Page): Promise<void> {
  */
 export async function connecterParNom(page: Page, nom: string, code = '12345'): Promise<void> {
   await prepare(page)
-  const secours = page.getByRole('button', { name: /oublié mon login/ })
+  const secours = page.getByRole('button', { name: /oublié mon numéro/ })
   if (await secours.count()) {
     await secours.click()
     await page.waitForTimeout(500)
@@ -168,7 +168,7 @@ export async function creerCompte(
   await page.getByRole('button', { name: rayon }).click()
   await page.waitForTimeout(400)
 
-  /* Le login, puis deux fois le mot de passe : trois saisies au
+  /* Le numéro, puis deux fois le mot de passe : trois saisies au
      pave, comme dans l'application. */
   for (const saisie of [numero, code, code]) {
     for (const c of saisie) {

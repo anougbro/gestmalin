@@ -9,6 +9,7 @@ import { chargerJeuEssai, chargerPersonnes, COMPTES_ESSAI } from '../donnees/jeu
 import { empreinte, LONGUEUR_CODE } from '../domaine/acces'
 import { Icone } from './Icones'
 import { Bouton, Entete, NumeroAffiche, PastillesCode, PavillonNumerique } from './Primitives'
+import { useInstallation } from '../etat/installation'
 
 /* ============================================================
    LES REGLAGES
@@ -18,9 +19,20 @@ import { Bouton, Entete, NumeroAffiche, PastillesCode, PavillonNumerique } from 
    effacer.
    ============================================================ */
 
+/* Le role est un code en base (`preparateur`), pas un nom
+   affichable. Sans cette table, l'ecran montrerait « preparateur »
+   sans accent, au milieu d'un texte francais. */
+const NOM_ROLE: Record<Utilisateur['role'], string> = {
+  preparateur: 'Préparateur',
+  responsable: 'Responsable',
+  pharmacien: 'Pharmacien',
+  directeur: 'Directeur',
+}
+
 export function EcranReglages({ retour }: { retour: () => void }) {
   const { utilisateur, rafraichir, toutEffacer: vider } = useSession()
   const [message, setMessage] = useState<string | null>(null)
+  const { proposee, installee, installer } = useInstallation()
 
   /* ---------- Changer son code ----------
 
@@ -161,12 +173,16 @@ const [erreurMail, setErreurMail] = useState<string | null>(null)
 async function enregistrerMail() {
   if (!utilisateur) return
   if (mail.trim() && !mailValide(mail)) {
-    setErreurMail('Ce mail ne va pas. Écris-le en entier, ou vide le champ.')
+    setErreurMail('Ce courriel ne va pas. Écris-le en entier, ou vide le champ.')
     return
   }
-  await changerMail(utilisateur.id, mail)
+  const r = await changerMail(utilisateur.id, mail)
+  if (r) {
+    setErreurMail(r)
+    return
+  }
   setErreurMail(null)
-  setMessage(mail.trim() ? 'Mail enregistré.' : 'Mail effacé.')
+  setMessage(mail.trim() ? 'Courriel enregistré.' : 'Courriel effacé.')
   await rafraichir()
   await lirePersonnes()
 }
@@ -174,7 +190,7 @@ async function enregistrerMail() {
 async function validerNumero() {
   if (!utilisateur) return
   if (!telephoneSaisi(numero)) {
-    setErreurNumero(`Le login doit faire ${LONGUEUR_TELEPHONE} chiffres.`)
+    setErreurNumero(`Le numéro doit faire ${LONGUEUR_TELEPHONE} chiffres.`)
     return
   }
   const r = await changerNumero(utilisateur.id, numero)
@@ -186,7 +202,7 @@ async function validerNumero() {
   setErreurNumero(null)
   setNumero('')
   setNumeroOuvert(false)
-  setMessage('Login changé. Il te faut l\'entrer à la prochaine connexion.')
+  setMessage('Numéro changé. Il te faut l\'entrer à la prochaine connexion.')
   await lirePersonnes()
 }
 
@@ -200,7 +216,7 @@ async function validerNumero() {
 if (numeroOuvert) {
   return (
     <div className="ecran">
-      <Entete titre="Mon login" surRetour={() => { setNumeroOuvert(false); setNumero(''); setErreurNumero(null) }} />
+      <Entete titre="Mon numéro" surRetour={() => { setNumeroOuvert(false); setNumero(''); setErreurNumero(null) }} />
 
       <div className="contenu">
         <p style={{ margin: '0 0 12px', fontSize: 13.5, color: 'var(--c-500)' }}>
@@ -246,22 +262,22 @@ async function effacerTout() {
           </div>
         )}
 
-        {/* ---------- Mon login ----------
+        {/* ---------- Mon numéro ----------
 
-            Le login EST l'identite : c'est par lui qu'on entre.
+            Le numéro EST l'identite : c'est par lui qu'on entre.
             On le montre en clair, en gros, pour que la personne
             le verifie d'un coup d'oeil — un numero mal recopie
             par ailleurs est la cause la plus probable d'un
             « je n'arrive pas a entrer ». */}
         <div className="carte">
-          <p className="section__titre">Mon login</p>
+          <p className="section__titre">Mon numéro</p>
           <p className="num" style={{ margin: '0 0 4px', fontSize: 26, fontWeight: 700, letterSpacing: '0.02em' }}>
             {utilisateur?.telephone ?? '—'}
           </p>
           <p style={{ margin: '0 0 12px', fontSize: 12.5, color: 'var(--c-500)' }}>
             {utilisateur?.telephone
-              ? 'Tu entres avec ce login, puis ton mot de passe.'
-              : 'Pas encore de login. Ajoute-le : sans lui, tu entres par ton nom.'}
+              ? 'Tu entres avec ce numéro, puis ton mot de passe.'
+              : 'Pas encore de numéro. Ajoute-le : sans lui, tu entres par ton nom.'}
           </p>
 
           {/* Le pave du numero vit sur SON ecran, pas ici. Deux
@@ -269,20 +285,20 @@ async function effacerTout() {
               meme dessin avec deux sens differents : personne ne
               sait lequel remplit quoi. */}
           <Bouton surClick={() => { setNumero(''); setErreurNumero(null); setNumeroOuvert(true) }}>
-            {utilisateur?.telephone ? 'Changer mon login' : 'Ajouter mon login'}
+            {utilisateur?.telephone ? 'Changer mon numéro' : 'Ajouter mon numéro'}
           </Bouton>
         </div>
 
-        {/* ---------- Mon mail ----------
+        {/* ---------- Mon courriel ----------
 
             Facultatif. L'application ne l'envoie jamais : elle n'a
             pas de serveur. Il sert a joindre la personne quand elle
             oublie son mot de passe — c'est le directeur qui le lit
             dans la liste des personnes, pas un service exterieur. */}
         <div className="carte">
-          <p className="section__titre">Mon mail</p>
+          <p className="section__titre">Mon courriel</p>
           <p style={{ margin: '0 0 10px', fontSize: 12.5, color: 'var(--c-500)' }}>
-            Facultatif — aucun mail ne part.
+            Facultatif — aucun courriel ne part.
           </p>
           <input
             className="champ__saisie"
@@ -294,7 +310,7 @@ async function effacerTout() {
             spellCheck={false}
             value={mail}
             placeholder="amina@exemple.com"
-            aria-label="Mon mail"
+            aria-label="Mon courriel"
             onChange={(e) => { setMail(e.target.value); setErreurMail(null) }}
           />
           {erreurMail && <p className="reglage__erreur">{erreurMail}</p>}
@@ -304,7 +320,7 @@ async function effacerTout() {
               disabled={!!utilisateur && mail.trim() === (utilisateur.mail ?? '')}
               surClick={() => void enregistrerMail()}
             >
-              Enregistrer mon mail
+              Enregistrer mon courriel
             </Bouton>
           </div>
         </div>
@@ -313,7 +329,7 @@ async function effacerTout() {
         <div className="carte">
           <p className="section__titre">Mon mot de passe</p>
           <p style={{ margin: '0 0 4px', fontSize: 13.5, color: 'var(--c-700)' }}>
-            {utilisateur ? `${utilisateur.nom} — ${utilisateur.role}` : ''}
+            {utilisateur ? `${utilisateur.nom} - ${NOM_ROLE[utilisateur.role]}` : ''}
           </p>
 
           <p style={{ margin: '0 0 2px', fontSize: 13, color: 'var(--c-500)' }}>
@@ -399,7 +415,7 @@ async function effacerTout() {
                 <span className="codes__nom" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 1 }}>
                   <span>{p.nom}</span>
                   <span style={{ fontSize: 11.5, color: 'var(--c-500)', fontWeight: 500 }}>
-                    {p.mail ?? 'Pas de mail'}
+                    {p.mail ?? 'Pas de courriel'}
                   </span>
                 </span>
                 <span
@@ -412,7 +428,7 @@ async function effacerTout() {
                   {p.telephone ? (
                     <span className="num">{p.telephone}</span>
                   ) : (
-                    <span style={{ color: 'var(--wrn-700)' }}>Pas de login</span>
+                    <span style={{ color: 'var(--wrn-700)' }}>Pas de numéro</span>
                   )}
                 </span>
               </li>
@@ -504,6 +520,41 @@ async function effacerTout() {
             Produits, lots, mouvements, alertes. Les zones et les emplacements restent.
           </p>
           <Bouton variante="danger" icone="croix" surClick={effacerTout}>Effacer les données</Bouton>
+        </div>
+
+        {/* ---------- Installer sur le telephone ----------
+
+            Une application installee s'ouvre d'un doigt et demarre
+            sans reseau. Dans un onglet, il faut retrouver l'adresse
+            chaque fois — et le stock est pourtant deja sur le
+            telephone. On propose donc l'installation ici, avec le
+            bouton du navigateur quand il le donne, et le chemin du
+            menu sinon. Jamais de banniere qui surgit : elle
+            interrompt une reception. */}
+        <div
+          className="carte"
+          data-installation={installee ? 'installee' : proposee ? 'proposee' : 'manuelle'}
+        >
+          <p className="section__titre">Installer</p>
+          {installee ? (
+            <div className="rangee" style={{ gap: 10, color: 'var(--c-600)', fontSize: 13.5 }}>
+              <Icone nom="coche" taille={20} />
+              <span>Déjà installée.</span>
+            </div>
+          ) : proposee ? (
+            <>
+              <p style={{ margin: '0 0 12px', fontSize: 13.5, color: 'var(--c-700)' }}>
+                Sur l'écran d'accueil.
+              </p>
+              <Bouton icone="telephone" surClick={() => void installer()}>
+                Installer
+              </Bouton>
+            </>
+          ) : (
+            <p style={{ margin: 0, fontSize: 13.5, color: 'var(--c-600)' }}>
+              Menu du navigateur, puis « Installer ».
+            </p>
+          )}
         </div>
 
         {/* ---------- A propos ---------- */}

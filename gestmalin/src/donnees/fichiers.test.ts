@@ -129,9 +129,9 @@ describe('la detection de format a l\'ouverture', () => {
 })
 
 describe('le format officiel', () => {
-  it('les 13 colonnes, dans un ordre fixe', () => {
+  it('les 12 colonnes, dans un ordre fixe', () => {
     expect(COLONNES).toEqual([
-      'rayon', 'categorie', 'nom_fr', 'nom_en', 'code_barres', 'unite',
+      'rayon', 'categorie', 'nom_fr', 'code_barres', 'unite',
       'seuil', 'quantite', 'lot', 'peremption', 'fournisseur', 'zone', 'emplacement',
     ])
   })

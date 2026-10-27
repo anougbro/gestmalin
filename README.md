@@ -1,11 +1,12 @@
 # Gestmalin
 
 Gestion de stock pour une pharmacie de quartier : médicaments et produits ménagers,
-**hors ligne**, sur **un seul téléphone partagé**. Chacun entre avec son login et son mot
+**hors ligne**, sur **un seul téléphone partagé**. Chacun entre avec son numéro et son mot
 de passe, et ne voit que son rayon.
 
 **Application :** <https://anougbro.github.io/gestmalin/> — à ouvrir dans Chrome ou Edge
-(pas Internet Explorer), puis « Ajouter à l'écran d'accueil » pour l'installer.
+(pas Internet Explorer), puis « Ajouter à l'écran d'accueil » pour l'installer. Le bouton
+est aussi dans Réglages → Installer.
 
 Ce que l'application ne fait pas, volontairement : aucune donnée patient, aucun prix,
 aucune caisse, aucun compte en ligne. Le stock est la seule chose qu'elle connaisse.
@@ -31,7 +32,8 @@ qui ne s'effacent pas. C'est ce qui rend un écart visible au lieu de le maquill
 
 ## Le téléphone
 
-- Une seule installation, plusieurs personnes, un code à cinq chiffres chacune.
+- Une seule installation, plusieurs personnes, un code à cinq chiffres chacune. Le numéro
+  de téléphone et le courriel sont **uniques** : deux comptes ne peuvent pas les partager.
 - La première personne qui crée son compte devient **directrice** ; les suivantes sont
   préparatrices. La directrice peut débloquer un compte, remettre un mot de passe
   provisoire et transférer un rayon.
@@ -42,6 +44,6 @@ qui ne s'effacent pas. C'est ce qui rend un écart visible au lieu de le maquill
 
 ## Sauvegarde
 
-L'export `.xlsx` / `.csv` (Fichiers → Import · Export) est la **seule** sauvegarde : la
+L'export `.xlsx` / `.csv` (Fichiers → Exporter) est la **seule** sauvegarde : la
 base vit dans le navigateur du téléphone et disparaît avec lui. Un export par semaine,
 rangé hors du téléphone.

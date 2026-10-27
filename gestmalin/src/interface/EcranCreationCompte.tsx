@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useSession } from '../etat/useSession'
 import { base } from '../donnees/base'
 import { RAYONS_PAR_DEFAUT } from '../etat/rayons'
-import { LONGUEUR_CODE, LONGUEUR_TELEPHONE, empreinte, mailValide, normaliserTelephone, numeroLibre, telephoneSaisi } from '../domaine/acces'
+import { LONGUEUR_CODE, LONGUEUR_TELEPHONE, empreinte, mailLibre, mailValide, normaliserTelephone, numeroLibre, telephoneSaisi } from '../domaine/acces'
 import { nouvelId } from '../donnees/depots'
 import { Icone } from './Icones'
 import { Bouton, NumeroAffiche, PastillesCode, PavillonNumerique } from './Primitives'
@@ -52,16 +52,22 @@ export function EcranCreationCompte({ surFin }: { surFin: () => void }) {
 
     if (!nom.trim()) return setErreur('Écris ton nom.')
     if (!rayonId) return setErreur('Choisis ton rayon.')
-    if (!telephoneSaisi(numero)) return setErreur(`Ton login doit faire ${LONGUEUR_TELEPHONE} chiffres.`)
+    if (!telephoneSaisi(numero)) return setErreur(`Ton numéro doit faire ${LONGUEUR_TELEPHONE} chiffres.`)
     if (code.length !== LONGUEUR_CODE) return setErreur(`Ton mot de passe doit faire ${LONGUEUR_CODE} chiffres.`)
-    if (adresse && !mailValide(adresse)) return setErreur('Ce mail ne va pas. Écris-le en entier, ou passe.')
+    if (adresse && !mailValide(adresse)) return setErreur('Ce courriel ne va pas. Écris-le en entier, ou passe.')
+
+    /* Un courriel par personne, comme un numero. Deux comptes sur
+       la meme adresse et le responsable ne sait plus qui joindre. */
+    if (adresse && !mailLibre(tous, adresse)) {
+      return setErreur('Ce courriel est déjà pris. Écris-en un autre, ou passe.')
+    }
 
     /* L'unicite se verifie AU MOMENT ou l'on enregistre, pas
        pendant la frappe : le numero tape au clavier peut changer
        entre le moment ou l'on le controle et celui ou l'on
        valide, et c'est la validation qui doit faire foi. */
     if (!numeroLibre(tous, numero)) {
-      setErreur('Ce login est déjà pris.')
+      setErreur('Ce numéro est déjà pris.')
       setEtape('numero')
       setNumero('')
       return
@@ -167,12 +173,12 @@ export function EcranCreationCompte({ surFin }: { surFin: () => void }) {
     )
   }
 
-  /* ---------- 3. Ton login ---------- */
+  /* ---------- 3. Ton numéro ---------- */
   if (etape === 'numero') {
     return (
       <div className="ecran">
         <div className="contenu">
-          <p className="section__titre">Ton login</p>
+          <p className="section__titre">Ton numéro</p>
           <NumeroAffiche numero={numero} sur="clair" />
           <PavillonNumerique
             ton="clair"
@@ -221,8 +227,8 @@ export function EcranCreationCompte({ surFin }: { surFin: () => void }) {
               return
             }
             /* Le mot de passe est bon. On ne cree pas encore le
-               compte : le mail se demande avant, et il faut pouvoir
-               repondre « passer » sans perdre la saisie. */
+               compte : le courriel se demande avant, et il faut
+               pouvoir repondre « passer » sans perdre la saisie. */
             setErreur(null)
             setEtape('mail')
           }}
@@ -235,16 +241,16 @@ export function EcranCreationCompte({ surFin }: { surFin: () => void }) {
   )
   }
 
-  /* ---------- 5. Ton mail ----------
+  /* ---------- 5. Ton courriel ----------
 
      Facultatif, et on le dit deux fois : le titre, puis le bouton
      « Passer » aussi gros que « Terminer ». Beaucoup de personnes
-     n'ont pas de boite mail, et l'application n'envoie rien de
-     toute facon : c'est un moyen de les joindre, pas une porte. */
+     n'ont pas de boite aux lettres, et l'application n'envoie rien
+     de toute facon : c'est un moyen de les joindre, pas une porte. */
   return (
     <div className="ecran">
       <div className="contenu">
-        <p className="section__titre">Ton mail</p>
+        <p className="section__titre">Ton courriel</p>
         <p style={{ margin: '0 0 10px', fontSize: 13, color: 'var(--c-500)' }}>
           Facultatif — pour te joindre.
         </p>

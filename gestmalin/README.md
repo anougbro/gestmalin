@@ -1,14 +1,17 @@
 # Gestmalin — l'application
 
 Application web installable (PWA), **100 % hors ligne**, pour le stock d'une pharmacie :
-médicaments et produits ménagers dans deux rayons séparés. Un téléphone partagé, un login
+médicaments et produits ménagers dans deux rayons séparés. Un téléphone partagé, un numéro
 et un mot de passe à cinq chiffres par personne.
 
 Elle s'installe depuis un lien, sans passer par un magasin d'applications :
 
 1. ouvrir <https://anougbro.github.io/gestmalin/> dans Chrome ou Edge ;
-2. menu du navigateur → **Ajouter à l'écran d'accueil** ;
+2. menu du navigateur → **Ajouter à l'écran d'accueil**, ou Réglages → **Installer** ;
 3. l'ouvrir depuis l'icône : elle démarre sans réseau, y compris la première fois.
+
+Le numéro de téléphone et le courriel sont **uniques** : deux comptes ne peuvent pas les
+partager. Le courriel reste facultatif, et aucun courriel ne part de l'application.
 
 Internet Explorer ne peut pas l'exécuter. Ce n'est pas un défaut : l'application a besoin
 d'IndexedDB, d'un service worker et des modules JavaScript modernes.
@@ -27,7 +30,7 @@ d'IndexedDB, d'un service worker et des modules JavaScript modernes.
 | Commander / Réappro | ce qu'il faut racheter, et à qui |
 | Étiquettes | étiquettes de rayon et de place, imprimables |
 | Fichiers | import et export `.xlsx` / `.csv`, sans aucune dépendance |
-| Réglages | login, mail de contact, mot de passe, personnes, déblocage, jeu d'essai |
+| Réglages | numéro, courriel de contact, mot de passe, personnes, déblocage, jeu d'essai, installation |
 
 Deux règles structurent le code :
 
@@ -76,7 +79,8 @@ Ils pilotent un vrai Chrome sur le serveur de développement (`npm run dev` doit
 ```bash
 npm run verifier-comptes      # installation, premier compte directeur, jeu d'essai
 npm run verifier-blocage      # cinq essais, blocage, déblocage, remise de 00000
-npm run verifier-connexion    # la porte du login, pas à pas
+npm run verifier-courriels    # numéro et courriel uniques, à l'écriture
+npm run verifier-connexion    # la porte du numéro, pas à pas
 npm run verifier-cloisonnement# un téléphone, deux personnes, deux rayons
 npm run verifier-mobile       # trois largeurs de téléphone et le bureau
 npm run verifier-hors-ligne   # le build servi sous /gestmalin/, réseau coupé
@@ -94,5 +98,6 @@ peuvent pas semer de données par import, puisque `/src/...` n'existe plus dans 
 ## Ce qui a été décidé, et pourquoi
 
 `DECISIONS.md` explique les cinq écarts volontaires au standard d'authentification :
-pas d'Argon2id, pas de jeton, cinq chiffres, blocage de quinze minutes, mail de contact
-seulement. À lire avant de « corriger » la connexion.
+pas d'Argon2id, pas de jeton, cinq chiffres, blocage de quinze minutes, courriel de contact
+seulement. Il précise aussi l'unicité du numéro et du courriel. À lire avant de
+« corriger » la connexion.

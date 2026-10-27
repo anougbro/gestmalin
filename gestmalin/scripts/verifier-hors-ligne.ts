@@ -55,6 +55,7 @@ const manifest = await page.evaluate(async () => {
 })
 ok(!!manifest, 'le manifeste se charge')
 ok(manifest?.start_url === base, `start_url correct (${manifest?.start_url})`)
+ok(manifest?.id === base, `identite stable de l application (${manifest?.id})`)
 
 /* On laisse le service worker remplir son cache. */
 await page.waitForTimeout(2500)
@@ -69,6 +70,21 @@ ok(precache.total > 5, `${precache.total} fichiers en cache, dans ${precache.nom
 /* ---------- On installe le premier compte, comme la directrice ---------- */
 await creerCompte(page, { nom: 'Amina', numero: '9000000001', code: '12345' })
 ok((await page.locator('.ecran--connexion').count()) === 0, 'le premier compte ouvre directement la session')
+
+/* La carte d'installation doit etre servie par le build : sans
+   elle, personne ne sait que l'application peut vivre sur l'ecran
+   d'accueil. */
+await page.getByRole('button', { name: 'Réglages' }).first().click()
+await page.waitForTimeout(800)
+const carteInstallation = page.locator('[data-installation]')
+ok((await carteInstallation.count()) === 1, 'la carte Installer est dans les reglages')
+const etatInstallation = await carteInstallation.getAttribute('data-installation')
+ok(
+  ['proposee', 'manuelle', 'installee'].includes(etatInstallation ?? ''),
+  `la carte dit dans quel etat est l installation (${etatInstallation})`,
+)
+await page.locator('.entete__retour').click()
+await page.waitForTimeout(700)
 
 /* Et on ressort : la suite verifie que la porte fonctionne hors
    ligne, il faut donc etre revenu devant. */

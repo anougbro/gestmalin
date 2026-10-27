@@ -46,6 +46,7 @@ const manifeste = await page.evaluate(async () => {
 })
 ok(!!manifeste, 'le manifeste se charge')
 ok(manifeste?.display === 'standalone', `mode application (${manifeste?.display})`)
+ok(manifeste?.id === '/gestmalin/', `identite stable de l application (${manifeste?.id})`)
 ok(!!manifeste?.icons?.some((i: { sizes: string }) => i.sizes === '512x512'), 'les icones sont declarees')
 
 /* Le raccourci doit pointer dans le sous-dossier. */
@@ -88,6 +89,10 @@ await page.waitForTimeout(700)
    viser celle du tiroir — sinon le clic porte sur l'autre. */
 await page.locator('.tiroir .nav-item', { hasText: /^Réglages$/ }).click()
 await page.waitForTimeout(900)
+ok(
+  (await page.locator('[data-installation]').count()) === 1,
+  'la carte Installer est servie par le site publie',
+)
 await page.getByRole('button', { name: /Charger le jeu/ }).click()
 await page.waitForTimeout(2500)
 

@@ -5,6 +5,7 @@ import {
   empreinte,
   ESSAIS_MAX,
   LONGUEUR_CODE,
+  mailLibre,
   normaliserTelephone,
   numeroLibre,
   type Utilisateur,
@@ -159,16 +160,36 @@ export async function debloquer(
   return null
 }
 
-/** Changer son propre mail. Facultatif : une chaine vide l'efface. */
-export async function changerMail(id: string, mail: string): Promise<void> {
+/* ============================================================
+   CHANGER SON COURRIEL
+
+   Facultatif : une chaine vide l'efface. Mais quand il est
+   present, il est UNIQUE, pour la meme raison que le numero :
+   deux comptes sur la meme adresse, et le responsable ne sait
+   plus qui joindre quand l'un des deux oublie son mot de passe.
+
+   L'unicite se verifie ici, a l'ecriture. Un controle fait a la
+   saisie ne vaut rien : entre la frappe et la validation, une
+   autre personne peut avoir pris l'adresse.
+   ============================================================ */
+export async function changerMail(id: string, mail: string): Promise<string | null> {
   const u = await base.utilisateurs.get(id)
-  if (!u) return
+  if (!u) return 'Personne introuvable.'
+
   const propre = mail.trim()
-  if (propre) {
-    await base.utilisateurs.put({ ...u, mail: propre })
-    return
+
+  /* Vide veut dire efface, pas chaine vide : un champ vide ne doit
+     pas s'afficher comme une adresse dans la liste des personnes. */
+  if (!propre) {
+    const sansMail = { ...u }
+    delete sansMail.mail
+    await base.utilisateurs.put(sansMail)
+    return null
   }
-  const sansMail = { ...u }
-  delete sansMail.mail
-  await base.utilisateurs.put(sansMail)
+
+  const tous = await base.utilisateurs.toArray()
+  if (!mailLibre(tous, propre, id)) return 'Ce courriel est déjà pris.'
+
+  await base.utilisateurs.put({ ...u, mail: propre })
+  return null
 }

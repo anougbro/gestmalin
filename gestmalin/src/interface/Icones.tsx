@@ -17,7 +17,7 @@ export type NomIcone =
   | 'compteur' | 'cloche' | 'froid' | 'quarantaine' | 'etiquette' | 'fournisseur'
   | 'grille' | 'import' | 'export' | 'camera' | 'clavier'
   | 'retour' | 'coche' | 'croix' | 'plus' | 'moins' | 'alerte'
-  | 'personne' | 'effacer'
+  | 'personne' | 'effacer' | 'telephone'
 
 /* Le 1,75 sur les trois attributs : c'est ce qui donne
    la meme epaisseur partout, meme sur un autre ecran. */
@@ -159,6 +159,17 @@ const TRACES: Record<NomIcone, React.ReactNode> = {
     <>
       <path d="M12 14.4V3.6" /><path d="m8 7.4 4-4 4 4" />
       <path d="M4.4 16.4v2.4a1.6 1.6 0 0 0 1.6 1.6h12a1.6 1.6 0 0 0 1.6-1.6v-2.4" />
+    </>
+  ),
+
+  /* --- L'installation sur le telephone ---
+     Le meme dessin qu'un telephone tenu a la main : un cadre
+     arrondi et la barre du bas. Sans elle, un rectangle nu se lit
+     comme une porte. */
+  telephone: (
+    <>
+      <rect x="6.6" y="2.8" width="10.8" height="18.4" rx="2.2" />
+      <path d="M10.6 18.3h2.8" />
     </>
   ),
 

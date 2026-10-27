@@ -84,7 +84,6 @@ export type Produit = {
   rayonId: IdRayon
   categorieId: IdCategorie
   nomFr: string
-  nomEn?: string
   codeBarres?: string
   unite: Unite
   seuil: number

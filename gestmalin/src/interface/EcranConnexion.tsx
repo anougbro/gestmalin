@@ -65,14 +65,14 @@ export function EcranConnexion({ surCreation }: { surCreation: () => void }) {
     const trouves = comptes.filter((u) => u.telephone && normaliserTelephone(u.telephone) === voulu)
 
     if (trouves.length === 0) {
-      setErreur('Login inconnu.')
+      setErreur('Numéro inconnu.')
       return
     }
     if (trouves.length > 1) {
       /* Deux comptes pour un numero : on ne sait pas lequel
          ouvrir, et choisir le premier reviendrait a laisser le
          code de l un ouvrir le mauvais rayon. */
-      setErreur('Ce login est utilisé deux fois. Demande à un responsable.')
+      setErreur('Ce numéro est utilisé deux fois. Demande à un responsable.')
       return
     }
     if (estBloque(trouves[0])) {
@@ -192,10 +192,10 @@ export function EcranConnexion({ surCreation }: { surCreation: () => void }) {
           <span>Gestmalin</span>
         </div>
 
-        {/* ---------- Etape 1 : le login ---------- */}
+        {/* ---------- Etape 1 : le numéro ---------- */}
         {etape === 'numero' && (
           <>
-            <p className="connexion__titre">Login</p>
+            <p className="connexion__titre">Numéro</p>
             <NumeroAffiche numero={numero} />
             <PavillonNumerique
               onChiffre={chiffreNumero}
@@ -205,7 +205,7 @@ export function EcranConnexion({ surCreation }: { surCreation: () => void }) {
             />
             {erreur && <p className="connexion__erreur">{erreur}</p>}
             <button className="btn btn--discret" style={{ color: 'rgba(255,255,255,.55)', minHeight: 40 }} onClick={() => { setEtape('noms'); setErreur(null) }}>
-              J’ai oublié mon login
+              J’ai oublié mon numéro
             </button>
           </>
         )}
@@ -230,7 +230,7 @@ export function EcranConnexion({ surCreation }: { surCreation: () => void }) {
               style={{ color: 'rgba(255,255,255,.7)' }}
               onClick={() => {
                 /* Retour depuis le mot de passe : on revient au
-                   login VIDE. Le garder plein serait un piege —
+                   numéro VIDE. Le garder plein serait un piege —
                    le pave refuse alors tout nouveau chiffre sans
                    rien dire, et la personne croit que le telephone
                    ne repond plus. */

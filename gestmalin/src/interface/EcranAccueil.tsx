@@ -173,7 +173,7 @@ export function EcranAccueil({ aller }: { aller: (e: NomEcran, c?: Record<string
               surClick={() => aller('etiquettes')}
             />
             <Tuile
-              icone="export" label="Fichiers" note="Import · Export" ton={rayon.ton}
+              icone="export" label="Fichiers" note="Sauvegarde" ton={rayon.ton}
               surClick={() => aller('fichiers')}
             />
             <Tuile

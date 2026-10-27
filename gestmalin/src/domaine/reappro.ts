@@ -99,7 +99,7 @@ export function grouperParFournisseur(
   })
 }
 
-/** Le texte a copier-coller dans un message ou un mail. */
+/** Le texte a copier-coller dans un message ou un courriel. */
 export function commanderEnTexte(commande: CommandeFournisseur): string {
   const lignes = commande.lignes.map((l) => {
     const details = [`${l.aCommander} ${l.unite}`, `stock ${l.stock}`, `seuil ${l.seuil}`]

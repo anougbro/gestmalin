@@ -2,8 +2,11 @@
 
 Ce document explique **pourquoi** l'application s'écarte, sur cinq points, du standard
 d'authentification habituel (Argon2id, jeton d'accès + jeton de rafraîchissement, code à
-six chiffres ou plus, réinitialisation par mail). Il ne décrit pas seulement ce qui est
+six chiffres ou plus, réinitialisation par courriel). Il ne décrit pas seulement ce qui est
 fait : il dit ce que l'on accepte de ne pas protéger, et à quelle condition.
+
+Deux règles propres à ce téléphone s'y ajoutent : le **numéro** et le **courriel** d'un
+compte sont uniques. Deux personnes ne partagent ni l'un ni l'autre.
 
 À lire avant de « corriger » la connexion : chaque écart est un choix, pas un oubli.
 
@@ -13,7 +16,7 @@ fait : il dit ce que l'on accepte de ne pas protéger, et à quelle condition.
 
 | Contrainte | Conséquence |
 |---|---|
-| **Aucun serveur.** L'application est un dossier statique sur GitHub Pages. | Il n'y a personne pour émettre un jeton, hacher un mot de passe, envoyer un mail ou révoquer un accès. |
+| **Aucun serveur.** L'application est un dossier statique sur GitHub Pages. | Il n'y a personne pour émettre un jeton, hacher un mot de passe, envoyer un courriel ou révoquer un accès. |
 | **Tout est hors ligne**, y compris la première ouverture. | La vérification du mot de passe se fait sur le téléphone, avec les données du téléphone. |
 | **Un seul téléphone partagé**, dans la pharmacie. | Celui qui tient l'appareil peut lire la base. La protection n'est pas contre lui. |
 | **Personnel peu à l'aise avec l'écrit.** | Un code court et un pavé de chiffres, jamais un mot de passe à recopier. |
@@ -134,21 +137,33 @@ sur un geste explicite : ce n'est pas un amorçage.
 
 ---
 
-## 7. Le mail est un contact, pas un moyen de connexion
+## 7. Le courriel est un contact, pas un moyen de connexion
 
-Le mail est demandé à la création du compte, **facultatif**, et affiché dans la liste des
-personnes. Il sert à savoir qui appeler quand quelqu'un dit « j'ai oublié mon mot de
-passe ». **Aucun mail ne part** : il n'y a pas de serveur pour en envoyer.
+Le courriel est demandé à la création du compte, **facultatif**, et affiché dans la liste
+des personnes. Il sert à savoir qui appeler quand quelqu'un dit « j'ai oublié mon mot de
+passe ». **Aucun courriel ne part** : il n'y a pas de serveur pour en envoyer.
 
-Trois règles qui en découlent :
+Quatre règles qui en découlent :
 
-1. Le mail **n'ouvre aucune porte**. On n'entre pas par son mail, et il n'existe pas de
-   lien de réinitialisation. Un lien serait soit inopérant hors ligne, soit un contournement
-   du code à cinq chiffres.
-2. **Aucune donnée n'est envoyée** : le mail ne quitte pas le téléphone. C'est une chaîne
-   de caractères dans IndexedDB, au même titre que le nom.
-3. Il est **effaçable** : vider le champ supprime la clé, au lieu d'écrire une chaîne vide
-   qui s'afficherait comme une adresse dans la liste.
+1. Le courriel **n'ouvre aucune porte**. On n'entre pas par son courriel, et il n'existe
+   pas de lien de réinitialisation. Un lien serait soit inopérant hors ligne, soit un
+   contournement du code à cinq chiffres.
+2. **Aucune donnée n'est envoyée** : le courriel ne quitte pas le téléphone. C'est une
+   chaîne de caractères dans IndexedDB, au même titre que le nom.
+3. Il est **unique** quand il est présent. `mailLibre()` compare les adresses sans tenir
+   compte de la casse ni des espaces autour : `Amina@Exemple.com` et
+   `amina@exemple.com` désignent la même boîte. Deux comptes sur la même adresse, et le
+   responsable ne sait plus qui joindre quand l'un des deux oublie son mot de passe.
+   L'unicité est vérifiée **à l'écriture** (`changerMail`, création de compte), pas
+   seulement à la saisie : entre la frappe et la validation, une autre personne peut avoir
+   pris l'adresse.
+4. Il est **effaçable** : vider le champ supprime la clé, au lieu d'écrire une chaîne vide
+   qui s'afficherait comme une adresse dans la liste. Un compte sans courriel ne réserve
+   aucune adresse.
+
+Le numéro suit la même règle d'unicité, et pour une raison plus grave : le code de l'une
+ouvrirait le compte de l'autre. `numeroLibre()` la vérifie à la création comme au
+changement de numéro.
 
 ---
 
@@ -165,21 +180,25 @@ Trois règles qui en découlent :
 | Perte ou vol du téléphone | La base locale disparaît avec lui. L'export hebdomadaire est la seule sauvegarde — c'est pour cela qu'il est mis en avant. |
 
 Ce qui est réellement protégé : **la confusion entre deux personnes**. Deux comptes ne
-peuvent pas partager un login (la connexion refuse les deux, même avec le bon code), et
+peuvent pas partager un numéro (la connexion refuse les deux, même avec le bon code), et
 chaque mouvement porte son auteur.
 
 ---
 
 ## 9. Ce qui vérifie ces décisions
 
-- `src/donnees/blocage.test.ts` — 12 tests : décompte, blocage au cinquième essai, refus du
+- `src/donnees/blocage.test.ts` — 15 tests : décompte, blocage au cinquième essai, refus du
   bon code pendant le blocage, expiration, remise à zéro, refus d'un non-directeur, remise
-  de `00000`, validation du mail, effacement du mail.
+  de `00000`, validation du courriel, unicité insensible à la casse, refus d'un courriel
+  déjà pris, effacement du courriel.
 - `scripts/verifier-blocage.ts` — le parcours complet dans un vrai navigateur : cinq
   échecs, blocage, déblocage par la directrice, entrée avec l'ancien code, remise de
   `00000`, refus de l'ancien code.
 - `scripts/verifier-comptes.ts` — aucun compte au démarrage, premier compte directeur,
-  mail facultatif, création sans retaper son code, unicité du login.
+  courriel facultatif, création sans retaper son code, unicité du numéro.
+- `scripts/verifier-courriels.ts` — un second compte ne peut prendre ni le courriel ni le
+  numéro d'un autre, à la création comme dans les réglages ; la casse ne contourne pas le
+  contrôle.
 - `scripts/verifier-pave-session.ts` — la session ne contient que l'identifiant, et aucun
   code.
 
@@ -194,9 +213,9 @@ Les trois premiers écarts tomberaient d'eux-mêmes, dans cet ordre :
    (session locale), pas à prouver l'identité.
 2. **Jeton court + rafraîchissement avec rotation**, parce qu'il y aura enfin des appels à
    protéger.
-3. **Réinitialisation par mail** : le mail devient un vrai canal, et non plus une simple
-   fiche de contact. Il faudra alors le vérifier, et ne jamais l'utiliser comme facteur
-   unique.
+3. **Réinitialisation par courriel** : le courriel devient un vrai canal, et non plus une
+   simple fiche de contact. Il faudra alors le vérifier, et ne jamais l'utiliser comme
+   facteur unique.
 
 Le blocage et le compteur d'essais, eux, resteraient : ce sont les seules protections qui
 comptent face à un code à cinq chiffres.

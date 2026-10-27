@@ -20,7 +20,7 @@
 /* ---------- Les colonnes du format officiel ---------- */
 
 export const COLONNES = [
-  'rayon', 'categorie', 'nom_fr', 'nom_en', 'code_barres', 'unite',
+  'rayon', 'categorie', 'nom_fr', 'code_barres', 'unite',
   'seuil', 'quantite', 'lot', 'peremption', 'fournisseur', 'zone', 'emplacement',
 ] as const
 
