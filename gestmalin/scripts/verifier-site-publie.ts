@@ -93,18 +93,25 @@ ok(
   (await page.locator('[data-installation]').count()) === 1,
   'la carte Installer est servie par le site publie',
 )
-await page.getByRole('button', { name: /Charger le jeu/ }).click()
-await page.waitForTimeout(2500)
+ok(
+  (await page.locator('[data-carte="comptes"]').count()) === 1,
+  'la carte des comptes est servie par le site publie',
+)
+ok(
+  (await page.locator('[data-carte="stock"]').count()) === 1,
+  'la carte du stock est servie par le site publie',
+)
+ok(
+  (await page.getByText("Jeu d'essai", { exact: true }).count()) === 0,
+  "le jeu d'essai n'est plus publie",
+)
 
 await page.locator('.entete__retour').click()
 await page.waitForTimeout(900)
-const auQuai = await page.locator('.stat').nth(2).innerText()
-/* Le quai compte les produits du rayon OUVERT. La session demarre
-   sur Medicaments : 14 + 8 = 22. Le troisieme produit du quai est
-   menager, et il n'apparait que sur l'autre rayon — c'est le
-   cloisonnement, pas une perte. */
-ok(/22/.test(auQuai), `les donnees se chargent hors ligne (au quai : ${auQuai.replace(/\s+/g, ' ').trim()})`)
 
+/* L'accueil doit se dessiner avec le compte reel, hors ligne. */
+const tuiles = await page.locator('.geste').count()
+ok(tuiles > 0, `l'accueil s'ouvre hors ligne (${tuiles} tuiles)`)
 await page.screenshot({ path: 'captures/site-publie-hors-ligne.png', fullPage: true })
 
 await page.context().setOffline(false)

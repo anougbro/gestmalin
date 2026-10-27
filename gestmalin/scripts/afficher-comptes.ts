@@ -2,85 +2,55 @@ import { chromium } from 'playwright'
 import { prepare } from './aide.ts'
 
 /* ============================================================
-   QUELS CODES, EXACTEMENT, SELON L'ETAT DE LA BASE
+   QUI EST DANS CETTE BASE, ET DANS QUEL ETAT
 
-   La reponse n'est pas la meme avant et apres le chargement du
-   jeu d'essai. C'est precisement pour ca que la question se
-   repose : il n'y a aucun endroit dans l'application ou lire la
-   reponse. */
+   Un outil de depannage, pas une verification. Il lit la base et
+   affiche ce que l'application ne montre pas d'un coup d'oeil :
+   le role exact, le rayon, le numero, le courriel, et l'etat de
+   chaque compte.
+
+   Les codes, eux, ne sont plus affiches : l'application ne garde
+   qu'une empreinte, et le directeur a un bouton pour remettre
+   00000 a qui l'a oublie. */
 
 const navigateur = await chromium.launch()
 const page = await navigateur.newPage({ viewport: { width: 1440, height: 900 } })
 
-/* L'algorithme d'empreinte, reecrit ici : on veut retrouver quel
-   code donne quelle empreinte, l'application ne stocke jamais le
-   code en clair. */
-function empreinte(id: string, code: string): string {
-  let h1 = 0x811c9dc5
-  let h2 = 0x01000193
-  const graine = `${id}:${code}`
-  for (let i = 0; i < graine.length; i++) {
-    const c = graine.charCodeAt(i)
-    h1 = Math.imul(h1 ^ c, 0x01000193) >>> 0
-    h2 = Math.imul(h2 + c + i, 0x85ebca6b) >>> 0
-  }
-  let h3 = 0
-  for (let i = 0; i < 'gestmalin'.length; i++) h3 = (Math.imul(h3, 31) + 'gestmalin'.charCodeAt(i)) >>> 0
-  return [h1, h2, h3].map((n) => n.toString(36)).join('-')
-}
-
-const CANDIDATS = ['12345', '22222', '33333', '00000', '11111', '1234', '2222', '3333']
-
-async function lireComptes() {
-  return page.evaluate(async (cands: string[]) => {
-    const req = indexedDB.open('gestmalin')
-    const db = await new Promise<IDBDatabase>((r, k) => { req.onsuccess = () => r(req.result); req.onerror = () => k(req.error) })
-    const tx = db.transaction('utilisateurs', 'readonly')
-    const tous = await new Promise<Record<string, unknown>[]>((r) => { const q = tx.objectStore('utilisateurs').getAll(); q.onsuccess = () => r(q.result) })
-    return tous.map((u) => ({ id: String(u.id), nom: String(u.nom), role: String(u.role), empreinte: String(u.empreinte) })).map((u) => ({ ...u, brut: cands }))
-  }, CANDIDATS)
-}
-
-function retrouver(comptes: { id: string; nom: string; role: string; empreinte: string }[]) {
-  return comptes.map((u) => ({
-    nom: u.nom,
-    role: u.role,
-    code: CANDIDATS.find((c) => empreinte(u.id, c) === u.empreinte) ?? '???',
-  }))
-}
-
 await page.goto('http://localhost:5173/', { waitUntil: 'networkidle' })
-
 await prepare(page)
 await page.waitForTimeout(1500)
 
-console.log('=== ETAT 1 : premier demarrage, ou base ancienne reparee ===')
-const a = await lireComptes()
-for (const c of retrouver(a)) console.log(`  ${c.nom.padEnd(12)} ${c.role.padEnd(14)} code ${c.code}`)
+/* Une base neuve n'a aucun compte : le premier arrive par l'ecran
+   de creation. On le dit, au lieu d'afficher une liste vide sans
+   explication. */
+const comptes = await page.evaluate(async () => {
+  const { base } = await import('/src/donnees/base.ts')
+  const { etatCompte } = await import('/src/domaine/acces.ts')
+  return (await base.utilisateurs.orderBy('nom').toArray()).map((u) => ({
+    nom: u.nom,
+    role: u.role,
+    etat: etatCompte(u),
+    telephone: u.telephone ?? '-',
+    mail: u.mail ?? '-',
+    rayons: u.rayonsAutorises.join(', '),
+    essais: u.tentatives ?? 0,
+  }))
+})
 
-/* On charge le jeu d'essai. */
-if ((await page.locator('.personne').count()) > 0) {
-  await page.locator('.personne').first().click()
-  await page.waitForTimeout(300)
-}
-for (const c of '12345') {
-  await page.locator('.pave__touche', { hasText: new RegExp(`^${c}$`) }).first().click()
-  await page.waitForTimeout(50)
-}
-await page.getByRole('button', { name: 'Entrer' }).click()
-await page.waitForTimeout(1100)
-
-if ((await page.locator('.ecran--connexion').count()) === 0) {
-  await page.getByRole('button', { name: 'Réglages' }).first().click()
-  await page.waitForTimeout(700)
-  await page.getByRole('button', { name: /Charger le jeu/ }).click()
-  await page.waitForTimeout(2000)
-
-  console.log('\n=== ETAT 2 : apres « Charger le jeu d essai » ===')
-  const b = await lireComptes()
-  for (const c of retrouver(b)) console.log(`  ${c.nom.padEnd(12)} ${c.role.padEnd(14)} code ${c.code}`)
+if (comptes.length === 0) {
+  console.log('Aucun compte dans cette base.')
+  console.log("C'est normal sur un telephone neuf : la premiere personne")
+  console.log('cree le sien, et devient directrice.')
 } else {
-  console.log('\n(connexion impossible, etat 2 non teste)')
+  const largeur = Math.max(...comptes.map((c) => c.nom.length), 8)
+  console.log(`${'NOM'.padEnd(largeur)}  ${'ROLE'.padEnd(12)} ${'ETAT'.padEnd(10)} NUMERO       COURRIEL`)
+  for (const c of comptes) {
+    console.log(
+      `${c.nom.padEnd(largeur)}  ${c.role.padEnd(12)} ${c.etat.padEnd(10)} ` +
+      `${c.telephone.padEnd(12)} ${c.mail}`,
+    )
+    console.log(`${''.padEnd(largeur)}  rayons : ${c.rayons} · essais rates : ${c.essais}`)
+  }
 }
 
 await navigateur.close()

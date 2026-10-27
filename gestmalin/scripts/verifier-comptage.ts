@@ -1,5 +1,5 @@
 import { chromium } from 'playwright'
-import { connecterSiBesoin, prepare, semerComptes } from './aide.ts'
+import { connecterSiBesoin, prepare, semerComptes, semerStock } from './aide.ts'
 import { mkdirSync } from 'node:fs'
 
 /* ============================================================
@@ -46,11 +46,10 @@ await prepare(page)
 await semerComptes(page)
 await connecterSiBesoin(page)
 
-await allerVers('Réglages')
-await page.getByRole('button', { name: /Charger le jeu/ }).click()
-await attendre(2500)
-await page.locator('.entete__retour').click()
-await attendre(800)
+/* Le stock vient des scripts, plus de l'application : le jeu
+   d'essai a ete retire. On en a besoin pour que le classement ABC
+   ait des produits a classer. */
+await semerStock(page)
 
 /* ---------- On fabrique un rayon teste a la main ---------- */
 
@@ -97,7 +96,7 @@ const effectif = await page.evaluate(async () => {
   }
   return { existants, ajoutes: profils.length }
 })
-console.log(`  ${effectif.existants} produits du jeu d'essai, ${effectif.ajoutes} ajoutes pour le test`)
+console.log(`  ${effectif.existants} produits semes, ${effectif.ajoutes} ajoutes pour le test`)
 await page.reload({ waitUntil: 'networkidle' })
 await attendre(1500)
 await connecterSiBesoin(page)

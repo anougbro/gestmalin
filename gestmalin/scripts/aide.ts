@@ -190,13 +190,135 @@ export async function creerCompte(
   await page.waitForTimeout(900)
 }
 
-/** Charge le jeu d'essai, s'il ne l'est pas deja. */
-export async function chargerEssai(page: Page): Promise<void> {
-  await allerVers(page, 'Réglages')
-  await page.getByRole('button', { name: /Charger le jeu/ }).click()
-  await page.waitForTimeout(2500)
-  await page.locator('.entete__retour').click()
-  await page.waitForTimeout(800)
+/* ============================================================
+   LE STOCK DES VERIFICATEURS
+
+   L'application ne contient plus de jeu d'essai : une pharmacie
+   ne doit pas porter de faux medicaments. Les verificateurs qui
+   ont besoin de produits les posent donc eux-memes, ici, dans la
+   base — jamais par un bouton de l'application.
+
+   Les identifiants commencent par `v-` : ils ne peuvent pas
+   entrer en collision avec une vraie saisie, et ils ne font pas
+   partie des identifiants d'essai que la migration 5 efface.
+   ============================================================ */
+
+type GraineStock = {
+  id: string
+  rayon: string
+  nom: string
+  unite: 'boite' | 'plaquette' | 'piece' | 'sachet'
+  seuil: number
+  quantite: number
+  emplacement: string
+  peremption?: number
+}
+
+const STOCK_VERIF: GraineStock[] = [
+  { id: 'v-para', rayon: 'r-med', nom: 'Paracétamol 500 mg', unite: 'boite', seuil: 20, quantite: 18, emplacement: 'z-sec-e1', peremption: 34 },
+  { id: 'v-amox', rayon: 'r-med', nom: 'Amoxicilline 500 mg', unite: 'boite', seuil: 10, quantite: 12, emplacement: 'z-sec-e2', peremption: -4 },
+  { id: 'v-ibu', rayon: 'r-med', nom: 'Ibuprofène 400 mg', unite: 'plaquette', seuil: 15, quantite: 9, emplacement: 'z-sec-e3', peremption: 58 },
+  { id: 'v-doli', rayon: 'r-med', nom: 'Doliprane 1000 mg', unite: 'boite', seuil: 12, quantite: 26, emplacement: 'z-sec-e3' },
+  { id: 'v-siro', rayon: 'r-med', nom: 'Sirop antitussif', unite: 'boite', seuil: 8, quantite: 7, emplacement: 'z-froi-e1' },
+  { id: 'v-pans', rayon: 'r-med', nom: 'Pansement stérile', unite: 'piece', seuil: 30, quantite: 8, emplacement: 'z-sec-e5' },
+  { id: 'v-the', rayon: 'r-men', nom: 'Thé vert en vrac', unite: 'boite', seuil: 5, quantite: 9, emplacement: 'z-men-e1' },
+  { id: 'v-savon', rayon: 'r-men', nom: 'Savon de ménage', unite: 'piece', seuil: 30, quantite: 18, emplacement: 'z-men-e1' },
+  { id: 'v-lessive', rayon: 'r-men', nom: 'Lessive en poudre', unite: 'sachet', seuil: 20, quantite: 6, emplacement: 'z-men-e2' },
+]
+
+/**
+ * Pose un petit stock reel, dans les deux rayons.
+ *
+ * A appeler apres `semerComptes` (qui recharge la page et cree les
+ * rayons, zones et emplacements au premier demarrage).
+ */
+export async function semerStock(page: Page, auteurId = COMPTE_VERIF.id): Promise<number> {
+  const pose = await page.evaluate(async ({ graines, auteur }: { graines: GraineStock[]; auteur: string }) => {
+    const { base, ATTENTE_ID } = await import('/src/donnees/base.ts')
+    const { maintenant, nouvelId } = await import('/src/donnees/depots.ts')
+
+    const jour = (n: number) => new Date(Date.now() + n * 86_400_000).toISOString().slice(0, 10)
+    const date = maintenant()
+
+    for (const g of graines) {
+      await base.produits.put({
+        id: g.id,
+        rayonId: g.rayon,
+        categorieId: '',
+        nomFr: g.nom,
+        unite: g.unite,
+        seuil: g.seuil,
+        emplacementId: g.emplacement,
+        actif: true,
+      })
+      const lotId = `${g.id}-lot`
+      await base.lots.put({
+        id: lotId,
+        produitId: g.id,
+        numero: `V${g.id.slice(2).toUpperCase()}`,
+        ...(g.peremption === undefined ? {} : { peremption: jour(g.peremption) }),
+        quantite: 0,
+        emplacementId: g.emplacement,
+      })
+      await base.mouvements.put({
+        id: nouvelId(),
+        type: 'reception',
+        rayonId: g.rayon,
+        produitId: g.id,
+        lotId,
+        quantite: g.quantite,
+        versEmplacementId: g.emplacement,
+        auteurId: auteur,
+        date,
+        synchro: 0,
+      })
+    }
+
+    /* Deux boites au quai : la reception n'est pas encore rangee.
+       C'est un etat reel, pas une decoration de demonstration. */
+    const auQuai = [
+      { id: 'v-quai-med', rayon: 'r-med', nom: 'Métronidazole 500 mg' },
+      { id: 'v-quai-men', rayon: 'r-men', nom: 'Éponge grattante' },
+    ]
+    for (const q of auQuai) {
+      await base.produits.put({
+        id: q.id,
+        rayonId: q.rayon,
+        categorieId: '',
+        nomFr: q.nom,
+        unite: 'boite',
+        seuil: 10,
+        actif: true,
+      })
+      const lotId = `${q.id}-lot`
+      await base.lots.put({
+        id: lotId,
+        produitId: q.id,
+        numero: `Q${q.id.slice(-3).toUpperCase()}`,
+        quantite: 0,
+        emplacementId: ATTENTE_ID,
+      })
+      await base.mouvements.put({
+        id: nouvelId(),
+        type: 'reception',
+        rayonId: q.rayon,
+        produitId: q.id,
+        lotId,
+        quantite: 8,
+        versEmplacementId: ATTENTE_ID,
+        auteurId: auteur,
+        date,
+        synchro: 0,
+      })
+    }
+
+    return graines.length + auQuai.length
+  }, { graines: STOCK_VERIF, auteur: auteurId })
+
+  await page.reload({ waitUntil: 'networkidle' })
+  await page.waitForTimeout(1200)
+  await connecterSiBesoin(page)
+  return pose
 }
 
 async function queMontrage(page: Page): Promise<string> {

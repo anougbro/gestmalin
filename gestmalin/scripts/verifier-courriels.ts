@@ -1,5 +1,5 @@
 import { chromium } from 'playwright'
-import { prepare } from './aide.ts'
+import { connecterParNom, prepare } from './aide.ts'
 
 /* ============================================================
    LE NUMERO ET LE COURRIEL SONT UNIQUES
@@ -89,6 +89,18 @@ async function sortir() {
   await page.waitForTimeout(800)
 }
 
+/* Le directeur autorise le compte que la personne vient de creer.
+   On passe par la base pour ne pas melanger ce verificateur
+   (numeros et courriels) avec le parcours d'approbation, qui a son
+   propre verificateur. */
+async function autoriserCompte(nom: string) {
+  await page.evaluate(async (n: string) => {
+    const { base } = await import('/src/donnees/base.ts')
+    const u = (await base.utilisateurs.toArray()).find((x) => x.nom === n)
+    if (u) await base.utilisateurs.put({ ...u, actif: true, enAttente: false })
+  }, nom)
+}
+
 /* ============================================================
    1. LE PREMIER COMPTE, AVEC SON COURRIEL
    ============================================================ */
@@ -124,6 +136,17 @@ ok((await comptes()).length === 1, 'rien n a ete ecrit : le second compte n exis
 await page.locator('input.champ__saisie').first().fill('ibrahim@exemple.com')
 await page.getByRole('button', { name: 'Terminer', exact: true }).click()
 await page.waitForTimeout(1400)
+
+/* Le compte est cree, mais il attend le directeur. On l'autorise
+   pour la suite du verificateur, puis on entre avec son code. */
+ok(
+  (await page.getByText('Compte créé', { exact: true }).count()) > 0,
+  'le second compte attend le directeur',
+)
+await autoriserCompte('Ibrahim')
+await page.getByRole('button', { name: 'Compris' }).click()
+await page.waitForTimeout(700)
+await connecterParNom(page, 'Ibrahim', '22222')
 
 const apresSecond = await comptes()
 ok(apresSecond.length === 2, `le compte s ecrit avec sa propre adresse (${apresSecond.length})`)

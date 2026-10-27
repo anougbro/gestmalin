@@ -1,5 +1,5 @@
 import { chromium } from 'playwright'
-import { connecterSiBesoin, prepare, semerComptes } from './aide.ts'
+import { connecterSiBesoin, prepare, semerComptes, semerStock } from './aide.ts'
 import { mkdirSync } from 'node:fs'
 
 /* ============================================================
@@ -152,11 +152,9 @@ async function connecterSession() {
 await connecterSession()
 ok((await texteEcran()).includes('Réception') || (await page.locator('.menu-btn').count()) > 0, 'la session est ouverte')
 
-await allerVers('Réglages')
-await page.getByRole('button', { name: /Charger le jeu/ }).click()
-await attendre(2500)
-await page.locator('.entete__retour').click()
-await attendre(800)
+/* Un stock de depart, pose par le verificateur. Le jeu d'essai
+   n'existe plus dans l'application. */
+await semerStock(page)
 
 /* ---------- 1. La camera lit-elle reellement ? ---------- */
 titre('1. La camera lit un code dessine')

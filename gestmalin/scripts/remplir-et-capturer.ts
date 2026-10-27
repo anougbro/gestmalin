@@ -4,6 +4,7 @@
    page, pas une page blanche. */
 import { chromium, devices } from 'playwright'
 import { mkdirSync } from 'node:fs'
+import { creerCompte } from './aide.ts'
 
 mkdirSync('captures', { recursive: true })
 
@@ -17,6 +18,12 @@ const contexte = await navigateur.newContext({
 const page = await contexte.newPage()
 await page.goto('http://localhost:5173/', { waitUntil: 'networkidle' })
 await page.waitForTimeout(900)
+
+/* Il faut un compte pour voir autre chose que l'ecran de
+   connexion : sans lui, toutes les captures montreraient le pave.
+   Le premier compte cree est directeur et entre tout de suite. */
+await creerCompte(page, { nom: 'Amina', numero: '9000000001', code: '12345' })
+await page.waitForTimeout(800)
 
 const problemes: string[] = []
 

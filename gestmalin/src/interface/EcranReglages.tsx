@@ -1,12 +1,18 @@
 import { useEffect, useState } from 'react'
 import { useSession } from '../etat/useSession'
 import { base } from '../donnees/base'
-import { changerMail, changerNumero, debloquer, deplacerVersRayon } from '../donnees/personnes'
-import { aLeDroit, estBloque, LONGUEUR_TELEPHONE, mailValide, telephoneSaisi, type Utilisateur } from '../domaine/acces'
+import {
+  autoriser, bloquer, changerMail, changerNumero, debloquer,
+  deplacerVersRayon, supprimer, supprimerTousLesComptes,
+} from '../donnees/personnes'
+import { effacerStock } from '../donnees/depots'
+import {
+  aLeDroit, empreinte, etatCompte, LONGUEUR_CODE,
+  LONGUEUR_TELEPHONE, mailValide, telephoneSaisi,
+  type EtatCompte, type Utilisateur,
+} from '../domaine/acces'
 import { CODE_PAR_DEFAUT } from '../etat/preparation'
 import { RAYONS_PAR_DEFAUT } from '../etat/rayons'
-import { chargerJeuEssai, chargerPersonnes, COMPTES_ESSAI } from '../donnees/jeuEssai'
-import { empreinte, LONGUEUR_CODE } from '../domaine/acces'
 import { Icone } from './Icones'
 import { Bouton, Entete, NumeroAffiche, PastillesCode, PavillonNumerique } from './Primitives'
 import { useInstallation } from '../etat/installation'
@@ -15,8 +21,8 @@ import { useInstallation } from '../etat/installation'
    LES REGLAGES
 
    L'ecran qu'on ouvre rarement, et qui doit etre clair quand
-   on l'ouvre : changer son code, charger un jeu d'essai, tout
-   effacer.
+   on l'ouvre : changer son code, gerer les comptes, effacer le
+   stock.
    ============================================================ */
 
 /* Le role est un code en base (`preparateur`), pas un nom
@@ -29,8 +35,16 @@ const NOM_ROLE: Record<Utilisateur['role'], string> = {
   directeur: 'Directeur',
 }
 
+/* Un mot par etat, pas une phrase. La couleur suffit a distinguer
+   « en attente » de « bloque » quand on lit mal. */
+const NOM_ETAT: Record<EtatCompte, string> = {
+  actif: 'Actif',
+  en_attente: 'En attente',
+  bloque: 'Bloqué',
+}
+
 export function EcranReglages({ retour }: { retour: () => void }) {
-  const { utilisateur, rafraichir, toutEffacer: vider } = useSession()
+  const { utilisateur, rafraichir, deconnecter } = useSession()
   const [message, setMessage] = useState<string | null>(null)
   const { proposee, installee, installer } = useInstallation()
 
@@ -93,26 +107,12 @@ export function EcranReglages({ retour }: { retour: () => void }) {
 
   /* ---------- Le reste ---------- */
 
-  async function charger() {
-    const r = await chargerJeuEssai(utilisateur?.id ?? 'u-1')
-    await chargerPersonnes()
-    setMessage(`${r.produits} produits et ${r.mouvements} mouvements chargés.`)
-    await rafraichir()
-  }
-
-  /* Remettre les comptes de l'essai a leurs codes annonces.
-     Utile quand la base a ete reparee apres un changement de
-     longueur : tout le monde est alors passe a 00000, et la
-     liste ci-dessus ne dit plus vrai. */
-  async function remettreLesComptes() {
-    await chargerPersonnes()
-    setMessage('Les mots de passe de l\'essai sont remis.')
-    await rafraichir()
-  }
-
   /* ---------- Qui gere quel rayon ---------- */
 
 const [personnes, setPersonnes] = useState<Utilisateur[]>([])
+const [suppression, setSuppression] = useState<string | null>(null)
+const [confirmerComptes, setConfirmerComptes] = useState(false)
+const [confirmerStock, setConfirmerStock] = useState(false)
 
 /* Se seul `directeur` deplace quelqu'un. C'est le meme droit que
    la gestion des comptes : celui qui gere les personnes gere aussi
@@ -142,23 +142,64 @@ async function transferer(id: string, rayonId: string) {
 /* ---------- Debloquer, et remettre un mot de passe ----------
 
    Deux gestes distincts, parce qu'ils ne repondent pas a la meme
-   situation. Debloquer rend la porte a quelqu'un qui se souvient
+   situation. Autoriser rend la porte a quelqu'un qui se souvient
    de son mot de passe. Remettre 00000 rend la porte a quelqu'un
    qui l'a oublie — et il changera son mot de passe aussitot.
 
-   Les deux sont reserves au directeur par `debloquer()` elle-meme,
-   pas seulement par le bouton : un bouton cache n'est pas une
-   interdiction. */
-async function debloquerPersonne(id: string) {
-  const refus = await debloquer(id, utilisateur)
-  setMessage(refus ?? 'Compte débloqué.')
-  await lirePersonnes()
-}
-
+   Les deux sont reserves au directeur par les fonctions
+   elles-memes, pas seulement par le bouton : un bouton cache n'est
+   pas une interdiction. */
 async function remettreMotDePasse(id: string) {
   const refus = await debloquer(id, utilisateur, CODE_PAR_DEFAUT)
   setMessage(refus ?? `Mot de passe remis à ${CODE_PAR_DEFAUT}. La personne le change à la prochaine entrée.`)
   await lirePersonnes()
+}
+
+/* ---------- Autoriser, bloquer, supprimer ----------
+
+   Le directeur voit trois etats : actif, en attente, bloque. Un
+   compte en attente n'a jamais servi ; un compte bloque a servi et
+   a ete ferme. Les deux se rouvrent avec le meme geste, mais seul
+   le second a des essais rates a effacer — `autoriser()` s'en
+   occupe dans les deux cas. */
+
+async function autoriserPersonne(id: string) {
+  const refus = await autoriser(id, utilisateur)
+  setMessage(refus ?? 'Compte autorisé.')
+  await lirePersonnes()
+}
+
+async function bloquerPersonne(id: string) {
+  const refus = await bloquer(id, utilisateur)
+  setMessage(refus ?? 'Compte bloqué.')
+  await lirePersonnes()
+}
+
+async function supprimerPersonne(id: string) {
+  const refus = await supprimer(id, utilisateur)
+  setSuppression(null)
+  setMessage(refus ?? 'Compte supprimé.')
+  await lirePersonnes()
+}
+
+async function supprimerLesComptes() {
+  const refus = await supprimerTousLesComptes(utilisateur)
+  setConfirmerComptes(false)
+  if (refus) {
+    setMessage(refus)
+    return
+  }
+  /* Le compte connecte vient de partir avec les autres. On ferme
+     la session : l'ecran de connexion proposera de creer le
+     premier compte, qui redeviendra directeur. */
+  deconnecter()
+}
+
+async function effacerLeStock() {
+  await effacerStock()
+  setConfirmerStock(false)
+  setMessage('Stock effacé. Les comptes, rayons, zones et emplacements restent.')
+  await rafraichir()
 }
 
 /* ---------- Mon numero ---------- */
@@ -240,14 +281,6 @@ if (numeroOuvert) {
     </div>
   )
 }
-
-async function effacerTout() {
-    if (!confirm('Effacer TOUT : produits, lots, mouvements, alertes ?\n\nCette action est définitive.')) return
-    await vider()
-    await chargerPersonnes()
-    setMessage('Tout a été effacé. Les zones et les emplacements sont conservés.')
-    await rafraichir()
-  }
 
   return (
     <div className="ecran">
@@ -364,162 +397,213 @@ async function effacerTout() {
           </div>
         </div>
 
-        {/* ---------- Les personnes et leurs codes ----------
+        {/* ---------- Les comptes ----------
 
-            Tant qu'on ne sait pas quel code on a choisi, on le
-            demande a quelqu'un d'autre. Une liste ecrite quelque
-            part evite les deux ennuis : se tromper de code, et
-            croire que l'application est cassee quand elle refuse
-            un code qu'on ne se rappelle pas. */}
-        <div className="carte">
-          <p className="section__titre">Personnes et mots de passe</p>
+            Trois etats, trois gestes. Un compte en attente n'a
+            jamais servi ; un compte bloque a servi et a ete ferme.
+            Les deux se rouvrent avec « Autoriser », mais seul le
+            second a des essais rates a effacer.
+
+            « Code 00000 » ne rouvre pas un compte bloque : il
+            remplace le mot de passe oublie. Il faut ensuite
+            autoriser, sinon le blocage tient — et c'est voulu. */}
+        <div className="carte" data-carte="comptes">
+          <p className="section__titre">Les comptes</p>
           <p style={{ margin: '0 0 12px', fontSize: 13.5, color: 'var(--c-700)' }}>
-            Les mots de passe de l'essai. Ils ne sont jamais stockés en clair
-            dans l'application : elle ne compare que des empreintes.
+            {peutGererRayons
+              ? "Un compte en attente ne peut pas entrer. Autorise-le, bloque-le ou efface-le."
+              : "Les personnes de ce téléphone."}
           </p>
+
           <ul className="codes" data-liste="comptes">
-            {COMPTES_ESSAI.map((c) => (
-              <li key={c.id} className="codes__ligne">
-                <span className="codes__nom">{c.nom}</span>
-                <span className="codes__peut">{c.peut}</span>
-                <span className="codes__code num">{c.code}</span>
-              </li>
-            ))}
-          </ul>
-
-          <div style={{ marginTop: 12 }}>
-            <Bouton variante="secondaire" surClick={() => void remettreLesComptes()}>
-              Remettre les mots de passe de l'essai
-            </Bouton>
-          </div>
-        </div>
-
-        {/* ---------- Qui gere quel rayon ----------
-
-            La regle tient en une ligne : une personne n'ouvre que
-            ses rayons. Elle ne peut pas changer, et elle ne voit
-            meme pas les autres.
-
-            Ce bloc sert a la surveillance et au depannage, pas a la
-            liberation : sans lui, un transfert de poste se ferait
-            en vidant la base. */}
-        <div className="carte">
-          <p className="section__titre">Les personnes</p>
-          <p style={{ margin: '0 0 12px', fontSize: 13.5, color: 'var(--c-700)' }}>
-            Ce téléphone ne montre que les rayons de la personne.
-          </p>
-
-          <ul className="codes" data-liste="rayons">
-            {personnes.map((p) => (
-              <li key={p.id} className="codes__ligne" style={{ cursor: 'default' }}>
-                <span className="codes__nom" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 1 }}>
-                  <span>{p.nom}</span>
-                  <span style={{ fontSize: 11.5, color: 'var(--c-500)', fontWeight: 500 }}>
-                    {p.mail ?? 'Pas de courriel'}
-                  </span>
-                </span>
-                <span
-                  className="codes__peut"
-                  style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 1 }}
+            {personnes.map((p) => {
+              const etat = etatCompte(p)
+              const soiMeme = p.id === utilisateur?.id
+              return (
+                <li
+                  key={p.id}
+                  className="codes__ligne"
+                  data-compte={p.id}
+                  data-etat={etat}
+                  style={{
+                    cursor: 'default',
+                    flexDirection: 'column',
+                    alignItems: 'stretch',
+                    gap: 8,
+                  }}
                 >
-                  {estBloque(p) && (
-                    <span style={{ color: 'var(--dgr-700)', fontWeight: 700 }}>Bloqué</span>
-                  )}
-                  {p.telephone ? (
-                    <span className="num">{p.telephone}</span>
-                  ) : (
-                    <span style={{ color: 'var(--wrn-700)' }}>Pas de numéro</span>
-                  )}
-                </span>
-              </li>
-            ))}
-          </ul>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+                    <span
+                      className="codes__nom"
+                      style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 1 }}
+                    >
+                      <span>{p.nom}{soiMeme ? ' (toi)' : ''}</span>
+                      <span style={{ fontSize: 11.5, color: 'var(--c-500)', fontWeight: 500 }}>
+                        {NOM_ROLE[p.role]} · {p.mail ?? 'Pas de courriel'}
+                      </span>
+                    </span>
+                    <span
+                      className="codes__peut"
+                      style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}
+                    >
+                      <span
+                        data-etat-compte={etat}
+                        style={{
+                          fontWeight: 700,
+                          color: etat === 'actif'
+                            ? 'var(--teal-700)'
+                            : etat === 'en_attente'
+                              ? 'var(--wrn-700)'
+                              : 'var(--dgr-700)',
+                        }}
+                      >
+                        {NOM_ETAT[etat]}
+                      </span>
+                      {p.telephone ? (
+                        <span className="num">{p.telephone}</span>
+                      ) : (
+                        <span style={{ color: 'var(--wrn-700)' }}>Pas de numéro</span>
+                      )}
+                    </span>
+                  </div>
 
-          {/* Debloquer et remettre un mot de passe. Deux boutons par
-              personne, parce qu'on ne repare pas de la meme facon
-              quelqu'un qui a oublie son mot de passe et quelqu'un
-              qui s'est trompe cinq fois. */}
-          {peutGererRayons && (
-            <div style={{ marginTop: 16 }}>
-              <p className="section__titre" style={{ margin: '0 0 8px' }}>Débloquer</p>
-              <div className="colonne" style={{ gap: 8 }}>
-                {personnes.map((p) => (
-                  <div
-                    key={p.id}
-                    data-personne={p.id}
-                    style={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: 8,
-                      paddingBottom: 10,
-                      borderBottom: '1px solid var(--line)',
-                    }}
-                  >
-                    <span style={{ fontSize: 13.5, fontWeight: 600 }}>{p.nom}</span>
+                  {peutGererRayons && (
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                      {estBloque(p) && (
-                        <Bouton variante="secondaire" surClick={() => void debloquerPersonne(p.id)}>
-                          Débloquer
+                      {etat !== 'actif' && (
+                        <Bouton variante="secondaire" surClick={() => void autoriserPersonne(p.id)}>
+                          Autoriser
+                        </Bouton>
+                      )}
+                      {etat === 'actif' && !soiMeme && (
+                        <Bouton variante="secondaire" surClick={() => void bloquerPersonne(p.id)}>
+                          Bloquer
                         </Bouton>
                       )}
                       <Bouton variante="secondaire" surClick={() => void remettreMotDePasse(p.id)}>
-                        Remettre {CODE_PAR_DEFAUT}
+                        Code {CODE_PAR_DEFAUT}
                       </Bouton>
+                      {!soiMeme && (
+                        suppression === p.id ? (
+                          <>
+                            <Bouton variante="danger" surClick={() => void supprimerPersonne(p.id)}>
+                              Confirmer
+                            </Bouton>
+                            <Bouton variante="secondaire" surClick={() => setSuppression(null)}>
+                              Annuler
+                            </Bouton>
+                          </>
+                        ) : (
+                          <Bouton
+                            variante="danger"
+                            icone="croix"
+                            surClick={() => setSuppression(p.id)}
+                          >
+                            Supprimer
+                          </Bouton>
+                        )
+                      )}
                     </div>
+                  )}
+
+                  {suppression === p.id && (
+                    <p style={{ margin: 0, fontSize: 12.5, color: 'var(--dgr-700)' }}>
+                      Effacer {p.nom} ? Ses mouvements restent.
+                    </p>
+                  )}
+                </li>
+              )
+            })}
+          </ul>
+
+          {peutGererRayons && (
+            <div style={{ marginTop: 16 }}>
+              {confirmerComptes ? (
+                <>
+                  <p style={{ margin: '0 0 8px', fontSize: 13.5, color: 'var(--dgr-700)' }}>
+                    Effacer tous les comptes ? Le stock reste.
+                  </p>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <Bouton variante="danger" icone="croix" surClick={() => void supprimerLesComptes()}>
+                      Confirmer
+                    </Bouton>
+                    <Bouton variante="secondaire" surClick={() => setConfirmerComptes(false)}>
+                      Annuler
+                    </Bouton>
                   </div>
-                ))}
-              </div>
+                </>
+              ) : (
+                <Bouton variante="danger" icone="croix" surClick={() => setConfirmerComptes(true)}>
+                  Effacer les comptes
+                </Bouton>
+              )}
               <p style={{ margin: '10px 0 0', fontSize: 12.5, color: 'var(--c-500)' }}>
                 {CODE_PAR_DEFAUT} est un mot de passe provisoire : la personne le change
                 dès qu'elle entre.
               </p>
             </div>
           )}
+        </div>
 
-          {peutGererRayons && (
-            <div style={{ marginTop: 14 }}>
-              <p className="section__titre" style={{ margin: '0 0 8px' }}>Transférer</p>
-              <div className="grille-2">
-                {personnes.map((p) => (
-                  <select
-                    key={p.id}
-                    className="champ__saisie"
-                    value={p.rayonsAutorises[0] ?? ''}
-                    aria-label={`Rayon de ${p.nom}`}
-                    onChange={(e) => void transferer(p.id, e.target.value)}
-                  >
-                    {RAYONS_PAR_DEFAUT.map((r) => (
-                      <option key={r.id} value={r.id}>{r.nom}</option>
-                    ))}
-                  </select>
-                ))}
-              </div>
-              <p style={{ margin: '10px 0 0', fontSize: 12.5, color: 'var(--c-500)' }}>
-                Transférer quelqu'un vers un rayon qu'il ne gère pas ici ne
-                l'efface pas : cela retire simplement son accès.
-              </p>
+        {/* ---------- Qui gere quel rayon ---------- */}
+        {peutGererRayons && (
+          <div className="carte">
+            <p className="section__titre">Transférer</p>
+            <p style={{ margin: '0 0 12px', fontSize: 13.5, color: 'var(--c-700)' }}>
+              Une personne n'ouvre que son rayon.
+            </p>
+            <div className="grille-2">
+              {personnes.map((p) => (
+                <select
+                  key={p.id}
+                  className="champ__saisie"
+                  value={p.rayonsAutorises[0] ?? ''}
+                  aria-label={`Rayon de ${p.nom}`}
+                  onChange={(e) => void transferer(p.id, e.target.value)}
+                >
+                  {RAYONS_PAR_DEFAUT.map((r) => (
+                    <option key={r.id} value={r.id}>{r.nom}</option>
+                  ))}
+                </select>
+              ))}
             </div>
+            <p style={{ margin: '10px 0 0', fontSize: 12.5, color: 'var(--c-500)' }}>
+              Transférer quelqu'un vers un rayon qu'il ne gère pas ici ne
+              l'efface pas : cela retire simplement son accès.
+            </p>
+          </div>
+        )}
+
+        {/* ---------- Effacer le stock ----------
+
+            Le stock part, les personnes restent. Deux gestes
+            separes : effacer les comptes ne doit pas emporter les
+            produits, et effacer le stock ne doit pas fermer la
+            porte au directeur. */}
+        <div className="carte" data-carte="stock">
+          <p className="section__titre">Effacer le stock</p>
+          <p style={{ margin: '0 0 12px', fontSize: 13.5, color: 'var(--c-700)' }}>
+            Produits, lots, mouvements, alertes. Les comptes, rayons, zones et
+            emplacements restent.
+          </p>
+          {confirmerStock ? (
+            <>
+              <p style={{ margin: '0 0 8px', fontSize: 13.5, color: 'var(--dgr-700)' }}>
+                Effacer le stock ? Cette action est définitive.
+              </p>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <Bouton variante="danger" icone="croix" surClick={() => void effacerLeStock()}>
+                  Confirmer
+                </Bouton>
+                <Bouton variante="secondaire" surClick={() => setConfirmerStock(false)}>
+                  Annuler
+                </Bouton>
+              </div>
+            </>
+          ) : (
+            <Bouton variante="danger" icone="croix" surClick={() => setConfirmerStock(true)}>
+              Effacer le stock
+            </Bouton>
           )}
-        </div>
-
-        {/* ---------- Jeu d'essai ---------- */}
-        <div className="carte">
-          <p className="section__titre">Jeu d'essai</p>
-          <p style={{ margin: '0 0 12px', fontSize: 13.5, color: 'var(--c-700)' }}>
-            Des médicaments et des produits ménagers, avec des lots qui périment tôt
-            et d'autres tard, du stock à des niveaux variés, et trois boîtes au quai
-            qui attendent d'être rangées.
-          </p>
-          <Bouton taille={56} plein surClick={charger}>Charger le jeu d'essai</Bouton>
-        </div>
-
-        {/* ---------- Tout effacer ---------- */}
-        <div className="carte">
-          <p className="section__titre">Tout effacer</p>
-          <p style={{ margin: '0 0 12px', fontSize: 13.5, color: 'var(--c-700)' }}>
-            Produits, lots, mouvements, alertes. Les zones et les emplacements restent.
-          </p>
-          <Bouton variante="danger" icone="croix" surClick={effacerTout}>Effacer les données</Bouton>
         </div>
 
         {/* ---------- Installer sur le telephone ----------

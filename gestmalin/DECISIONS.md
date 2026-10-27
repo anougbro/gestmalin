@@ -100,6 +100,10 @@ limite d'essais est plus faible qu'un code court avec cinq essais.
   bon mot de passe est refusé. Comparer d'abord offrirait des essais gratuits, c'est-à-dire
   exactement ce qu'un blocage doit retirer.
 - Une entrée réussie remet le compteur à zéro.
+- **Le directeur peut aussi fermer un compte pour de bon** (`bloquer`) : ce n'est pas le
+  blocage temporaire des cinq essais, c'est une décision, sans durée. Il se lève par
+  « Autoriser ». Personne ne peut fermer son propre compte, et il doit rester un directeur
+  actif : sans cela, plus personne ne pourrait rouvrir.
 - **Le blocage tombe tout seul au bout de quinze minutes.** Un blocage définitif sans
   serveur n'aurait qu'une issue : effacer la base — donc perdre le stock pour cinq chiffres
   mal tapés. Et un directeur qui se bloque lui-même n'aurait plus aucun recours.
@@ -117,23 +121,36 @@ définitif — coûterait le stock.
 
 ---
 
-## 6. Aucun compte semé : le premier arrivé est directeur
+## 6. Aucun compte semé : le premier arrivé est directeur, les autres attendent
 
 Il n'y a **aucun compte préparé au démarrage**. Le premier compte créé sur le téléphone
-devient `directeur` ; tous les suivants sont `preparateur`. Un directeur peut ensuite
-transférer un rayon, débloquer, remettre un mot de passe provisoire.
+devient `directeur` et **entre immédiatement** : sans lui, personne ne pourrait autoriser
+les suivants. Les comptes suivants sont créés `actif: false, enAttente: true` : ils ne
+peuvent pas entrer avant que le directeur les ait **autorisés** depuis Réglages. La
+connexion distingue « Compte en attente » de « Compte bloqué ».
 
-**Pourquoi :** un compte semé, c'est un mot de passe connu de tous — écrit dans le code,
-donc lisible sur GitHub. Ce serait le point faible de toute l'application, et il
-vieillirait mal : personne ne change un code qui marche.
+**Pourquoi l'accord du directeur :** le téléphone est partagé. Sans cet accord, n'importe
+qui pourrait créer un compte et lire le stock. L'accord est un geste local, sans serveur :
+il ne demande aucune connexion au directeur au moment de l'inscription.
+
+**Pourquoi aucun compte semé :** un compte semé, c'est un mot de passe connu de tous —
+écrit dans le code, donc lisible sur GitHub. Ce serait le point faible de toute
+l'application, et il vieillirait mal : personne ne change un code qui marche.
 
 `00000` existe encore, mais uniquement comme **mot de passe provisoire**, remis
 volontairement par un directeur à une personne qui a perdu le sien. Il n'ouvre rien par
-défaut, et la personne est invitée à le changer dès son entrée.
+défaut, et la personne est invitée à le changer dès son entrée. Il ne rouvre pas un compte
+bloqué : le blocage tient jusqu'à « Autoriser ».
 
-Le jeu d'essai (Réglages → « Charger le jeu d'essai ») ajoute trois comptes de
-démonstration avec des codes annoncés à l'écran. Il est **facultatif** et ne s'exécute que
-sur un geste explicite : ce n'est pas un amorçage.
+**Aucune donnée de démonstration.** Le jeu d'essai a été retiré : une pharmacie ne doit pas
+contenir de faux médicaments. Une migration unique efface les faux comptes, produits, lots,
+mouvements et demandes des téléphones qui l'avaient chargé, **par identifiant exact** —
+jamais par nom, car un vrai produit peut s'appeler « Paracétamol ». Si le seul directeur
+était un faux compte, le premier compte réel reprend la direction.
+
+**Supprimer un compte** n'efface pas ses mouvements : le journal reste vrai, et l'auteur
+n'est pas affiché. Deux gestes séparés vident les comptes ou le stock, jamais les deux à la
+fois : effacer le stock ne doit pas fermer la porte au directeur.
 
 ---
 
@@ -191,11 +208,19 @@ chaque mouvement porte son auteur.
   bon code pendant le blocage, expiration, remise à zéro, refus d'un non-directeur, remise
   de `00000`, validation du courriel, unicité insensible à la casse, refus d'un courriel
   déjà pris, effacement du courriel.
+- `src/donnees/comptes.test.ts` — autoriser, bloquer, supprimer : refus de son propre
+  compte, refus de laisser le téléphone sans directeur actif, mouvements conservés,
+  effacement de tous les comptes sans toucher au stock.
+- `src/donnees/nettoyage.test.ts` — les données d'essai partent par identifiant exact, un
+  vrai produit qui porte le même nom reste, et la direction revient au premier compte réel.
 - `scripts/verifier-blocage.ts` — le parcours complet dans un vrai navigateur : cinq
   échecs, blocage, déblocage par la directrice, entrée avec l'ancien code, remise de
   `00000`, refus de l'ancien code.
 - `scripts/verifier-comptes.ts` — aucun compte au démarrage, premier compte directeur,
-  courriel facultatif, création sans retaper son code, unicité du numéro.
+  second compte **en attente**, refus de connexion tant qu'il n'est pas autorisé,
+  autorisation par la directrice, puis changement de numéro — unicité comprise.
+- `scripts/verifier-codes.ts` — la liste des comptes ne montre aucun code ; « Code 00000 »
+  écrit bien l'empreinte en base, ouvre la porte, et l'ancien code ne passe plus.
 - `scripts/verifier-courriels.ts` — un second compte ne peut prendre ni le courriel ni le
   numéro d'un autre, à la création comme dans les réglages ; la casse ne contourne pas le
   contrôle.

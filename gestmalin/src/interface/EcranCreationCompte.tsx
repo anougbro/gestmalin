@@ -30,7 +30,7 @@ import { Bouton, NumeroAffiche, PastillesCode, PavillonNumerique } from './Primi
    le premier commande, et il peut ensuite debloquer les autres.
    ============================================================ */
 
-type Etape = 'nom' | 'rayon' | 'numero' | 'code' | 'mail'
+type Etape = 'nom' | 'rayon' | 'numero' | 'code' | 'mail' | 'attente'
 
 export function EcranCreationCompte({ surFin }: { surFin: () => void }) {
   const { connecter } = useSession()
@@ -75,6 +75,7 @@ export function EcranCreationCompte({ surFin }: { surFin: () => void }) {
 
     setEnregistrement(true)
     const id = nouvelId()
+    const premier = tous.length === 0
 
     await base.utilisateurs.put({
       id,
@@ -82,9 +83,14 @@ export function EcranCreationCompte({ surFin }: { surFin: () => void }) {
       /* Le premier arrive commande. Sans cela, un telephone neuf
          n'a que des preparateurs : personne ne peut debloquer
          personne, ni transferer un rayon. */
-      role: tous.length === 0 ? 'directeur' : 'preparateur',
+      role: premier ? 'directeur' : 'preparateur',
       rayonsAutorises: [rayonId],
-      actif: true,
+      /* Le premier compte entre tout de suite : sans lui, personne
+         ne pourrait autoriser les suivants. Les autres attendent
+         l'accord du directeur — c'est ce qui empeche un compte
+         inconnu de lire le stock. */
+      actif: premier,
+      ...(premier ? {} : { enAttente: true }),
       independant: true,
       telephone: normaliserTelephone(numero),
       longueurCode: LONGUEUR_CODE,
@@ -92,10 +98,19 @@ export function EcranCreationCompte({ surFin }: { surFin: () => void }) {
       empreinte: empreinte(id, code),
     })
 
-    /* On entre directement. Faire retaper dix chiffres et cinq
-       autres juste apres les avoir choisis, c'est l'endroit ou
-       l'on se trompe — et la personne croirait que son compte
-       neuf ne marche pas. */
+    if (!premier) {
+      /* On n'entre pas : le compte est cree, mais ferme. La
+         personne voit pourquoi, et le directeur la retrouve dans
+         les reglages. */
+      setEnregistrement(false)
+      setEtape('attente')
+      return
+    }
+
+    /* Le premier compte ouvre la session directement. Faire
+       retaper dix chiffres et cinq autres juste apres les avoir
+       choisis, c'est l'endroit ou l'on se trompe — et la personne
+       croirait que son compte neuf ne marche pas. */
     await connecter(id, code)
     onFinished()
   }
@@ -239,6 +254,25 @@ export function EcranCreationCompte({ surFin }: { surFin: () => void }) {
       </div>
     </div>
   )
+  }
+
+  /* ---------- 6. Le compte attend le directeur ----------
+
+     Un compte cree n'est pas un compte ouvert. On le dit ici, tout
+     de suite, et pas au moment de la connexion : la personne vient
+     de choisir son code, elle doit savoir qu'il ne sert pas encore. */
+  if (etape === 'attente') {
+    return (
+      <div className="ecran">
+        <div className="contenu">
+          <p className="section__titre">Compte créé</p>
+          <p style={{ margin: '0 0 16px', fontSize: 15, color: 'var(--c-700)' }}>
+            Le directeur doit autoriser ton compte.
+          </p>
+          <Bouton taille={64} plein surClick={surFin}>Compris</Bouton>
+        </div>
+      </div>
+    )
   }
 
   /* ---------- 5. Ton courriel ----------

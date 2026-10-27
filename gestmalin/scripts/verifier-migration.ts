@@ -43,10 +43,14 @@ await page.goto('http://localhost:5173/', { waitUntil: 'networkidle' })
 await prepare(page)
 await page.waitForTimeout(1400)
 
+/* Des identifiants NEUFS, pas ceux du jeu d'essai (u-1, u-2, u-3) :
+   la migration 5 efface justement ces trois-la. Les prendre ici
+   reviendrait a fabriquer une base que la migration vide, puis a
+   chercher pourquoi plus personne n'entre. */
 const ANCIENS = [
-  { id: 'u-1', nom: 'Préparateur', role: 'preparateur', rayonsAutorises: ['r-med', 'r-men'], actif: true, longueurCode: 4, empreinte: empreinte4('u-1', '1234') },
-  { id: 'u-2', nom: 'Amina', role: 'responsable', rayonsAutorises: ['r-men'], actif: true, longueurCode: 4, empreinte: empreinte4('u-2', '1111') },
-  { id: 'u-3', nom: 'Dr Souley', role: 'pharmacien', rayonsAutorises: ['r-med', 'r-men'], actif: true, longueurCode: 4, empreinte: empreinte4('u-3', '2222') },
+  { id: 'u-ancien-1', nom: 'Préparateur', role: 'preparateur', rayonsAutorises: ['r-med', 'r-men'], actif: true, longueurCode: 4, empreinte: empreinte4('u-ancien-1', '1234') },
+  { id: 'u-ancien-2', nom: 'Amina', role: 'responsable', rayonsAutorises: ['r-men'], actif: true, longueurCode: 4, empreinte: empreinte4('u-ancien-2', '1111') },
+  { id: 'u-ancien-3', nom: 'Dr Souley', role: 'pharmacien', rayonsAutorises: ['r-med', 'r-men'], actif: true, longueurCode: 4, empreinte: empreinte4('u-ancien-3', '2222') },
 ]
 
 const plante = await page.evaluate(async (lignes: Record<string, unknown>[]) => {

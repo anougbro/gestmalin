@@ -63,8 +63,8 @@ await attendre(1200)
 
 /* On prepare la porte avant de la tester : un compte avec un
    numero connu et un code connu. Sans cela, le script devrait
-   charger le jeu d'essai, ce qui exige deja d'etre connecte —
-   donc de passer par la porte qu'on veut justement tester. */
+   creer un compte par l'ecran, ce qui exige deja de passer par
+   la porte qu'on veut justement tester. */
 await page.evaluate(async () => {
   const { base } = await import('/src/donnees/base.ts')
   const { empreinte, LONGUEUR_CODE } = await import('/src/domaine/acces.ts')

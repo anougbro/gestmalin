@@ -412,13 +412,32 @@ export const journal = {
 
 export type { Emplacement, Zone }
 
-/* ---------- 5. Effacer tout (reglages,.tests) ---------- */
+/* ---------- 5. Effacer tout (reglages, tests) ---------- */
 export async function toutEffacer(): Promise<void> {
   await Promise.all([
     base.mouvements.clear(), base.lots.clear(), base.produits.clear(),
     base.emplacements.clear(), base.zones.clear(), base.categories.clear(),
     base.fournisseurs.clear(), base.rayons.clear(), base.inventaires.clear(),
     base.lignesInventaire.clear(), base.utilisateurs.clear(),
+    base.relevesTemperature.clear(), base.demandesApprobation.clear(),
+  ])
+}
+
+/* ---------- 6. Effacer le stock, pas les personnes ----------
+
+   Deux gestes differents, deux fonctions differentes. Effacer le
+   stock ne doit pas effacer les comptes : sinon un directeur qui
+   remet le stock a zero se retrouve dehors, et il faut recreer un
+   compte pour rentrer.
+
+   Les rayons, zones et emplacements restent : ce sont les reperes
+   physiques de la pharmacie, pas des donnees de stock. Les
+   categories et les fournisseurs restent aussi : ce sont des
+   referentiels, pas des boites. */
+export async function effacerStock(): Promise<void> {
+  await Promise.all([
+    base.mouvements.clear(), base.lots.clear(), base.produits.clear(),
+    base.inventaires.clear(), base.lignesInventaire.clear(),
     base.relevesTemperature.clear(), base.demandesApprobation.clear(),
   ])
 }

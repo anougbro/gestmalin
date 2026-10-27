@@ -105,7 +105,8 @@ export function EcranConnexion({ surCreation }: { surCreation: () => void }) {
       }
 
       if (r.raison === 'bloque') { setErreur('Compte bloqué. Demande à un responsable.'); return }
-      if (r.raison === 'inactif') { setErreur('Ce compte est désactivé.'); return }
+      if (r.raison === 'en-attente') { setErreur("Compte en attente. Le directeur doit l'autoriser."); return }
+      if (r.raison === 'inactif') { setErreur('Ce compte est bloqué. Demande au directeur.'); return }
       setErreur('Mot de passe incorrect.')
     } catch {
       setErreur('Connexion impossible. Réessaie.')

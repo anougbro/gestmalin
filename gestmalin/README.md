@@ -30,7 +30,7 @@ d'IndexedDB, d'un service worker et des modules JavaScript modernes.
 | Commander / Réappro | ce qu'il faut racheter, et à qui |
 | Étiquettes | étiquettes de rayon et de place, imprimables |
 | Fichiers | import et export `.xlsx` / `.csv`, sans aucune dépendance |
-| Réglages | numéro, courriel de contact, mot de passe, personnes, déblocage, jeu d'essai, installation |
+| Réglages | numéro, courriel de contact, mot de passe, comptes (autoriser, bloquer, supprimer), installation |
 
 Deux règles structurent le code :
 
@@ -38,6 +38,32 @@ Deux règles structurent le code :
   ajoutés et jamais modifiés. Un écart se voit, il ne se maquille pas.
 - **Aucun prix, aucune donnée patient, aucun serveur.** Ce qui n'est pas là ne peut pas
   fuir.
+
+## Les comptes
+
+Un téléphone neuf n'a **aucun compte préparé**. La première personne qui se présente crée
+le sien par l'écran : elle devient directrice et entre immédiatement. Les comptes suivants
+sont créés **en attente** — ils ne peuvent pas se connecter tant que la directrice ne les a
+pas autorisés.
+
+Dans Réglages, chaque compte affiche son état :
+
+| État | Sens | Ce que la directrice peut faire |
+|---|---|---|
+| **Actif** | le compte peut entrer | bloquer, remettre `00000`, supprimer |
+| **En attente** | jamais autorisé | autoriser, remettre `00000`, supprimer |
+| **Bloqué** | fermé par la directrice, ou cinq essais ratés | autoriser, remettre `00000`, supprimer |
+
+Trois garde-fous : on ne peut ni bloquer ni supprimer **son propre** compte, et il doit
+toujours rester **un directeur actif**. Supprimer un compte ne touche pas à ses mouvements
+de stock : le journal reste vrai.
+
+Deux effacements distincts, jamais confondus :
+
+- **Effacer les comptes** vide les personnes. Le stock, les rayons, les zones et les
+  emplacements restent. La session se ferme, et le prochain compte créé redevient directeur.
+- **Effacer le stock** vide produits, lots, mouvements, inventaires et alertes. Les comptes
+  et les repères physiques restent.
 
 ## Architecture
 
@@ -77,7 +103,8 @@ $env:BASE_PATH="/gestmalin/"; npx vite preview --port 4173
 Ils pilotent un vrai Chrome sur le serveur de développement (`npm run dev` doit tourner) :
 
 ```bash
-npm run verifier-comptes      # installation, premier compte directeur, jeu d'essai
+npm run verifier-comptes      # premier compte directeur, second compte en attente, autorisation
+npm run verifier-codes        # remise du code 00000, sans jamais l'écrire à l'écran
 npm run verifier-blocage      # cinq essais, blocage, déblocage, remise de 00000
 npm run verifier-courriels    # numéro et courriel uniques, à l'écriture
 npm run verifier-connexion    # la porte du numéro, pas à pas

@@ -3,7 +3,7 @@
 
    Trois decisions structurantes :
 
-   1. AUCUN mot de passe. Un code a 4 chiffres, tape d'une seule
+   1. AUCUN mot de passe. Un code a 5 chiffres, tape d'une seule
       main, souvent avec des gants. Personne ne retient un mot
       de passe, et personne ne le tape sans le lire au mur.
 
@@ -11,10 +11,12 @@
       empreintes. Si quelqu'un ouvre le fichier de la base, il
       ne trouve que des nombres sans signification.
 
-   3. La liste des autorises est SIGNEE par le serveur. La
-      signature est verifiee sur le telephone, SANS reseau. On
-      ne peut donc pas s'ajouter un role en deconnecte — mais on
-      n'a pas besoin du reseau pour ouvrir l'application.
+   3. La liste des autorises vit sur le telephone, pas sur un
+      serveur. Le role est relu en base a chaque demarrage : une
+      session ne fige donc pas un droit. Seul le directeur peut
+      changer un role ou autoriser un compte, et les fonctions
+      le verifient elles-memes — un bouton cache n'est pas une
+      interdiction.
    ============================================================ */
 
 export type Role = 'preparateur' | 'responsable' | 'pharmacien' | 'directeur'
@@ -93,7 +95,18 @@ export type Utilisateur = {
   nom: string
   role: Role
   rayonsAutorises: string[]
+  /**
+   * Le compte peut-il entrer ?
+   *
+   * `false` veut dire NON, mais pas toujours pour la meme raison :
+   * un compte qui vient d'etre cree attend l'accord du directeur
+   * (`enAttente`), un compte que le directeur a ferme est bloque.
+   * Les deux ne se reparent pas de la meme facon, et l'ecran doit
+   * pouvoir le dire.
+   */
   actif: boolean
+  /** Le compte attend l'accord du directeur. Ignore quand `actif`. */
+  enAttente?: boolean
   empreinte: string
 
   /**
@@ -290,6 +303,39 @@ export function estBloque(u: Utilisateur, maintenant = Date.now()): boolean {
   return typeof u.bloqueJusqua === 'number' && u.bloqueJusqua > maintenant
 }
 
+/* ---------- L'etat d'un compte, pour l'ecran ----------
+
+   Trois etats, pas deux. « Inactif » melangeait deux situations
+   qui n'ont rien a voir : quelqu'un qui attend l'accord du
+   directeur, et quelqu'un que le directeur a ferme. L'un attend
+   une autorisation, l'autre une decision. */
+export type EtatCompte = 'actif' | 'en_attente' | 'bloque'
+
+export function estEnAttente(u: Utilisateur): boolean {
+  return !u.actif && u.enAttente === true
+}
+
+export function etatCompte(u: Utilisateur, maintenant = Date.now()): EtatCompte {
+  if (u.actif) return estBloque(u, maintenant) ? 'bloque' : 'actif'
+  return estEnAttente(u) ? 'en_attente' : 'bloque'
+}
+
+/**
+ * Le compte a promouvoir s'il ne reste aucun directeur actif.
+ *
+ * La migration qui efface les faux comptes peut emporter le seul
+ * directeur du telephone. Sans ce rattrapage, il ne reste que des
+ * preparateurs : personne ne peut autoriser, bloquer, ni remettre
+ * un mot de passe. Le premier compte restant reprend la direction.
+ */
+export function premierDirecteur(tous: readonly Utilisateur[]): Utilisateur | null {
+  if (tous.length === 0) return null
+  if (tous.some((u) => u.role === 'directeur' && u.actif)) return null
+  /* On prefere un compte actif : promouvoir un compte bloque
+     reviendrait a annuler un blocage decide par le directeur. */
+  return tous.find((u) => u.actif) ?? tous[0]
+}
+
 /** Un mail plausible. Volontairement large : on ne veut pas
     refuser l'adresse rare d'un fournisseur, seulement la faute
     evidente — un espace, pas d'arobase, pas de point. */
@@ -323,7 +369,7 @@ export function mailLibre(
 
 export type ResultatConnexion =
   | { ok: true; utilisateur: Utilisateur }
-  | { ok: false; raison: 'code-incorrect' | 'inactif' | 'numero-inconnu' | 'numero-partage' | 'bloque' }
+  | { ok: false; raison: 'code-incorrect' | 'inactif' | 'en-attente' | 'numero-inconnu' | 'numero-partage' | 'bloque' }
 
 const ECHEC_CODE = { ok: false as const, raison: 'code-incorrect' as const }
 
@@ -398,7 +444,12 @@ function verifier(u: Utilisateur | undefined, code: string): ResultatConnexion {
   if (code.length !== LONGUEUR_CODE) return ECHEC_CODE
 
   if (!codeCorrect(u.id, code, u.empreinte)) return ECHEC_CODE
-  if (!u.actif) return { ok: false, raison: 'inactif' }
+
+  /* Un compte qui attend le directeur n'est pas un compte ferme.
+     Le code est deja verifie : on peut donc dire la verite a la
+     personne sans reveler l'existence d'un compte a quelqu'un qui
+     ne connait pas son mot de passe. */
+  if (!u.actif) return { ok: false, raison: estEnAttente(u) ? 'en-attente' : 'inactif' }
 
   /* Un numero partage par deux comptes : ni l'un ni l'autre n'est
      fiable. On refuse, meme avec le BON code. C'est la seule

@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
   aLeDroit, empreinte, codeCorrect, aLeMandat, peutValider,
-  peutUtiliser, rayonsUtilisables, roleEffectif, connecter, LONGUEUR_CODE, type Utilisateur,
+  peutUtiliser, rayonsUtilisables, roleEffectif, connecter,
+  etatCompte, premierDirecteur, LONGUEUR_CODE, type Utilisateur,
 } from './acces'
 
 const MAINTENANT = '2026-06-15T12:00:00Z'
@@ -150,6 +151,17 @@ describe('la connexion hors ligne', () => {
     expect(r.ok === false && r.raison).toBe('inactif')
   })
 
+  it('distingue un compte en attente d un compte bloque', () => {
+    /* Les deux ne peuvent pas entrer, mais l'un attend une
+       autorisation et l'autre une decision. Le message ne doit
+       pas se tromper de situation. */
+    const attente = connecter([utilisateur({ actif: false, enAttente: true })], 'u1', '12345')
+    expect(attente.ok === false && attente.raison).toBe('en-attente')
+
+    const bloque = connecter([utilisateur({ actif: false, enAttente: false })], 'u1', '12345')
+    expect(bloque.ok === false && bloque.raison).toBe('inactif')
+  })
+
   it('ne demande PAS le rayon : le code dit qui on est', () => {
     /* Une personne qui ne travaille que sur les Menagers doit
        pouvoir entrer, meme si l'application s'est ouverte sur les
@@ -221,5 +233,56 @@ describe('les rayons visibles', () => {
       expect(peutUtiliser(gestmalinier, id)).toBe(visibles.includes(id))
     }
     expect(visibles).toEqual(['r-men'])
+  })
+})
+
+describe('l etat d un compte', () => {
+  it('un compte qui peut entrer est actif', () => {
+    expect(etatCompte(utilisateur())).toBe('actif')
+  })
+
+  it('un compte cree qui attend le directeur est en attente', () => {
+    expect(etatCompte(utilisateur({ actif: false, enAttente: true }))).toBe('en_attente')
+  })
+
+  it('un compte ferme par le directeur est bloque', () => {
+    expect(etatCompte(utilisateur({ actif: false, enAttente: false }))).toBe('bloque')
+  })
+
+  it('un compte ouvert mais bloque apres cinq essais est bloque', () => {
+    /* Le compte est toujours actif : c'est le DELAI qui le ferme.
+       L'ecran doit le dire sans le confondre avec un compte que
+       le directeur a ferme pour de bon. */
+    const u = utilisateur({ bloqueJusqua: 2_000 })
+    expect(etatCompte(u, 1_000)).toBe('bloque')
+    expect(etatCompte(u, 3_000)).toBe('actif')
+  })
+})
+
+describe('le directeur de secours', () => {
+  it('sans aucun compte, il n y a personne a promouvoir', () => {
+    expect(premierDirecteur([])).toBeNull()
+  })
+
+  it('un directeur actif suffit', () => {
+    const d = utilisateur({ id: 'd', role: 'directeur' })
+    expect(premierDirecteur([d, utilisateur({ id: 'p' })])).toBeNull()
+  })
+
+  it('sans directeur actif, le premier compte reprend la direction', () => {
+    /* Cas de la migration : le seul directeur etait un faux
+       compte. Sans ce rattrapage, il ne reste que des
+       preparateurs et personne ne peut gerer les personnes. */
+    const p = utilisateur({ id: 'p', role: 'preparateur' })
+    expect(premierDirecteur([p])).toBe(p)
+  })
+
+  it('un directeur bloque ne compte pas comme actif', () => {
+    /* On ne ressuscite pas un compte bloque : un autre compte
+       actif prend la direction. S'il n'y en a aucun, alors
+       seulement on reprend le premier. */
+    const d = utilisateur({ id: 'd', role: 'directeur', actif: false })
+    const p = utilisateur({ id: 'p', role: 'preparateur' })
+    expect(premierDirecteur([d, p])).toBe(p)
   })
 })

@@ -34,13 +34,17 @@ qui ne s'effacent pas. C'est ce qui rend un écart visible au lieu de le maquill
 
 - Une seule installation, plusieurs personnes, un code à cinq chiffres chacune. Le numéro
   de téléphone et le courriel sont **uniques** : deux comptes ne peuvent pas les partager.
-- La première personne qui crée son compte devient **directrice** ; les suivantes sont
-  préparatrices. La directrice peut débloquer un compte, remettre un mot de passe
-  provisoire et transférer un rayon.
+- La première personne qui crée son compte devient **directrice** et entre tout de suite.
+  Les suivantes sont créées **en attente** : elles ne peuvent pas entrer avant que la
+  directrice les ait autorisées depuis Réglages.
+- La directrice peut **autoriser**, **bloquer**, remettre le code provisoire `00000`,
+  **supprimer un compte**, ou effacer tous les comptes d'un coup. Elle ne peut ni bloquer
+  ni supprimer son propre compte, et il doit toujours rester un directeur actif.
 - Cinq mauvais mots de passe bloquent le compte quinze minutes. La directrice peut lever
   le blocage tout de suite, depuis Réglages.
-- Le jeu d'essai (Réglages → « Charger le jeu d'essai ») remplit l'application avec des
-  produits et trois comptes de démonstration. Il ne s'exécute que sur un geste explicite.
+- **Aucune donnée de démonstration.** Les produits viennent de la saisie, du scan ou d'un
+  import. Effacer le stock ne touche pas aux comptes ; effacer les comptes ne touche pas
+  au stock.
 
 ## Sauvegarde
 

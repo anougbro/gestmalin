@@ -4,6 +4,7 @@ import {
   DUREE_BLOCAGE_MS,
   empreinte,
   ESSAIS_MAX,
+  estBloque,
   LONGUEUR_CODE,
   mailLibre,
   normaliserTelephone,
@@ -157,6 +158,124 @@ export async function debloquer(
   }
 
   await base.utilisateurs.update(id, { tentatives: 0, bloqueJusqua: 0 })
+  return null
+}
+
+/* ============================================================
+   AUTORISER, BLOQUER, SUPPRIMER
+
+   Trois gestes de directeur, et trois refus qui comptent :
+
+   1. Personne ne se ferme sa propre porte. Ni blocage, ni
+      suppression de son propre compte : sur un telephone sans
+      serveur, il n'y a personne pour rouvrir.
+
+   2. Il doit rester un directeur actif. Sans cela, plus personne
+      ne peut autoriser, bloquer ou remettre un code — et il faut
+      effacer la base pour en sortir.
+
+   3. Un compte en attente n'est pas un compte bloque. Autoriser
+      ne fait pas que lever un drapeau : cela efface aussi les
+      essais rates, pour que la personne commence proprement.
+   ============================================================ */
+
+function refusGestion(auteur: Utilisateur | null): string | null {
+  if (!auteur || !aLeDroit(auteur.role, 'utilisateurs')) {
+    return "Tu n'as pas le droit de gérer les comptes."
+  }
+  return null
+}
+
+/** Reste-t-il un directeur capable d'agir si on retire celui-la ? */
+async function resteUnDirecteur(idRetire: string): Promise<boolean> {
+  const tous = await base.utilisateurs.toArray()
+  return tous.some(
+    (u) => u.id !== idRetire && u.role === 'directeur' && u.actif && !estBloque(u),
+  )
+}
+
+/** Ouvre un compte en attente, ou rouvre un compte bloque. */
+export async function autoriser(
+  id: string,
+  auteur: Utilisateur | null,
+): Promise<string | null> {
+  const refus = refusGestion(auteur)
+  if (refus) return refus
+
+  const u = await base.utilisateurs.get(id)
+  if (!u) return 'Personne introuvable.'
+
+  await base.utilisateurs.put({
+    ...u,
+    actif: true,
+    enAttente: false,
+    tentatives: 0,
+    bloqueJusqua: 0,
+  })
+  return null
+}
+
+/** Ferme un compte pour de bon, sans duree. */
+export async function bloquer(
+  id: string,
+  auteur: Utilisateur | null,
+): Promise<string | null> {
+  const refus = refusGestion(auteur)
+  if (refus) return refus
+  if (auteur && auteur.id === id) return 'Tu ne peux pas bloquer ton propre compte.'
+
+  const u = await base.utilisateurs.get(id)
+  if (!u) return 'Personne introuvable.'
+
+  if (u.role === 'directeur' && !(await resteUnDirecteur(id))) {
+    return 'Il doit rester un directeur actif.'
+  }
+
+  await base.utilisateurs.put({
+    ...u,
+    actif: false,
+    enAttente: false,
+    tentatives: 0,
+    bloqueJusqua: 0,
+  })
+  return null
+}
+
+/** Efface un compte. Ses mouvements restent : le stock ne s'efface pas. */
+export async function supprimer(
+  id: string,
+  auteur: Utilisateur | null,
+): Promise<string | null> {
+  const refus = refusGestion(auteur)
+  if (refus) return refus
+  if (auteur && auteur.id === id) return 'Tu ne peux pas supprimer ton propre compte.'
+
+  const u = await base.utilisateurs.get(id)
+  if (!u) return 'Personne introuvable.'
+
+  if (u.role === 'directeur' && !(await resteUnDirecteur(id))) {
+    return 'Il doit rester un directeur actif.'
+  }
+
+  await base.utilisateurs.delete(id)
+  return null
+}
+
+/**
+ * Efface TOUS les comptes. Le stock reste.
+ *
+ * C'est le geste de remise a zero des personnes : on repart de la
+ * premiere personne qui se presente, et elle devient directrice.
+ * L'appelant doit fermer la session : le compte connecte vient
+ * forcement de partir avec les autres.
+ */
+export async function supprimerTousLesComptes(
+  auteur: Utilisateur | null,
+): Promise<string | null> {
+  const refus = refusGestion(auteur)
+  if (refus) return refus
+
+  await base.utilisateurs.clear()
   return null
 }
 

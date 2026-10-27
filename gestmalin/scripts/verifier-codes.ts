@@ -1,17 +1,20 @@
 import { chromium } from 'playwright'
-import { connecter, connecterParNom, prepare } from './aide.ts'
+import {
+  connecterParNom, prepare, semerComptes, type CompteSeme,
+} from './aide.ts'
 
 /* ============================================================
-   LES CODES SONT ECRITS DANS L'APPLICATION
+   LES CODES NE SONT PLUS ECRITS DANS L'APPLICATION
 
-   Tant qu'on ne sait pas quel code on a choisi, on le demande a
-   quelqu'un d'autre — et l'application ne peut pas le dire, elle
-   ne stocke qu'une empreinte.
+   Le jeu d'essai est parti, et avec lui la liste des mots de
+   passe affiches. C'est volontaire : l'application ne stocke
+   qu'une empreinte, elle ne peut donc pas dire quel code a ete
+   choisi.
 
-   Cette verification manufacture le cas le plus desagréable : la
-   base a ete reparee apres un changement de longueur, tout le
-   monde est passe a 00000, et la liste annonce 22222. La liste
-   ment. Il faut donc pouvoir la remettre a jour d'un bouton.
+   Le directeur garde un recours : remettre a une personne le
+   code provisoire 00000. Ce script verifie que le bouton existe,
+   qu'il ecrit vraiment en base, et que l'ancien code ne passe
+   plus apres.
    ============================================================ */
 
 const navigateur = await chromium.launch()
@@ -36,90 +39,101 @@ function empreinte(id: string, code: string): string {
   return [h1, h2, h3].map((n) => n.toString(36)).join('-')
 }
 
-const CANDIDATS = ['12345', '22222', '33333', '00000']
-
-async function lire() {
-  const brut = await page.evaluate(async () => {
-    const req = indexedDB.open('gestmalin')
-    const db = await new Promise<IDBDatabase>((r, k) => { req.onsuccess = () => r(req.result); req.onerror = () => k(req.error) })
-    const tx = db.transaction('utilisateurs', 'readonly')
-    return new Promise<Record<string, unknown>[]>((r) => { const q = tx.objectStore('utilisateurs').getAll(); q.onsuccess = () => r(q.result) })
-  })
-  return brut.map((u) => ({
-    id: String(u.id),
-    nom: String(u.nom),
-    code: CANDIDATS.find((c) => empreinte(String(u.id), c) === String(u.empreinte)) ?? '???',
-  }))
+const DIRECTRICE: CompteSeme = {
+  id: 'u-dir', nom: 'Directrice', role: 'directeur',
+  telephone: '9000000001', code: '12345', rayons: ['r-med', 'r-men'],
+}
+const AMINA: CompteSeme = {
+  id: 'u-ami', nom: 'Amina', role: 'preparateur',
+  telephone: '9000000002', code: '44444', rayons: ['r-men'],
 }
 
+async function taper(chiffres: string) {
+  for (const c of chiffres) {
+    await page.locator('.pave__touche', { hasText: new RegExp(`^${c}$`) }).first().click()
+    await page.waitForTimeout(55)
+  }
+}
+
+async function entrerParNumero(numero: string, code: string) {
+  await taper(numero)
+  await page.getByRole('button', { name: 'Entrer' }).click()
+  await page.waitForTimeout(900)
+  await taper(code)
+  await page.getByRole('button', { name: 'Entrer' }).click()
+  await page.waitForTimeout(1400)
+}
+
+async function sortir() {
+  await page.locator('.qui:visible, .qui-btn:visible, .qui-btn-lg:visible').first().click()
+  await page.waitForTimeout(900)
+}
+
+const enBase = (id: string) => page.evaluate(async (cle: string) => {
+  const { base } = await import('/src/donnees/base.ts')
+  const u = await base.utilisateurs.get(cle)
+  return u ? { empreinte: u.empreinte, longueurCode: u.longueurCode } : null
+}, id)
+
 await page.goto('http://localhost:5173/', { waitUntil: 'networkidle' })
-
 await prepare(page)
-await page.waitForTimeout(1500)
+await semerComptes(page, [DIRECTRICE, AMINA])
+await page.waitForTimeout(600)
 
-/* ---------- On fabrique le cas desagréable ---------- */
-await page.evaluate(async () => {
-  const req = indexedDB.open('gestmalin')
-  const db = await new Promise<IDBDatabase>((r, k) => { req.onsuccess = () => r(req.result); req.onerror = () => k(req.error) })
-  const tx = db.transaction('utilisateurs', 'readwrite')
-  const s = tx.objectStore('utilisateurs')
-  s.clear()
-  s.put({ id: 'u-1', nom: 'Préparateur', role: 'preparateur', rayonsAutorises: ['r-med', 'r-men'], actif: true, independant: true, longueurCode: 4, empreinte: 'vieille' })
-  s.put({ id: 'u-2', nom: 'Amina', role: 'responsable', rayonsAutorises: ['r-men'], actif: true, independant: true, longueurCode: 4, empreinte: 'vieille' })
-  await new Promise<void>((r) => { tx.oncomplete = () => r() })
-})
+/* ---------- 1. La liste des comptes ---------- */
+console.log('\n1. Les comptes, sans leurs codes')
+await connecterParNom(page, 'Directrice', '12345')
+ok((await page.locator('.ecran--connexion').count()) === 0, 'la directrice entre')
 
-await page.reload({ waitUntil: 'networkidle' })
-await page.waitForTimeout(2000)
-
-
-/* ---------- D'abord on entre ---------- */
-await connecter(page, '00000')
-await page.waitForTimeout(1100)
-ok((await page.locator('.ecran--connexion').count()) === 0, 'le code de secours 00000 entre')
-
-/* ---------- Ensuite on lit la liste, dans les reglages ---------- */
-console.log('\n1. La liste des codes est ecrite dans l application')
 await page.getByRole('button', { name: 'Réglages' }).first().click()
-await page.waitForTimeout(800)
-
-const liste = await page.locator('[data-liste="comptes"] .codes__ligne').count()
-ok(liste === 3, `la liste affiche 3 personnes (${liste})`)
-
-const noms = await page.locator('[data-liste="comptes"] .codes__nom').allTextContents()
-ok(noms.join(' | ') === 'Préparateur | Amina | Dr Souley', `les trois noms : ${noms.join(', ')}`)
-
-const codes = (await page.locator('[data-liste="comptes"] .codes__code').allTextContents()).map((s) => s.trim())
-ok(codes.join(',') === '12345,22222,33333', `les codes annonces : ${codes.join(', ')}`)
-
-const avant = await lire()
-console.log('   etat reel : ' + avant.map((u) => `${u.nom}=${u.code}`).join(', '))
-const avantFaux = avant.filter((u) => u.code !== codes[avant.indexOf(u)])
-ok(avantFaux.length > 0, `la base ne correspond PAS encore a la liste (${avantFaux.map((u) => u.nom + '=' + u.code).join(', ')})`)
-
-/* ---------- On remet ---------- */
-console.log('\n2. On remet les mots de passe de l essai')
-const bouton = page.getByRole('button', { name: /Remettre les mots de passe/ })
-ok((await bouton.count()) === 1, 'le bouton existe')
-await bouton.click()
-await page.waitForTimeout(1200)
-ok((await page.getByText(/mots de passe de l'essai sont remis/).count()) > 0, 'un message confirme')
-
-const apres = await lire()
-console.log('   etat reel : ' + apres.map((u) => `${u.nom}=${u.code}`).join(', '))
-const bonne = apres.find((u) => u.nom === 'Amina')?.code === '22222'
-const bonne3 = apres.find((u) => u.nom === 'Dr Souley')?.code === '33333'
-ok(bonne, 'Amina a bien le code annonce')
-ok(bonne3, 'Dr Souley a bien le code annonce')
-
-/* ---------- Et ils ouvrent vraiment la porte ---------- */
-/* Le bouton de sortie est dans la barre du haut sur telephone,
-   dans la barre laterale sur ordinateur. On prend celui qui est
-   visible plutot que de deviner lequel. */
-await page.locator('.qui:visible, .qui-btn:visible').first().click()
 await page.waitForTimeout(900)
-await connecterParNom(page, 'Amina', '22222')
-ok((await page.locator('.ecran--connexion').count()) === 0, 'Amina entre avec le code annonce')
 
-console.log(echecs === 0 ? '\nLES CODES SONT LISIBLES ET VRAIS.' : `\n${echecs} ECHEC(S).`)
+const lignes = page.locator('[data-compte]')
+ok((await lignes.count()) === 2, `la liste montre les deux comptes (${await lignes.count()})`)
+ok(
+  (await page.getByText('Personnes et mots de passe', { exact: true }).count()) === 0,
+  'aucune liste de mots de passe n est affichee',
+)
+ok(
+  (await page.locator('.codes__code').count()) === 0,
+  'aucun code en clair n est ecrit a l ecran',
+)
+ok(
+  (await page.locator('[data-etat-compte="actif"]').count()) === 2,
+  'les deux comptes sont marques actifs',
+)
+await page.screenshot({ path: 'captures/comptes-liste.png', fullPage: true })
+
+/* ---------- 2. Remettre 00000 a une personne ---------- */
+console.log('\n2. Le directeur remet le code provisoire')
+const ligneAmina = page.locator('[data-compte]', { hasText: 'Amina' }).first()
+await ligneAmina.getByRole('button', { name: 'Code 00000' }).click()
+await page.waitForTimeout(1000)
+
+const apres = await enBase('u-ami')
+ok(
+  apres?.empreinte === empreinte('u-ami', '00000'),
+  'la base porte bien l empreinte de 00000',
+)
+ok(apres?.longueurCode === 5, `le code fait cinq chiffres (${apres?.longueurCode})`)
+
+/* ---------- 3. Le nouveau code ouvre, l'ancien non ---------- */
+console.log('\n3. Le nouveau code ouvre, l ancien non')
+
+await page.locator('.entete__retour').click()
+await page.waitForTimeout(600)
+await sortir()
+await entrerParNumero('9000000002', '00000')
+ok((await page.locator('.ecran--connexion').count()) === 0, 'Amina entre avec 00000')
+
+await sortir()
+await entrerParNumero('9000000002', '44444')
+const texte = await page.locator('body').innerText()
+ok((await page.locator('.ecran--connexion').count()) === 1, 'la porte reste fermee avec l ancien code')
+ok(texte.includes('Mot de passe incorrect'), 'le refus est dit clairement')
+
+console.log(echecs === 0
+  ? '\nLES CODES SE REMETTENT, SANS JAMAIS S ECRIRE A L ECRAN.'
+  : `\n${echecs} ECHEC(S).`)
 await navigateur.close()
+process.exit(echecs === 0 ? 0 : 1)

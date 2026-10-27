@@ -1,12 +1,12 @@
 import { chromium } from 'playwright'
-import { connecterParNom, prepare } from './aide.ts'
+import { prepare } from './aide.ts'
 
 /* ============================================================
    LES COMPTES, PAS A PAS
 
    On reproduit exactement le parcours d'une personne :
-   installation, jeu d'essai, changement de personne, puis
-   creation de son propre compte.
+   installation, creation du premier compte, puis creation d'un
+   second compte qui doit attendre l'accord du directeur.
 
    Deux causes possibles pour « les autres codes ne passent
    pas », et elles ne se ressemblent pas :
@@ -52,6 +52,7 @@ async function comptes() {
       nom: u.nom as string,
       role: u.role as string,
       actif: u.actif as boolean,
+      enAttente: (u.enAttente as boolean | undefined) ?? false,
       telephone: (u.telephone as string | undefined) ?? null,
       rayons: u.rayonsAutorises as string[],
       empreinte: String(u.empreinte),
@@ -97,6 +98,8 @@ const compteNomme = (nom: string) => page.evaluate(async (n: string) => {
     telephone: u.telephone ?? null,
     rayons: u.rayonsAutorises,
     empreinte: u.empreinte,
+    actif: u.actif,
+    enAttente: u.enAttente ?? false,
   } : null
 }, nom)
 
@@ -144,49 +147,24 @@ ok(directrice?.telephone === '9000000009', `son numéro est enregistre (${direct
 ok(directrice?.empreinte === empreinte(directrice.id, '12345'), 'le mot de passe est stocke en empreinte, pas en clair')
 
 /* ============================================================
-   3. LE JEU D'ESSAI
+   3. LE DEUXIEME COMPTE ATTEND LE DIRECTEUR
    ============================================================ */
-console.log('\n3. Le jeu d essai')
+console.log('\n3. Le deuxieme compte attend le directeur')
 
 await page.getByRole('button', { name: 'Réglages' }).first().click()
 await page.waitForTimeout(800)
-await page.getByRole('button', { name: /Charger le jeu/ }).click()
-await page.waitForTimeout(2200)
-
-const apres = await comptes()
-console.log('   apres le chargement :')
-for (const u of apres) console.log(`     ${u.nom.padEnd(12)} ${u.role.padEnd(12)} actif=${u.actif}`)
-ok(apres.length === 4, `la directrice reste, les trois comptes d essai arrivent (${apres.length})`)
-
-/* On verifie que l'empreinte stockee correspond bien au code
-   annonce, en rejouant l'algorithme hors de l'application. */
-const empreinteReelle = empreinte('u-2', '22222')
-const amina = apres.find((u) => u.nom === 'Amina')
-console.log(`   Amina : empreinte stockee ${amina?.empreinte}, empreinte de 22222 = ${empreinteReelle}`)
-ok(amina?.empreinte === empreinteReelle, 'le code annonce est bien celui qui est enregistre')
-
-/* ---------- Chaque code ouvre la porte ? ---------- */
-console.log('\n4. Chaque code ouvre la porte ?')
-for (const [nom, code] of [['Préparateur', '12345'], ['Amina', '22222'], ['Dr Souley', '33333']] as const) {
-  await sortir()
-  ok((await page.locator('.ecran--connexion').count()) === 1, `deconnexion depuis ${nom}`)
-  await connecterParNom(page, nom, code)
-  ok((await page.locator('.ecran--connexion').count()) === 0, `le code ${code} ouvre la porte de ${nom}`)
-}
-
-/* ============================================================
-   5. CREER SON COMPTE, QUAND ON EST LA
-
-   C'est la demande : chacun cree le sien quand il est present.
-   Personne n'attend personne. On suit donc les cinq questions
-   comme le ferait la personne des menagers, et on regarde ce qui
-   s'ecrit vraiment en base. */
-console.log('\n5. Créer son compte, quand on est là')
+ok((await page.locator('[data-carte="comptes"]').count()) === 1, 'les comptes ont leur propre carte')
+ok((await page.getByText("Jeu d'essai", { exact: true }).count()) === 0, "le jeu d'essai n'est plus proposé")
+ok(
+  (await page.getByText('Personnes et mots de passe', { exact: true }).count()) === 0,
+  'les faux mots de passe ne sont plus affichés',
+)
+await page.locator('.entete__retour').click()
+await page.waitForTimeout(600)
 
 await sortir()
 await page.getByRole('button', { name: 'Créer mon compte' }).click()
 await page.waitForTimeout(700)
-
 await page.locator('input.champ__saisie').first().fill('Amina Test')
 await page.getByRole('button', { name: 'Suivant', exact: true }).click()
 await page.waitForTimeout(500)
@@ -202,23 +180,76 @@ await taperPave('44444')
 await page.getByRole('button', { name: 'Entrer' }).click()
 await page.waitForTimeout(700)
 await page.getByRole('button', { name: 'Passer', exact: true }).click()
-await page.waitForTimeout(1600)
+await page.waitForTimeout(900)
+
+ok((await page.getByText('Compte créé', { exact: true }).count()) > 0, 'le compte est créé')
+ok(
+  (await page.getByText('Le directeur doit autoriser ton compte.', { exact: true }).count()) > 0,
+  "l'écran dit qu'il faut l'accord du directeur",
+)
 
 const creee = await compteNomme('Amina Test')
-ok(!!creee, 'le compte existe apres les cinq questions')
+ok(!!creee, 'le compte existe en base')
+ok(creee?.actif === false && creee?.enAttente === true, 'il est en attente, pas actif')
 ok(creee?.role === 'preparateur', `le deuxieme compte est preparateur (${creee?.role})`)
 ok(creee?.telephone === '9000000007', `le numero est enregistre (${creee?.telephone})`)
 ok(JSON.stringify(creee?.rayons) === '["r-men"]', `le compte ne tient que son rayon (${JSON.stringify(creee?.rayons)})`)
 ok(creee?.empreinte === empreinte(creee!.id, '44444'), 'le code est stocke en empreinte, pas en clair')
 
+await page.getByRole('button', { name: 'Compris' }).click()
+await page.waitForTimeout(700)
+
+/* Il ne peut pas entrer tant que le directeur n'a pas dit oui. */
+await entrerParNumero('9000000007', '44444')
+const texteAttente = await page.locator('body').innerText()
+ok(texteAttente.includes('Compte en attente'), 'le compte en attente est refuse a la connexion')
+
+/* Le refus laisse l'ecran sur le pave du code, avec le numero deja
+   tape. On repart d'un ecran vierge, comme quelqu'un qui ferme et
+   rouvre l'application avant de laisser sa place. */
+await page.reload({ waitUntil: 'networkidle' })
+await prepare(page)
+await page.waitForTimeout(900)
+
 /* ============================================================
-   6. CHANGER SON NUMERO, QUAND ON VEUT
+   4. LE DIRECTEUR AUTORISE
+   ============================================================ */
+console.log('\n4. Le directeur autorise le compte')
+
+await entrerParNumero('9000000009', '12345')
+ok((await page.locator('.ecran--connexion').count()) === 0, 'la directrice entre')
+await page.getByRole('button', { name: 'Réglages' }).first().click()
+await page.waitForTimeout(800)
+
+const ligneAmina = page.locator('[data-compte]', { hasText: 'Amina Test' }).first()
+ok((await ligneAmina.count()) === 1, 'le compte en attente est dans la liste')
+ok((await ligneAmina.locator('[data-etat-compte="en_attente"]').count()) === 1, 'son etat est « En attente »')
+
+await ligneAmina.getByRole('button', { name: 'Autoriser' }).click()
+await page.waitForTimeout(900)
+const apresAutorisation = await compteNomme('Amina Test')
+ok(apresAutorisation?.actif === true && apresAutorisation?.enAttente === false, 'le compte est autorise')
+ok(
+  (await page.locator('[data-compte]', { hasText: 'Amina Test' }).first().locator('[data-etat-compte="actif"]').count()) === 1,
+  "l'écran montre « Actif »",
+)
+
+await page.locator('.entete__retour').click()
+await page.waitForTimeout(500)
+await sortir()
+
+/* Le meme code ouvre maintenant. */
+await entrerParNumero('9000000007', '44444')
+ok((await page.locator('.ecran--connexion').count()) === 0, 'le compte autorise entre avec son code')
+
+/* ============================================================
+   5. CHANGER SON NUMERO, QUAND ON VEUT
 
    Le numero est l'identite : il doit pouvoir changer sans perdre
    son compte, son rayon, ni son code. Et il ne doit pas pouvoir
    prendre celui d'un autre — c'est la seule regle qui empeche un
    code d'ouvrir la mauvaise personne. */
-console.log('\n6. Changer son numéro, quand on veut')
+console.log('\n5. Changer son numéro, quand on veut')
 
 await page.getByRole('button', { name: 'Réglages' }).first().click()
 await page.waitForTimeout(900)
@@ -235,7 +266,7 @@ ok(renumerotee?.id === creee?.id, 'c est le meme compte : le rayon et le code su
 /* Le numero d'une autre personne est refuse, au moment d'ecrire. */
 await page.getByRole('button', { name: /Changer mon numéro/ }).click()
 await page.waitForTimeout(700)
-await taperPave('9000000002')
+await taperPave('9000000009')
 await page.getByRole('button', { name: 'Enregistrer', exact: true }).click()
 await page.waitForTimeout(800)
 

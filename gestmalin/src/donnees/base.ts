@@ -4,7 +4,8 @@ import type {
   Fournisseur, Inventaire, LigneInventaire,
   ReleveTemperature, DemandeApprobation, TypeMouvement,
 } from '../domaine/types'
-import type { Utilisateur, Role } from '../domaine/acces'
+import { premierDirecteur, type Utilisateur, type Role } from '../domaine/acces'
+import { COMPTES_ESSAI, DEMANDES_ESSAI, PRODUITS_ESSAI } from './essaiIds'
 
 /* ============================================================
    LA BASE LOCALE — IndexedDB, via Dexie
@@ -225,6 +226,41 @@ class BaseGestmalin extends Dexie {
        precisement ce qu'on ne veut plus. */
     this.version(4)
       .stores({ reglages: null })
+
+    /* ---------- Migration 5 : les donnees d'essai s'en vont ----------
+
+       Le jeu d'essai n'est plus dans l'application. Mais un
+       telephone qui l'a deja charge garde ses faux produits et ses
+       trois faux comptes. On les efface une fois, par identifiant
+       exact (voir `essaiIds.ts`) : un vrai produit peut porter le
+       meme nom, il ne doit pas partir avec.
+
+       Si le seul directeur etait un faux compte, le premier compte
+       reel reprend la direction. Sans cela, il ne resterait que des
+       preparateurs, et plus personne ne pourrait autoriser qui que
+       ce soit. */
+    this.version(5)
+      .stores({})
+      .upgrade(async (tx) => {
+        const utilisateurs = tx.table('utilisateurs')
+
+        await utilisateurs.bulkDelete([...COMPTES_ESSAI])
+        await tx.table('produits').bulkDelete([...PRODUITS_ESSAI])
+        await tx.table('lots').where('produitId').anyOf([...PRODUITS_ESSAI]).delete()
+        await tx.table('mouvements').where('produitId').anyOf([...PRODUITS_ESSAI]).delete()
+        await tx.table('demandesApprobation').bulkDelete([...DEMANDES_ESSAI])
+
+        const restants = (await utilisateurs.toArray()) as Utilisateur[]
+        const aPromouvoir = premierDirecteur(restants)
+        if (aPromouvoir) {
+          await utilisateurs.put({
+            ...aPromouvoir,
+            role: 'directeur',
+            actif: true,
+            enAttente: false,
+          })
+        }
+      })
   }
 }
 
