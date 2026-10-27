@@ -14,6 +14,7 @@
     "verifier-mobile": "node --experimental-strip-types scripts/verifier-mobile.ts",
     "verifier-connexion": "node --experimental-strip-types scripts/verifier-connexion.ts",
     "verifier-comptes": "node --experimental-strip-types scripts/verifier-comptes.ts",
+    "verifier-blocage": "node --experimental-strip-types scripts/verifier-blocage.ts",
     "verifier-deconnexion": "node --experimental-strip-types scripts/verifier-deconnexion.ts",
     "verifier-atteignabilite": "node --experimental-strip-types scripts/verifier-atteignabilite.ts",
     "verifier-defilement": "node --experimental-strip-types scripts/verifier-defilement.ts",

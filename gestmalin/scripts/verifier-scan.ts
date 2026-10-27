@@ -1,5 +1,5 @@
 import { chromium } from 'playwright'
-import { connecterSiBesoin, prepare } from './aide.ts'
+import { connecterSiBesoin, prepare, semerComptes } from './aide.ts'
 import { mkdirSync } from 'node:fs'
 
 /* ============================================================
@@ -135,6 +135,7 @@ const texteEcran = () => page.locator('body').innerText()
 await page.goto('http://localhost:5173/', { waitUntil: 'networkidle' })
 
 await prepare(page)
+await semerComptes(page)
 await attendre(1500)
 
 /* ---------- Connexion ---------- */

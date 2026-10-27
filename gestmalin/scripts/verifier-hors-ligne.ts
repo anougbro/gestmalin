@@ -1,5 +1,5 @@
 import { chromium } from 'playwright'
-import { connecterParNom, prepare } from './aide.ts'
+import { connecterParNom, creerCompte, prepare } from './aide.ts'
 
 /* ============================================================
    LA VERSION PUBLIEE, HORS LIGNE
@@ -66,6 +66,16 @@ const precache = await page.evaluate(async () => {
 })
 ok(precache.total > 5, `${precache.total} fichiers en cache, dans ${precache.noms.length} cache(s)`)
 
+/* ---------- On installe le premier compte, comme la directrice ---------- */
+await creerCompte(page, { nom: 'Amina', numero: '9000000001', code: '12345' })
+ok((await page.locator('.ecran--connexion').count()) === 0, 'le premier compte ouvre directement la session')
+
+/* Et on ressort : la suite verifie que la porte fonctionne hors
+   ligne, il faut donc etre revenu devant. */
+await page.locator('.qui-btn-lg').click()
+await page.waitForTimeout(800)
+ok((await page.locator('.ecran--connexion').count()) === 1, 'on revient a l ecran de connexion')
+
 /* ---------- On simule une connexion complete, puis on coupe ---------- */
 await page.context().setOffline(true)
 await page.reload({ waitUntil: 'domcontentloaded' })
@@ -79,7 +89,7 @@ ok((await page.locator('.ecran--connexion').count()) > 0, 'l ecran de connexion 
    la liste des noms : c'est une vraie porte, et elle n'a besoin
    d'aucun reseau — c'est ce que ce test verifie. La porte du
    numero, elle, est verifiee par `verifier-connexion`. */
-await connecterParNom(page, 'Préparateur', '12345')
+await connecterParNom(page, 'Amina', '12345')
 ok((await page.locator('.ecran--connexion').count()) === 0, 'on se connecte hors ligne')
 
 /* Et les donnees restent la apres rechargement hors ligne. */

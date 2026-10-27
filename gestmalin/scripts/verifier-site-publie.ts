@@ -1,5 +1,5 @@
 import { chromium } from 'playwright'
-import { connecterParNom, prepare } from './aide.ts'
+import { connecterParNom, creerCompte, prepare } from './aide.ts'
 
 /* ============================================================
    LE SITE PUBLIÉ, VRAIMENT EN LIGNE
@@ -62,6 +62,12 @@ const cache = await page.evaluate(async () => {
 })
 ok(cache > 5, `${cache} fichiers en cache — l'application demarrera hors ligne`)
 
+/* ---------- On installe le premier compte, comme la directrice ---------- */
+await creerCompte(page, { nom: 'Amina', numero: '9000000001', code: '12345' })
+ok((await page.locator('.ecran--connexion').count()) === 0, 'le premier compte ouvre directement la session')
+await page.locator('.qui-btn-lg').click()
+await page.waitForTimeout(800)
+
 /* ---------- On coupe le reseau ---------- */
 await page.context().setOffline(true)
 await page.reload({ waitUntil: 'domcontentloaded' })
@@ -71,7 +77,7 @@ ok((await page.locator('.ecran--connexion').count()) > 0, 'elle demarre SANS res
 
 /* On passe par la liste des noms : c'est une vraie porte, et elle
    n'a besoin d'aucun reseau — c'est ce que ce test verifie. */
-await connecterParNom(page, 'Préparateur', '12345')
+await connecterParNom(page, 'Amina', '12345')
 ok((await page.locator('.ecran--connexion').count()) === 0, 'on se connecte hors ligne')
 
 /* Le jeu d'essai complet, hors ligne : c'est le geste de travail. */

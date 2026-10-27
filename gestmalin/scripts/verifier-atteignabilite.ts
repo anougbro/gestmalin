@@ -1,5 +1,5 @@
 import { chromium } from 'playwright'
-import { connecter } from './aide.ts'
+import { connecter, semerComptes } from './aide.ts'
 
 /* ============================================================
    QU'EST-CE QUI EST ATTEIGNABLE ?
@@ -30,6 +30,7 @@ for (const [nom, viewport] of [
 ] as const) {
   const page = await navigateur.newPage({ viewport })
   await page.goto('http://localhost:5173/', { waitUntil: 'networkidle' })
+  await semerComptes(page)
   await connecter(page)
   /* Une tuile porte le titre ET l'aide : « Trouver Où est un
      produit ». On cherche le titre dans le texte.

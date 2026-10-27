@@ -1,5 +1,14 @@
 import { base } from '../donnees/base'
-import { aLeDroit, normaliserTelephone, numeroLibre, type Utilisateur } from '../domaine/acces'
+import {
+  aLeDroit,
+  DUREE_BLOCAGE_MS,
+  empreinte,
+  ESSAIS_MAX,
+  LONGUEUR_CODE,
+  normaliserTelephone,
+  numeroLibre,
+  type Utilisateur,
+} from '../domaine/acces'
 
 /* ============================================================
    DEPLACER UNE PERSONNE D'UN RAYON A L'AUTRE
@@ -72,4 +81,94 @@ export async function changerNumero(
 
   await base.utilisateurs.put({ ...u, telephone: normaliserTelephone(numero), independant: true })
   return { ok: true }
+}
+
+/* ============================================================
+   LES ESSAIS RATES ET LE DEBLOCAGE
+
+   Le compteur vit dans la base, pas dans l'ecran : sinon un
+   rafraichissement remettrait le compteur a zero, et le blocage
+   ne bloquerait rien.
+
+   On ne compte que les mauvais mots de passe. Un compte
+   desactive, un numero partage ou un compte deja bloque ne sont
+   pas des essais : les compter punirait quelqu'un qui n'a rien
+   tape. */
+
+export async function noterEssaiRate(
+  id: string,
+): Promise<{ bloque: boolean; restants: number }> {
+  const u = await base.utilisateurs.get(id)
+  if (!u) return { bloque: false, restants: ESSAIS_MAX }
+
+  const tentatives = (u.tentatives ?? 0) + 1
+
+  if (tentatives >= ESSAIS_MAX) {
+    await base.utilisateurs.update(id, {
+      tentatives,
+      bloqueJusqua: Date.now() + DUREE_BLOCAGE_MS,
+    })
+    return { bloque: true, restants: 0 }
+  }
+
+  await base.utilisateurs.update(id, { tentatives })
+  return { bloque: false, restants: ESSAIS_MAX - tentatives }
+}
+
+/** Une entree reussie efface les essais rates. */
+export async function oublierEssais(id: string): Promise<void> {
+  await base.utilisateurs.update(id, { tentatives: 0, bloqueJusqua: 0 })
+}
+
+/**
+ * Lever le blocage d'une personne, et lui rendre un mot de passe
+ * provisoire.
+ *
+ * Reserve au directeur : c'est le seul role qui a le droit
+ * `utilisateurs`. On ne verifie pas seulement le role a l'ecran —
+ * la fonction le verifie elle-meme, parce qu'un bouton cache n'est
+ * pas une interdiction.
+ */
+export async function debloquer(
+  id: string,
+  auteur: Utilisateur | null,
+  motDePasseProvisoire?: string,
+): Promise<string | null> {
+  if (!auteur || !aLeDroit(auteur.role, 'utilisateurs')) {
+    return "Tu n'as pas le droit de débloquer quelqu'un."
+  }
+
+  const u = await base.utilisateurs.get(id)
+  if (!u) return 'Personne introuvable.'
+
+  if (motDePasseProvisoire !== undefined) {
+    if (motDePasseProvisoire.length !== LONGUEUR_CODE) {
+      return `Le mot de passe doit faire ${LONGUEUR_CODE} chiffres.`
+    }
+    await base.utilisateurs.put({
+      ...u,
+      tentatives: 0,
+      bloqueJusqua: 0,
+      longueurCode: LONGUEUR_CODE,
+      empreinte: empreinte(u.id, motDePasseProvisoire),
+    })
+    return null
+  }
+
+  await base.utilisateurs.update(id, { tentatives: 0, bloqueJusqua: 0 })
+  return null
+}
+
+/** Changer son propre mail. Facultatif : une chaine vide l'efface. */
+export async function changerMail(id: string, mail: string): Promise<void> {
+  const u = await base.utilisateurs.get(id)
+  if (!u) return
+  const propre = mail.trim()
+  if (propre) {
+    await base.utilisateurs.put({ ...u, mail: propre })
+    return
+  }
+  const sansMail = { ...u }
+  delete sansMail.mail
+  await base.utilisateurs.put(sansMail)
 }

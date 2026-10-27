@@ -1,5 +1,5 @@
 import { chromium } from 'playwright'
-import { connecter } from './aide.ts'
+import { connecter, semerComptes } from './aide.ts'
 
 /* ============================================================
    LA BARRE DU HAUT
@@ -21,6 +21,7 @@ const CAS = [
 const navigateur = await chromium.launch()
 const page = await navigateur.newPage({ viewport: { width: 393, height: 852 } })
 await page.goto('http://localhost:5173/', { waitUntil: 'networkidle' })
+await semerComptes(page)
 await connecter(page)
 
 let problemes = 0

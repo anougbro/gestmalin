@@ -11,7 +11,7 @@
    ============================================================ */
 
 import { chromium, devices, type Page } from 'playwright'
-import { connecterParNom, prepare } from './aide.ts'
+import { connecterParNom, prepare, semerComptes } from './aide.ts'
 import { mkdirSync } from 'node:fs'
 
 const SORTIE = 'captures'
@@ -44,6 +44,7 @@ for (const t of TAILLES) {
   const page = await contexte.newPage()
   await page.goto('http://localhost:5173/', { waitUntil: 'networkidle' })
   await prepare(page)
+  await semerComptes(page)
   await connecter(page)
   await page.waitForTimeout(900)
 

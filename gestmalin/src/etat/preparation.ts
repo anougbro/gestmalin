@@ -1,38 +1,26 @@
 import { base, ATTENTE_ID } from '../donnees/base'
 import { toutEffacer } from '../donnees/depots'
 import { RAYONS_PAR_DEFAUT, ZONES_PAR_DEFAUT, emplacementsDeZone } from './rayons'
-import { empreinte, LONGUEUR_CODE, normaliserTelephone, type Utilisateur } from '../domaine/acces'
+import { empreinte, LONGUEUR_CODE, normaliserTelephone } from '../domaine/acces'
 
 /* ============================================================
    LE PREMIER AMORCAGE
 
    A la toute premiere ouverture, la base est vide : on y met
-   les deux rayons, leurs zones, leurs emplacements, le quai de
-   reception, et la personne qui travaille ici.
+   les deux rayons, leurs zones, leurs emplacements et le quai de
+   reception.
+
+   Et AUCUNE personne. Le premier compte est celui de la premiere
+   personne qui se presente : elle le cree elle-meme, et devient
+   directrice. Un compte prepare d'avance, avec un mot de passe
+   connu de tous, est une porte ouverte qu'on oublie de refermer —
+   et le retirer oblige a se demander, une fois pour toutes, qui
+   commande sur ce telephone.
 
    Ce n'est PAS une donnee de demonstration : c'est la structure
    physique de la pharmacie. Les produits, eux, viendront par
    import ou saisie — on n'invente pas de medicaments.
    ============================================================ */
-
-/* Le code de la personne creee au premier lancement.
-   12345 est volontaire : c'est le code le plus facile a retenir
-   pour une premiere connexion, et il se change aussitot.
-   Il n'est stocke qu'en empreinte. */
-export const CODE_INITIAL = '12345'
-
-export const UTILISATEUR_INITIAL: Omit<Utilisateur, 'empreinte'> = {
-  id: 'u-1',
-  nom: 'Préparateur',
-  role: 'preparateur',
-  rayonsAutorises: ['r-med', 'r-men'],
-  /* Pas de numero : ce compte existe depuis avant que le numero
-     soit l'identite. Il se connecte par son nom, ce qui est
-     exactement le chemin de secours prevu pour lui. */
-  independant: true,
-  actif: true,
-  longueurCode: LONGUEUR_CODE,
-}
 
 /* L'amorcage ne peut tourner qu'UNE fois, meme si on l'appelle
    deux fois en meme temps.
@@ -70,8 +58,6 @@ async function amorger(): Promise<void> {
     /* Le quai de reception : une position reelle qui n'appartient
        a aucune zone. Tout ce qui arrive passe par la avant d'etre pose. */
     await base.emplacements.put({ id: ATTENTE_ID, zoneId: '', code: 'QUAI', ordre: 0 })
-
-    await base.utilisateurs.put(nouveauCompteInitial())
   })
 }
 
@@ -119,14 +105,6 @@ function empreinteBienFormee(e: string | undefined): boolean {
 export async function reparerComptes(): Promise<number> {
   const tous = await base.utilisateurs.toArray()
 
-  /* Filet de securite : une base peut avoir perdu ses personnes.
-     Sans personne, l'ecran de connexion montre un pave que
-     personne ne peut valider. On en recree une. */
-  if (tous.length === 0) {
-    await base.utilisateurs.put(nouveauCompteInitial())
-    return 1
-  }
-
   const aReparer = tous.filter((u) => !empreinteBienFormee(u.empreinte) || u.longueurCode !== LONGUEUR_CODE)
 
   /* ---------- Les numeros ----------
@@ -158,18 +136,11 @@ export async function reparerComptes(): Promise<number> {
       ...u,
       longueurCode: LONGUEUR_CODE,
       independant: u.independant ?? true,
-      empreinte: empreinte(u.id, u.id === UTILISATEUR_INITIAL.id ? CODE_INITIAL : CODE_PAR_DEFAUT),
+      /* Plus de compte privilegie : tout compte dont le mot de
+         passe est illisible repart au code de secours, et le
+         directeur le change depuis les reglages. */
+      empreinte: empreinte(u.id, CODE_PAR_DEFAUT),
     })
   }
   return aReparer.length
-}
-
-/** Le compte du tout premier lancement. */
-export function nouveauCompteInitial(): Utilisateur {
-  return {
-    ...UTILISATEUR_INITIAL,
-    longueurCode: LONGUEUR_CODE,
-    independant: true,
-    empreinte: empreinte(UTILISATEUR_INITIAL.id, CODE_INITIAL),
-  }
 }

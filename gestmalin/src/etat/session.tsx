@@ -13,6 +13,7 @@ import type { Mouvement } from '../domaine/types'
 import { Contexte, type Session } from './useSession'
 import { RAYONS_PAR_DEFAUT, type RayonTravail } from './rayons'
 import { dejaPreparee, demarrer, reparerComptes } from './preparation'
+import { oublierEssais } from '../donnees/personnes'
 
 /* ============================================================
    L'ETAT DE L'APPLICATION
@@ -142,6 +143,9 @@ export function FournisseurSession({ children }: { children: ReactNode }) {
       if (r.ok) {
         setUtilisateur(r.utilisateur)
         ecrireSession(r.utilisateur.id)
+        /* Une entree reussie efface les essais rates : le compteur
+           ne doit pas rester a quatre pour la prochaine fois. */
+        await oublierEssais(r.utilisateur.id)
         /* Si le rayon ouvert n'est pas le sien, on l'amene sur un
            rayon qui l'est. Sinon elle entre sur un ecran qui n'est
            pas le sien, sans comprendre pourquoi c'est vide. */

@@ -1,5 +1,5 @@
 import { chromium } from 'playwright'
-import { connecterParNom } from './aide.ts'
+import { connecterParNom, semerComptes } from './aide.ts'
 
 /* ============================================================
    CHANGER DE PERSONNE
@@ -25,6 +25,7 @@ for (const c of CAS) {
   const page = await navigateur.newPage({ viewport: c.viewport })
   await page.goto('http://localhost:5173/', { waitUntil: 'networkidle' })
   await page.waitForTimeout(1200)
+  await semerComptes(page)
 
   /* ---- connexion ---- */
   await connecterParNom(page, 'Préparateur', '12345')
@@ -122,6 +123,7 @@ async function verifierAccueil(surMobile: boolean) {
   const page = await navigateur.newPage({ viewport: surMobile ? { width: 393, height: 852 } : { width: 1440, height: 900 } })
   await page.goto('http://localhost:5173/', { waitUntil: 'networkidle' })
   await page.waitForTimeout(1200)
+  await semerComptes(page)
 
   await connecterParNom(page, 'Préparateur', '12345')
 

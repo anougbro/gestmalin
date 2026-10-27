@@ -1,5 +1,5 @@
 import { chromium } from 'playwright'
-import { prepare } from './aide.ts'
+import { prepare, semerComptes } from './aide.ts'
 
 /* La longueur vient du domaine, pas du script : un test qui
    ecrit 5 en dur continue de passer quand l'application en
@@ -31,6 +31,7 @@ const tape = async (c: string) => page.getByRole('button', { name: c, exact: tru
 await page.goto('http://localhost:5173/', { waitUntil: 'networkidle' })
 
 await prepare(page)
+await semerComptes(page)
 await page.waitForTimeout(1200)
 
 /* L'ecran a deux etapes : le numero, puis le code. On passe
@@ -128,7 +129,11 @@ await page.waitForTimeout(1500)
 ok((await surLePave()) === 0, 'apres F5, on reste connecte')
 
 const memorise = await page.evaluate(() => sessionStorage.getItem('gestmalin.session'))
-ok(memorise === 'u-1', `on ne memorise que l'identifiant (${memorise})`)
+const moi = await page.evaluate(async () => {
+  const { base } = await import('/src/donnees/base.ts')
+  return (await base.utilisateurs.toArray())[0]?.id ?? null
+})
+ok(!!moi && memorise === moi, `on ne memorise que l'identifiant (${memorise})`)
 
 const contenuSession = await page.evaluate(() => JSON.stringify(sessionStorage))
 ok(!/12345|22222|33333/.test(contenuSession), 'aucun code dans la session conservee')

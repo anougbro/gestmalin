@@ -2,11 +2,26 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { base } from './base'
 import { toutEffacer } from './depots'
 import {
-  CODE_INITIAL, CODE_PAR_DEFAUT, reparerComptes, UTILISATEUR_INITIAL,
+  CODE_PAR_DEFAUT, reparerComptes,
   demarrer, oublierAmorcage,
 } from '../etat/preparation'
 import { ATTENTE_ID } from './base'
-import { empreinte, connecter, LONGUEUR_CODE } from '../domaine/acces'
+import { empreinte, connecter, LONGUEUR_CODE, type Utilisateur } from '../domaine/acces'
+
+/* Le compte de ces tests. Il n'est plus cree par l'amorcage :
+   c'est desormais la premiere personne qui s'inscrit qui le cree.
+   On l'ecrit ici pour verifier la connexion sur une base reelle,
+   sans dependre de l'interface. */
+const PREMIERE: Omit<Utilisateur, 'empreinte'> = {
+  id: 'u-1',
+  nom: 'Première',
+  role: 'directeur',
+  rayonsAutorises: ['r-med', 'r-men'],
+  actif: true,
+  independant: true,
+  longueurCode: LONGUEUR_CODE,
+}
+const CODE_INITIAL = '12345'
 
 /* ============================================================
    LA CONNEXION SUR UNE BASE REELLE
@@ -30,11 +45,11 @@ describe('une base neuve', () => {
   it('cree la personne de depart avec son code', async () => {
     await reparerComptes()
     await base.utilisateurs.put({
-      ...UTILISATEUR_INITIAL,
-      empreinte: empreinte(UTILISATEUR_INITIAL.id, CODE_INITIAL),
+      ...PREMIERE,
+      empreinte: empreinte(PREMIERE.id, CODE_INITIAL),
     })
 
-    const r = connecter(await base.utilisateurs.toArray(), UTILISATEUR_INITIAL.id, CODE_INITIAL)
+    const r = connecter(await base.utilisateurs.toArray(), PREMIERE.id, CODE_INITIAL)
     expect(r.ok).toBe(true)
   })
 })
@@ -66,19 +81,19 @@ describe('une base ancienne, sans empreinte', () => {
     expect(r.ok).toBe(false)
   })
 
-  it('apres reparation, le code de depart fonctionne', async () => {
+  it('apres reparation, le mot de passe de secours fonctionne', async () => {
     await creerBaseAncienne()
     const repares = await reparerComptes()
     expect(repares).toBe(1)
 
-    const r = connecter(await base.utilisateurs.toArray(), 'u-1', CODE_INITIAL)
+    const r = connecter(await base.utilisateurs.toArray(), 'u-1', CODE_PAR_DEFAUT)
     expect(r.ok).toBe(true)
   })
 
   it('la reparation est sans effet sur une base deja saine', async () => {
     await base.utilisateurs.put({
-      ...UTILISATEUR_INITIAL,
-      empreinte: empreinte(UTILISATEUR_INITIAL.id, '54321'),
+      ...PREMIERE,
+      empreinte: empreinte(PREMIERE.id, '54321'),
     })
     expect(await reparerComptes()).toBe(0)
 
@@ -90,12 +105,10 @@ describe('une base ancienne, sans empreinte', () => {
 })
 
 describe('une base sans aucune personne', () => {
-  it('on en recree une, sinon personne ne peut jamais entrer', async () => {
+  it('reste sans personne : c est la premiere inscription qui cree le compte', async () => {
     await base.rayons.put({ id: 'r-med', nom: 'Médicaments', ordre: 0 })
-    expect(await reparerComptes()).toBe(1)
-
-    const r = connecter(await base.utilisateurs.toArray(), 'u-1', CODE_INITIAL)
-    expect(r.ok).toBe(true)
+    expect(await reparerComptes()).toBe(0)
+    expect(await base.utilisateurs.count()).toBe(0)
   })
 })
 
@@ -103,8 +116,8 @@ describe('le message d echec', () => {
   it('ne distingue pas « personne inconnue » de « code faux »', async () => {
     await reparerComptes()
     await base.utilisateurs.put({
-      ...UTILISATEUR_INITIAL,
-      empreinte: empreinte(UTILISATEUR_INITIAL.id, CODE_INITIAL),
+      ...PREMIERE,
+      empreinte: empreinte(PREMIERE.id, CODE_INITIAL),
     })
     const tous = await base.utilisateurs.toArray()
 
@@ -162,7 +175,7 @@ describe("le changement de longueur du code", () => {
     expect(await reparerComptes()).toBe(2)
 
     const tous = await base.utilisateurs.toArray()
-    expect(connecter(tous, 'u-1', CODE_INITIAL).ok).toBe(true)
+    expect(connecter(tous, 'u-1', CODE_PAR_DEFAUT).ok).toBe(true)
     expect(connecter(tous, 'u-2', CODE_PAR_DEFAUT).ok).toBe(true)
 
     for (const u of tous) expect(u.longueurCode).toBe(LONGUEUR_CODE)
@@ -176,7 +189,7 @@ describe("le changement de longueur du code", () => {
 
   it('une base deja a la bonne longueur n est pas touchee', async () => {
     await base.utilisateurs.put({
-      ...UTILISATEUR_INITIAL,
+      ...PREMIERE,
       longueurCode: LONGUEUR_CODE,
       empreinte: empreinte('u-1', '54321'),
     })
@@ -184,9 +197,8 @@ describe("le changement de longueur du code", () => {
     expect(connecter(await base.utilisateurs.toArray(), 'u-1', '54321').ok).toBe(true)
   })
 
-  it("le code de secours a la bonne longueur aussi", () => {
+  it("le mot de passe de secours a la bonne longueur", () => {
     expect(CODE_PAR_DEFAUT).toHaveLength(LONGUEUR_CODE)
-    expect(CODE_INITIAL).toHaveLength(LONGUEUR_CODE)
   })
 })
 
@@ -220,12 +232,13 @@ describe("l'amorcage sous concurrence", () => {
     expect(rayons.map((r) => r.id).sort()).toEqual(['r-med', 'r-men'])
   })
 
-  it('apres l amorcage, on peut se connecter', async () => {
+  it('apres l amorcage, la base ne contient aucune personne', async () => {
     oublierAmorcage()
     await demarrer()
 
-    const r = connecter(await base.utilisateurs.toArray(), 'u-1', CODE_INITIAL)
-    expect(r.ok).toBe(true)
+    /* Plus de compte prepare : le premier est celui que la
+       premiere personne cree, et il sera directeur. */
+    expect(await base.utilisateurs.count()).toBe(0)
   })
 
   it('toutes les zones ont leurs emplacements', async () => {

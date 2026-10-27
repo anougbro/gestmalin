@@ -1,5 +1,5 @@
 import { chromium } from 'playwright'
-import { connecter, prepare } from './aide.ts'
+import { connecter, prepare, semerComptes } from './aide.ts'
 
 /* ============================================================
    AUCUN NOM DE VARIABLE A L'ECRAN
@@ -37,6 +37,7 @@ await prepare(page)
 await page.waitForTimeout(1400)
 await inspecter('connexion')
 
+await semerComptes(page)
 await connecter(page)
 await inspecter('accueil')
 

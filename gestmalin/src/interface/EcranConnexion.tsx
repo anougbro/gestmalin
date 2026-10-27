@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useSession } from '../etat/useSession'
 import { base } from '../donnees/base'
-import { reparerComptes, CODE_INITIAL, CODE_PAR_DEFAUT } from '../etat/preparation'
-import { LONGUEUR_CODE, LONGUEUR_TELEPHONE, normaliserTelephone, telephoneSaisi, type Utilisateur } from '../domaine/acces'
+import { LONGUEUR_CODE, LONGUEUR_TELEPHONE, estBloque, normaliserTelephone, telephoneSaisi, type Utilisateur } from '../domaine/acces'
+import { noterEssaiRate } from '../donnees/personnes'
 import { Icone } from './Icones'
 import { NumeroAffiche, PastillesCode, PavillonNumerique } from './Primitives'
 
@@ -75,6 +75,10 @@ export function EcranConnexion({ surCreation }: { surCreation: () => void }) {
       setErreur('Ce login est utilisé deux fois. Demande à un responsable.')
       return
     }
+    if (estBloque(trouves[0])) {
+      setErreur('Compte bloqué. Demande à un responsable.')
+      return
+    }
     setChoisi(trouves[0].id)
     setEtape('code')
   }
@@ -85,24 +89,29 @@ export function EcranConnexion({ surCreation }: { surCreation: () => void }) {
     try {
       const r = await connecter(id, code)
       if (r.ok) { setErreur(null); return }
-      setErreur(r.raison === 'inactif' ? 'Ce compte est désactivé.' : 'Mot de passe incorrect.')
+
+      if (r.raison === 'code-incorrect') {
+        const { bloque, restants } = await noterEssaiRate(id)
+        await recharger()
+        /* Un essai rate se dit, et se compte. Sans le nombre, la
+           personne recommence a l'aveugle jusqu'au blocage sans
+           comprendre qu'elle y arrive. */
+        setErreur(
+          bloque
+            ? 'Compte bloqué. Demande à un responsable.'
+            : `Mot de passe incorrect. Encore ${restants} essai${restants > 1 ? 's' : ''}.`,
+        )
+        return
+      }
+
+      if (r.raison === 'bloque') { setErreur('Compte bloqué. Demande à un responsable.'); return }
+      if (r.raison === 'inactif') { setErreur('Ce compte est désactivé.'); return }
+      setErreur('Mot de passe incorrect.')
     } catch {
       setErreur('Connexion impossible. Réessaie.')
     } finally {
       setCode('')
     }
-  }
-
-  async function reparer() {
-    if (!confirm(
-      `Réinitialiser les mots de passe ?\n\n` +
-      `Les mots de passe d'origine n'ont jamais été stockés en clair : ils sont perdus.\n` +
-      `Le premier compte reprend le mot de passe ${CODE_INITIAL}, les autres ${CODE_PAR_DEFAUT}.\n\n` +
-      `À n'utiliser que si personne ne peut plus entrer.`,
-    )) return
-    await reparerComptes()
-    setErreur(null)
-    await recharger()
   }
 
   /* ---------- Chiffres ---------- */
@@ -206,7 +215,7 @@ export function EcranConnexion({ surCreation }: { surCreation: () => void }) {
           <>
             <p className="connexion__titre">Mot de passe</p>
             <p className="connexion__indices">
-              {liste.find((u) => u.id === choisi)?.nom ?? 'Préparateur'}
+              {liste.find((u) => u.id === choisi)?.nom ?? ''}
             </p>
             <PastillesCode code={code} />
             <PavillonNumerique
@@ -219,7 +228,17 @@ export function EcranConnexion({ surCreation }: { surCreation: () => void }) {
             <button
               className="btn btn--discret"
               style={{ color: 'rgba(255,255,255,.7)' }}
-              onClick={() => { setEtape(numero ? 'numero' : 'noms'); setCode(''); setErreur(null) }}
+              onClick={() => {
+                /* Retour depuis le mot de passe : on revient au
+                   login VIDE. Le garder plein serait un piege —
+                   le pave refuse alors tout nouveau chiffre sans
+                   rien dire, et la personne croit que le telephone
+                   ne repond plus. */
+                if (numero) { setNumero(''); setEtape('numero') }
+                else setEtape('noms')
+                setCode('')
+                setErreur(null)
+              }}
             >
               Retour
             </button>
@@ -241,21 +260,30 @@ export function EcranConnexion({ surCreation }: { surCreation: () => void }) {
             <button
               className="btn btn--discret"
               style={{ color: 'rgba(255,255,255,.7)' }}
-              onClick={() => { setEtape(numero ? 'numero' : 'code'); setErreur(null) }}
+              onClick={() => {
+                if (numero) { setNumero(''); setEtape('numero') }
+                else setEtape('code')
+                setErreur(null)
+              }}
             >
               Retour
             </button>
           </>
         )}
 
+        {/* ---------- Mot de passe oublie ----------
+
+            Il n'y a plus de bouton de reinitialisation ici. Il en
+            existait un : il remettait le meme mot de passe a tout le
+            monde, sans rien demander. Avec un blocage apres cinq
+            essais, ce bouton aurait ete la contournement : essayez
+            cinq fois, appuyez, entrez. Le directeur debloque
+            desormais depuis les reglages, et le blocage expire seul
+            au bout d'un quart d'heure. */}
         {etape !== 'noms' && (
-          <button
-            className="btn btn--discret"
-            style={{ color: 'rgba(255,255,255,.5)', minHeight: 40 }}
-            onClick={() => void reparer()}
-          >
-            Mot de passe oublié ?
-          </button>
+          <p style={{ margin: 0, color: 'rgba(255,255,255,.45)', fontSize: 12.5 }}>
+            Mot de passe oublié ? Demande à un responsable.
+          </p>
         )}
 
         {/* ---------- Creer son compte ----------

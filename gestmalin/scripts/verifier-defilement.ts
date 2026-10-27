@@ -1,5 +1,5 @@
 import { chromium } from 'playwright'
-import { connecter } from './aide.ts'
+import { connecter, semerComptes } from './aide.ts'
 
 /* ============================================================
    QUI DEFILE ?
@@ -16,6 +16,7 @@ import { connecter } from './aide.ts'
 const navigateur = await chromium.launch()
 const page = await navigateur.newPage({ viewport: { width: 393, height: 852 }, hasTouch: true })
 await page.goto('http://localhost:5173/', { waitUntil: 'networkidle' })
+  await semerComptes(page)
   await connecter(page)
 const mesures = await page.evaluate(() => {
   const chemins = ['html', 'body', '#root', '.app', '.app__colonne', '.ecran', '.contenu']

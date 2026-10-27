@@ -1,5 +1,5 @@
 import { chromium } from 'playwright'
-import { connecterSiBesoin, prepare } from './aide.ts'
+import { connecterSiBesoin, prepare, semerComptes } from './aide.ts'
 import { mkdirSync } from 'node:fs'
 
 /* ============================================================
@@ -43,6 +43,7 @@ async function allerVers(nom: string) {
    l application le demande. */
 await page.goto('http://localhost:5173/', { waitUntil: 'networkidle' })
 await prepare(page)
+await semerComptes(page)
 await connecterSiBesoin(page)
 
 await allerVers('Réglages')

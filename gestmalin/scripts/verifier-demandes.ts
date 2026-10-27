@@ -1,5 +1,5 @@
 import { chromium, type Page } from 'playwright'
-import { connecterParNom, prepare } from './aide.ts'
+import { connecterParNom, prepare, semerComptes } from './aide.ts'
 
 /* ============================================================
    TROIS DEMANDES
@@ -29,6 +29,7 @@ for (const [nom, vp] of [
   await page.goto('http://localhost:5173/', { waitUntil: 'networkidle' })
   await page.waitForTimeout(1200)
   await prepare(page)
+  await semerComptes(page)
   await connecter(page)
 
   const etiquette = page.locator('.rayon-etiquette')
@@ -74,6 +75,7 @@ const page = await navigateur.newPage({ viewport: { width: 1440, height: 900 } }
 await page.goto('http://localhost:5173/', { waitUntil: 'networkidle' })
 await page.waitForTimeout(1200)
   await prepare(page)
+await semerComptes(page)
 await connecter(page)
 await page.getByRole('button', { name: 'Réglages' }).first().click()
 await page.waitForTimeout(700)
@@ -145,6 +147,7 @@ for (const [nom, vp] of [
   const p = await navigateur.newPage({ viewport: vp })
   await p.goto('http://localhost:5173/', { waitUntil: 'networkidle' })
   await prepare(p)
+  await semerComptes(p)
   await connecter(p)
 
   const info = await p.evaluate(() => ({

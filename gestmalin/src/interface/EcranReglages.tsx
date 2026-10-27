@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useSession } from '../etat/useSession'
 import { base } from '../donnees/base'
-import { changerNumero, deplacerVersRayon } from '../donnees/personnes'
-import { aLeDroit, LONGUEUR_TELEPHONE, telephoneSaisi, type Utilisateur } from '../domaine/acces'
+import { changerMail, changerNumero, debloquer, deplacerVersRayon } from '../donnees/personnes'
+import { aLeDroit, estBloque, LONGUEUR_TELEPHONE, mailValide, telephoneSaisi, type Utilisateur } from '../domaine/acces'
+import { CODE_PAR_DEFAUT } from '../etat/preparation'
 import { RAYONS_PAR_DEFAUT } from '../etat/rayons'
 import { chargerJeuEssai, chargerPersonnes, COMPTES_ESSAI } from '../donnees/jeuEssai'
 import { empreinte, LONGUEUR_CODE } from '../domaine/acces'
@@ -126,11 +127,49 @@ async function transferer(id: string, rayonId: string) {
   setMessage('Rayon changé.')
 }
 
+/* ---------- Debloquer, et remettre un mot de passe ----------
+
+   Deux gestes distincts, parce qu'ils ne repondent pas a la meme
+   situation. Debloquer rend la porte a quelqu'un qui se souvient
+   de son mot de passe. Remettre 00000 rend la porte a quelqu'un
+   qui l'a oublie — et il changera son mot de passe aussitot.
+
+   Les deux sont reserves au directeur par `debloquer()` elle-meme,
+   pas seulement par le bouton : un bouton cache n'est pas une
+   interdiction. */
+async function debloquerPersonne(id: string) {
+  const refus = await debloquer(id, utilisateur)
+  setMessage(refus ?? 'Compte débloqué.')
+  await lirePersonnes()
+}
+
+async function remettreMotDePasse(id: string) {
+  const refus = await debloquer(id, utilisateur, CODE_PAR_DEFAUT)
+  setMessage(refus ?? `Mot de passe remis à ${CODE_PAR_DEFAUT}. La personne le change à la prochaine entrée.`)
+  await lirePersonnes()
+}
+
 /* ---------- Mon numero ---------- */
 
 const [numero, setNumero] = useState('')
 const [erreurNumero, setErreurNumero] = useState<string | null>(null)
 const [numeroOuvert, setNumeroOuvert] = useState(false)
+
+const [mail, setMail] = useState(utilisateur?.mail ?? '')
+const [erreurMail, setErreurMail] = useState<string | null>(null)
+
+async function enregistrerMail() {
+  if (!utilisateur) return
+  if (mail.trim() && !mailValide(mail)) {
+    setErreurMail('Ce mail ne va pas. Écris-le en entier, ou vide le champ.')
+    return
+  }
+  await changerMail(utilisateur.id, mail)
+  setErreurMail(null)
+  setMessage(mail.trim() ? 'Mail enregistré.' : 'Mail effacé.')
+  await rafraichir()
+  await lirePersonnes()
+}
 
 async function validerNumero() {
   if (!utilisateur) return
@@ -234,6 +273,42 @@ async function effacerTout() {
           </Bouton>
         </div>
 
+        {/* ---------- Mon mail ----------
+
+            Facultatif. L'application ne l'envoie jamais : elle n'a
+            pas de serveur. Il sert a joindre la personne quand elle
+            oublie son mot de passe — c'est le directeur qui le lit
+            dans la liste des personnes, pas un service exterieur. */}
+        <div className="carte">
+          <p className="section__titre">Mon mail</p>
+          <p style={{ margin: '0 0 10px', fontSize: 12.5, color: 'var(--c-500)' }}>
+            Facultatif — aucun mail ne part.
+          </p>
+          <input
+            className="champ__saisie"
+            style={{ width: '100%' }}
+            type="email"
+            inputMode="email"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
+            value={mail}
+            placeholder="amina@exemple.com"
+            aria-label="Mon mail"
+            onChange={(e) => { setMail(e.target.value); setErreurMail(null) }}
+          />
+          {erreurMail && <p className="reglage__erreur">{erreurMail}</p>}
+          <div style={{ marginTop: 10 }}>
+            <Bouton
+              variante="secondaire"
+              disabled={!!utilisateur && mail.trim() === (utilisateur.mail ?? '')}
+              surClick={() => void enregistrerMail()}
+            >
+              Enregistrer mon mail
+            </Bouton>
+          </div>
+        </div>
+
         {/* ---------- Mon mot de passe ---------- */}
         <div className="carte">
           <p className="section__titre">Mon mot de passe</p>
@@ -313,7 +388,7 @@ async function effacerTout() {
             liberation : sans lui, un transfert de poste se ferait
             en vidant la base. */}
         <div className="carte">
-          <p className="section__titre">Qui gère quel rayon</p>
+          <p className="section__titre">Les personnes</p>
           <p style={{ margin: '0 0 12px', fontSize: 13.5, color: 'var(--c-700)' }}>
             Ce téléphone ne montre que les rayons de la personne.
           </p>
@@ -321,8 +396,19 @@ async function effacerTout() {
           <ul className="codes" data-liste="rayons">
             {personnes.map((p) => (
               <li key={p.id} className="codes__ligne" style={{ cursor: 'default' }}>
-                <span className="codes__nom">{p.nom}</span>
-                <span className="codes__peut">
+                <span className="codes__nom" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 1 }}>
+                  <span>{p.nom}</span>
+                  <span style={{ fontSize: 11.5, color: 'var(--c-500)', fontWeight: 500 }}>
+                    {p.mail ?? 'Pas de mail'}
+                  </span>
+                </span>
+                <span
+                  className="codes__peut"
+                  style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 1 }}
+                >
+                  {estBloque(p) && (
+                    <span style={{ color: 'var(--dgr-700)', fontWeight: 700 }}>Bloqué</span>
+                  )}
                   {p.telephone ? (
                     <span className="num">{p.telephone}</span>
                   ) : (
@@ -332,6 +418,47 @@ async function effacerTout() {
               </li>
             ))}
           </ul>
+
+          {/* Debloquer et remettre un mot de passe. Deux boutons par
+              personne, parce qu'on ne repare pas de la meme facon
+              quelqu'un qui a oublie son mot de passe et quelqu'un
+              qui s'est trompe cinq fois. */}
+          {peutGererRayons && (
+            <div style={{ marginTop: 16 }}>
+              <p className="section__titre" style={{ margin: '0 0 8px' }}>Débloquer</p>
+              <div className="colonne" style={{ gap: 8 }}>
+                {personnes.map((p) => (
+                  <div
+                    key={p.id}
+                    data-personne={p.id}
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 8,
+                      paddingBottom: 10,
+                      borderBottom: '1px solid var(--line)',
+                    }}
+                  >
+                    <span style={{ fontSize: 13.5, fontWeight: 600 }}>{p.nom}</span>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      {estBloque(p) && (
+                        <Bouton variante="secondaire" surClick={() => void debloquerPersonne(p.id)}>
+                          Débloquer
+                        </Bouton>
+                      )}
+                      <Bouton variante="secondaire" surClick={() => void remettreMotDePasse(p.id)}>
+                        Remettre {CODE_PAR_DEFAUT}
+                      </Bouton>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <p style={{ margin: '10px 0 0', fontSize: 12.5, color: 'var(--c-500)' }}>
+                {CODE_PAR_DEFAUT} est un mot de passe provisoire : la personne le change
+                dès qu'elle entre.
+              </p>
+            </div>
+          )}
 
           {peutGererRayons && (
             <div style={{ marginTop: 14 }}>

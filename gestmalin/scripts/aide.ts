@@ -11,11 +11,73 @@ import type { Page } from 'playwright'
    l'application : si elle cessait de fonctionner, tous les
    verificateurs casseraient en meme temps.
 
+   Depuis que le premier compte est cree par la premiere personne
+   qui se presente, la base est VIDE au demarrage. Un verificateur
+   ne peut donc plus compter sur un compte prepare : il seme le
+   sien avec `semerComptes`, exactement comme le ferait la
+   directrice a l'ouverture du telephone.
+
    Le defaut serait d ignorer en silence : le script continuerait
    sur l'ecran de connexion, cliquerait dans le vide, et
    rapporterait des echecs sans rapport avec ce qu il verifie. Si
    rien ne s ouvre, on le dit en clair, avec ce que l'ecran
    affiche reellement. */
+
+export type CompteSeme = {
+  id: string
+  nom: string
+  role: 'preparateur' | 'responsable' | 'pharmacien' | 'directeur'
+  telephone: string
+  code: string
+  rayons?: string[]
+}
+
+/**
+ * Le compte par defaut des verificateurs.
+ *
+ * `directeur` : c'est le role qui a le droit `utilisateurs`, donc
+ * celui qui peut debloquer, transferer un rayon et remettre un mot
+ * de passe. Les verificateurs qui touchent aux reglages en ont
+ * besoin ; les autres s'en moquent, et un seul compte suffit.
+ */
+export const COMPTE_VERIF: CompteSeme = {
+  id: 'u-verif',
+  nom: 'Préparateur',
+  role: 'directeur',
+  telephone: '9000000001',
+  code: '12345',
+  rayons: ['r-med', 'r-men'],
+}
+
+/** Pose des comptes dans la base, sans passer par l'ecran. */
+export async function semerComptes(
+  page: Page,
+  comptes: readonly CompteSeme[] = [COMPTE_VERIF],
+): Promise<void> {
+  await page.evaluate(async (liste) => {
+    const { base } = await import('/src/donnees/base.ts')
+    const { empreinte, LONGUEUR_CODE } = await import('/src/domaine/acces.ts')
+    for (const c of liste) {
+      await base.utilisateurs.put({
+        id: c.id,
+        nom: c.nom,
+        role: c.role,
+        rayonsAutorises: c.rayons ?? ['r-med', 'r-men'],
+        actif: true,
+        independant: true,
+        telephone: c.telephone,
+        longueurCode: LONGUEUR_CODE,
+        empreinte: empreinte(c.id, c.code),
+      })
+    }
+  }, comptes)
+
+  /* L'ecran de connexion lit la liste des personnes au montage :
+     sans rechargement, il continuerait d'afficher une liste vide. */
+  await page.reload({ waitUntil: 'networkidle' })
+  await prepare(page)
+  await page.waitForTimeout(400)
+}
 
 /** Attend que le pave de chiffres soit pret. */
 export async function prepare(page: Page): Promise<void> {
@@ -77,8 +139,51 @@ export async function connecterSiBesoin(page: Page, nom = 'Préparateur', code =
   await connecterParNom(page, nom, code)
 }
 
-/** Ouvre le tiroir puis clique sur un geste du menu. */
-export async function allerVers(page: Page, nom: string): Promise<void> {
+/**
+ * Cree le premier compte par l'ecran, comme une vraie personne.
+ *
+ * Indispensable pour les verificateurs qui tournent sur un site
+ * CONSTRUIT : la-bas, `/src/...` n'existe plus, donc on ne peut pas
+ * semer les comptes par import. Et de toute facon, c'est le
+ * parcours reel d'installation.
+ *
+ * Le compte cree ouvre directement la session (l'ecran de creation
+ * connecte la personne). Un appelant qui veut revenir a l'ecran de
+ * connexion doit donc se deconnecter lui-meme.
+ */
+export async function creerCompte(
+  page: Page,
+  { nom, numero, code, rayon = 'Médicaments' }: {
+    nom: string
+    numero: string
+    code: string
+    rayon?: string
+  },
+): Promise<void> {
+  await page.getByRole('button', { name: /Créer mon compte/ }).click()
+  await page.waitForTimeout(500)
+  await page.locator('input.champ__saisie').first().fill(nom)
+  await page.getByRole('button', { name: 'Suivant', exact: true }).click()
+  await page.waitForTimeout(400)
+  await page.getByRole('button', { name: rayon }).click()
+  await page.waitForTimeout(400)
+
+  /* Le login, puis deux fois le mot de passe : trois saisies au
+     pave, comme dans l'application. */
+  for (const saisie of [numero, code, code]) {
+    for (const c of saisie) {
+      await page.locator('.pave__touche', { hasText: new RegExp(`^${c}$`) }).first().click()
+      await page.waitForTimeout(45)
+    }
+    await page.getByRole('button', { name: 'Entrer' }).click()
+    await page.waitForTimeout(450)
+  }
+
+  await page.getByRole('button', { name: 'Passer', exact: true }).click()
+  await page.waitForTimeout(1400)
+}
+
+/** Ouvre le tiroir puis clique sur un geste du menu. */export async function allerVers(page: Page, nom: string): Promise<void> {
   await page.locator('.menu-btn').click()
   await page.waitForTimeout(500)
   await page.locator('.tiroir .nav-item', { hasText: new RegExp(`^${nom}$`) }).click()

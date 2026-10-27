@@ -1,12 +1,12 @@
-import { chromium, type Page } from 'playwright'
+import { chromium } from 'playwright'
 import { connecterParNom, prepare } from './aide.ts'
 
 /* ============================================================
    LES COMPTES, PAS A PAS
 
    On reproduit exactement le parcours d'une personne :
-   connexion, chargement du jeu d'essai, changement de personne,
-   puis tentative avec chaque code.
+   installation, jeu d'essai, changement de personne, puis
+   creation de son propre compte.
 
    Deux causes possibles pour « les autres codes ne passent
    pas », et elles ne se ressemblent pas :
@@ -42,72 +42,36 @@ await page.goto('http://localhost:5173/', { waitUntil: 'networkidle' })
 await prepare(page)
 await page.waitForTimeout(1400)
 
-const debut = await page.evaluate(async () => {
-  const req = indexedDB.open('gestmalin')
-  const db = await new Promise<IDBDatabase>((r, k) => { req.onsuccess = () => r(req.result); req.onerror = () => k(req.error) })
-  const tx = db.transaction('utilisateurs', 'readonly')
-  const tous = await new Promise<Record<string, unknown>[]>((r) => { const q = tx.objectStore('utilisateurs').getAll(); q.onsuccess = () => r(q.result) })
-  return tous.map((u) => ({ nom: u.nom as string, actif: u.actif as boolean }))
-})
-
-console.log('1. Avant de charger le jeu d essai')
-console.log(`   ${debut.length} compte(s) : ${debut.map((u) => u.nom).join(', ')}`)
-ok(debut.length === 1, 'au premier demarrage, un seul compte existe')
-
-/* On entre par la porte de secours — la liste des noms — puis le
-   code. C est le chemin le plus court, et c est une vraie porte
-   de l application : si elle cessait de fonctionner, ce script
-   echouerait avec les autres. */
-async function taper(page: Page, nom: string, code: string) {
-  await connecterParNom(page, nom, code)
-}
-await taper(page, 'Préparateur', '12345')
-ok((await page.locator('.ecran--connexion').count()) === 0, 'le code 12345 entre')
-
-await page.getByRole('button', { name: 'Réglages' }).first().click()
-await page.waitForTimeout(700)
-await page.getByRole('button', { name: /Charger le jeu/ }).click()
-await page.waitForTimeout(2000)
-
-const apres = await page.evaluate(async () => {
-  const req = indexedDB.open('gestmalin')
-  const db = await new Promise<IDBDatabase>((r, k) => { req.onsuccess = () => r(req.result); req.onerror = () => k(req.error) })
-  const tx = db.transaction('utilisateurs', 'readonly')
-  const tous = await new Promise<Record<string, unknown>[]>((r) => { const q = tx.objectStore('utilisateurs').getAll(); q.onsuccess = () => r(q.result) })
-  return tous.map((u) => ({ nom: u.nom as string, actif: u.actif as boolean, empreinte: String(u.empreinte) }))
-})
-
-console.log('\n2. Apres le chargement du jeu d essai')
-for (const u of apres) console.log(`   ${u.nom.padEnd(12)} actif=${u.actif}  empreinte=${u.empreinte}`)
-ok(apres.length === 3, `trois comptes existent (${apres.length})`)
-
-/* On verifie que l'empreinte stockee correspond bien au code
-   annonce, en rejouant l'algorithme hors de l'application. */
-const empreinteReelle = empreinte('u-2', '22222')
-const amina = apres.find((u) => u.nom === 'Amina')
-console.log(`   Amina : empreinte stockee ${amina?.empreinte}, empreinte de 22222 = ${empreinteReelle}`)
-
-console.log('\n3. Chaque code ouvre la porte ?')
-for (const [nom, code] of [['Préparateur', '12345'], ['Amina', '22222'], ['Dr Souley', '33333']] as const) {
-  await page.locator('.qui:visible, .qui-btn:visible').first().click()
-  await page.waitForTimeout(800)
-  ok((await page.locator('.ecran--connexion').count()) === 1, `deconnexion depuis ${nom}`)
-  await taper(page, nom, code)
-  ok((await page.locator('.ecran--connexion').count()) === 0, `le code ${code} ouvre la porte de ${nom}`)
+async function comptes() {
+  return page.evaluate(async () => {
+    const req = indexedDB.open('gestmalin')
+    const db = await new Promise<IDBDatabase>((r, k) => { req.onsuccess = () => r(req.result); req.onerror = () => k(req.error) })
+    const tx = db.transaction('utilisateurs', 'readonly')
+    const tous = await new Promise<Record<string, unknown>[]>((r) => { const q = tx.objectStore('utilisateurs').getAll(); q.onsuccess = () => r(q.result) })
+    return tous.map((u) => ({
+      nom: u.nom as string,
+      role: u.role as string,
+      actif: u.actif as boolean,
+      telephone: (u.telephone as string | undefined) ?? null,
+      rayons: u.rayonsAutorises as string[],
+      empreinte: String(u.empreinte),
+    }))
+  })
 }
 
-/* ---------- Les gestes du pave ---------- */
+const debut = await comptes()
+
+console.log('1. Au premier demarrage')
+console.log(`   ${debut.length} compte(s) : ${debut.map((u) => u.nom).join(', ') || '(aucun)'}`)
+ok(debut.length === 0, 'la base est vide : aucun compte prepare, aucune porte ouverte')
+
+/* ---------- Le pave, pour les saisies qui suivent ---------- */
 
 async function taperPave(chiffres: string) {
   for (const c of chiffres) {
     await page.locator('.pave__touche', { hasText: new RegExp(`^${c}$`) }).first().click()
     await page.waitForTimeout(60)
   }
-}
-
-async function sortir() {
-  await page.locator('.qui:visible, .qui-btn:visible, .qui-btn-lg:visible').first().click()
-  await page.waitForTimeout(900)
 }
 
 async function entrerParNumero(numero: string, code: string) {
@@ -119,20 +83,105 @@ async function entrerParNumero(numero: string, code: string) {
   await page.waitForTimeout(1400)
 }
 
+async function sortir() {
+  await page.locator('.qui:visible, .qui-btn:visible, .qui-btn-lg:visible').first().click()
+  await page.waitForTimeout(900)
+}
+
 const compteNomme = (nom: string) => page.evaluate(async (n: string) => {
   const { base } = await import('/src/donnees/base.ts')
   const u = (await base.utilisateurs.toArray()).find((x) => x.nom === n)
-  return u ? { id: u.id, telephone: u.telephone ?? null, rayons: u.rayonsAutorises, empreinte: u.empreinte } : null
+  return u ? {
+    id: u.id,
+    role: u.role,
+    telephone: u.telephone ?? null,
+    rayons: u.rayonsAutorises,
+    empreinte: u.empreinte,
+  } : null
 }, nom)
 
 /* ============================================================
-   4. CREER SON COMPTE, QUAND ON EST LA
+   2. LE PREMIER COMPTE EST DIRECTEUR
+
+   Sans compte prepare, quelqu'un doit creer le sien. C'est la
+   premiere personne qui se presente qui commande : elle seule
+   pourra debloquer les autres et transferer un rayon. */
+console.log('\n2. Le premier compte, cree par la premiere personne')
+
+await page.getByRole('button', { name: 'Créer mon compte' }).click()
+await page.waitForTimeout(700)
+await page.locator('input.champ__saisie').first().fill('Directrice')
+await page.getByRole('button', { name: 'Suivant', exact: true }).click()
+await page.waitForTimeout(500)
+await page.getByRole('button', { name: 'Médicaments' }).click()
+await page.waitForTimeout(500)
+await taperPave('9000000009')
+await page.getByRole('button', { name: 'Entrer' }).click()
+await page.waitForTimeout(700)
+await taperPave('12345')
+await page.getByRole('button', { name: 'Entrer' }).click()
+await page.waitForTimeout(700)
+await taperPave('12345')
+await page.getByRole('button', { name: 'Entrer' }).click()
+await page.waitForTimeout(700)
+
+ok(
+  (await page.getByText('Ton mail', { exact: true }).count()) > 0,
+  'le mail est demande a la fin, apres le mot de passe',
+)
+await page.getByRole('button', { name: 'Passer', exact: true }).click()
+await page.waitForTimeout(1600)
+
+ok(
+  (await page.locator('.ecran--connexion').count()) === 0,
+  'le compte neuf ouvre directement : on ne retape pas ce qu on vient de choisir',
+)
+
+const directrice = await compteNomme('Directrice')
+ok(!!directrice, 'le compte existe vraiment en base')
+ok(directrice?.role === 'directeur', `le premier compte est directeur (${directrice?.role})`)
+ok(directrice?.telephone === '9000000009', `son login est enregistre (${directrice?.telephone})`)
+ok(directrice?.empreinte === empreinte(directrice.id, '12345'), 'le mot de passe est stocke en empreinte, pas en clair')
+
+/* ============================================================
+   3. LE JEU D'ESSAI
+   ============================================================ */
+console.log('\n3. Le jeu d essai')
+
+await page.getByRole('button', { name: 'Réglages' }).first().click()
+await page.waitForTimeout(800)
+await page.getByRole('button', { name: /Charger le jeu/ }).click()
+await page.waitForTimeout(2200)
+
+const apres = await comptes()
+console.log('   apres le chargement :')
+for (const u of apres) console.log(`     ${u.nom.padEnd(12)} ${u.role.padEnd(12)} actif=${u.actif}`)
+ok(apres.length === 4, `la directrice reste, les trois comptes d essai arrivent (${apres.length})`)
+
+/* On verifie que l'empreinte stockee correspond bien au code
+   annonce, en rejouant l'algorithme hors de l'application. */
+const empreinteReelle = empreinte('u-2', '22222')
+const amina = apres.find((u) => u.nom === 'Amina')
+console.log(`   Amina : empreinte stockee ${amina?.empreinte}, empreinte de 22222 = ${empreinteReelle}`)
+ok(amina?.empreinte === empreinteReelle, 'le code annonce est bien celui qui est enregistre')
+
+/* ---------- Chaque code ouvre la porte ? ---------- */
+console.log('\n4. Chaque code ouvre la porte ?')
+for (const [nom, code] of [['Préparateur', '12345'], ['Amina', '22222'], ['Dr Souley', '33333']] as const) {
+  await sortir()
+  ok((await page.locator('.ecran--connexion').count()) === 1, `deconnexion depuis ${nom}`)
+  await connecterParNom(page, nom, code)
+  ok((await page.locator('.ecran--connexion').count()) === 0, `le code ${code} ouvre la porte de ${nom}`)
+}
+
+/* ============================================================
+   5. CREER SON COMPTE, QUAND ON EST LA
 
    C'est la demande : chacun cree le sien quand il est present.
-   Personne n'attend personne. On suit donc les quatre questions
+   Personne n'attend personne. On suit donc les cinq questions
    comme le ferait la personne des menagers, et on regarde ce qui
    s'ecrit vraiment en base. */
-console.log('\n4. Créer son compte, quand on est là')
+console.log('\n5. Créer son compte, quand on est là')
 
 await sortir()
 await page.getByRole('button', { name: 'Créer mon compte' }).click()
@@ -151,28 +200,28 @@ await page.getByRole('button', { name: 'Entrer' }).click()
 await page.waitForTimeout(700)
 await taperPave('44444')
 await page.getByRole('button', { name: 'Entrer' }).click()
-await page.waitForTimeout(1400)
+await page.waitForTimeout(700)
+await page.getByRole('button', { name: 'Passer', exact: true }).click()
+await page.waitForTimeout(1600)
 
 const creee = await compteNomme('Amina Test')
-ok(!!creee, 'le compte existe apres les quatre questions')
+ok(!!creee, 'le compte existe apres les cinq questions')
+ok(creee?.role === 'preparateur', `le deuxieme compte est preparateur (${creee?.role})`)
 ok(creee?.telephone === '9000000007', `le numero est enregistre (${creee?.telephone})`)
 ok(JSON.stringify(creee?.rayons) === '["r-men"]', `le compte ne tient que son rayon (${JSON.stringify(creee?.rayons)})`)
-ok(creee?.empreinte === empreinte(creee.id, '44444'), 'le code est stocke en empreinte, pas en clair')
+ok(creee?.empreinte === empreinte(creee!.id, '44444'), 'le code est stocke en empreinte, pas en clair')
 
 /* ============================================================
-   5. CHANGER SON NUMERO, QUAND ON VEUT
+   6. CHANGER SON NUMERO, QUAND ON VEUT
 
    Le numero est l'identite : il doit pouvoir changer sans perdre
    son compte, son rayon, ni son code. Et il ne doit pas pouvoir
    prendre celui d'un autre — c'est la seule regle qui empeche un
    code d'ouvrir la mauvaise personne. */
-console.log('\n5. Changer son login, quand on veut')
-
-await entrerParNumero('9000000007', '44444')
-ok((await page.locator('.ecran--connexion').count()) === 0, 'le numero qu on vient de creer ouvre la porte')
+console.log('\n6. Changer son login, quand on veut')
 
 await page.getByRole('button', { name: 'Réglages' }).first().click()
-await page.waitForTimeout(800)
+await page.waitForTimeout(900)
 await page.getByRole('button', { name: /Changer mon login/ }).click()
 await page.waitForTimeout(700)
 await taperPave('9000000008')
@@ -210,5 +259,5 @@ await page.waitForTimeout(900)
 const texteAncien = await page.locator('body').innerText()
 ok(texteAncien.includes('Login inconnu'), "l'ancien login n ouvre plus : il est vraiment remplace")
 
-console.log(echecs === 0 ? '\nLES COMPTES MARCHENT, DE LA CREATION AU CHANGEMENT DE NUMERO.' : `\n${echecs} ECHEC(S).`)
+console.log(echecs === 0 ? '\nLES COMPTES MARCHENT, DE L INSTALLATION AU CHANGEMENT DE NUMERO.' : `\n${echecs} ECHEC(S).`)
 await navigateur.close()

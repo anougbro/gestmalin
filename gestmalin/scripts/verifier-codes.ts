@@ -74,9 +74,9 @@ await page.waitForTimeout(2000)
 
 
 /* ---------- D'abord on entre ---------- */
-await connecter(page)
+await connecter(page, '00000')
 await page.waitForTimeout(1100)
-ok((await page.locator('.ecran--connexion').count()) === 0, 'le code 12345 entre')
+ok((await page.locator('.ecran--connexion').count()) === 0, 'le code de secours 00000 entre')
 
 /* ---------- Ensuite on lit la liste, dans les reglages ---------- */
 console.log('\n1. La liste des codes est ecrite dans l application')

@@ -122,6 +122,17 @@ export type Utilisateur = {
       personne ne peut entrer. C'est precisement ce qui est
       arrive au passage de 4 a 5 chiffres. */
   longueurCode: number
+  /** Le mail de la personne, s'il en a donne un.
+
+      Facultatif et purement indicatif : l'application n'envoie
+      rien, elle n'a pas de serveur. Il sert a reconnaitre la
+      personne quand elle demande un nouveau mot de passe, et a la
+      joindre hors de la pharmacie. */
+  mail?: string
+  /** Essais de mot de passe rates depuis la derniere reussite. */
+  tentatives?: number
+  /** Fin du blocage, en millisecondes epoch. 0 ou absent : libre. */
+  bloqueJusqua?: number
   /** Deleguations accordees a cet utilisateur, avec leur fin. */
   mandats?: Mandat[]
 }
@@ -254,11 +265,38 @@ export function roleEffectif(u: Utilisateur, rayonId: string, maintenant: string
   return u.role
 }
 
+/* ---------- Le blocage apres trop d'essais ----------
+
+   Cinq essais, puis quinze minutes. Deux nombres choisis pour la
+   vraie vie d'une pharmacie : cinq, parce qu'une personne qui se
+   trompe deux fois se trompe rarement cinq ; quinze minutes,
+   parce qu'un blocage definitif sur un telephone partage mettrait
+   l'officine par terre, et qu'il n'y a pas de serveur pour
+   debloquer a distance.
+
+   Le directeur peut lever le blocage tout de suite depuis les
+   reglages. Le delai n'est la que pour le cas ou c'est lui qui
+   est bloque : sans cela, personne ne pourrait plus entrer, et il
+   faudrait effacer la base — donc perdre le stock. */
+export const ESSAIS_MAX = 5
+export const DUREE_BLOCAGE_MS = 15 * 60 * 1000
+
+export function estBloque(u: Utilisateur, maintenant = Date.now()): boolean {
+  return typeof u.bloqueJusqua === 'number' && u.bloqueJusqua > maintenant
+}
+
+/** Un mail plausible. Volontairement large : on ne veut pas
+    refuser l'adresse rare d'un fournisseur, seulement la faute
+    evidente — un espace, pas d'arobase, pas de point. */
+export function mailValide(mail: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(mail.trim())
+}
+
 /* ---------- La connection, sans reseau ---------- */
 
 export type ResultatConnexion =
   | { ok: true; utilisateur: Utilisateur }
-  | { ok: false; raison: 'code-incorrect' | 'inactif' | 'numero-inconnu' | 'numero-partage' }
+  | { ok: false; raison: 'code-incorrect' | 'inactif' | 'numero-inconnu' | 'numero-partage' | 'bloque' }
 
 const ECHEC_CODE = { ok: false as const, raison: 'code-incorrect' as const }
 
@@ -311,6 +349,11 @@ function verifier(u: Utilisateur | undefined, code: string): ResultatConnexion {
   /* Meme message dans tous les cas d'echec : sinon on permet de
      deviner quels identifiants existent. */
   if (!u) return ECHEC_CODE
+
+  /* Un compte bloque ne compare meme pas le code : laisser
+     tourner la comparaison reviendrait a offrir des essais
+     gratuits pendant le blocage. */
+  if (estBloque(u)) return { ok: false, raison: 'bloque' }
 
   /* Un compte enregistre avec un autre nombre de chiffres n'est
      pas utilisable : son empreinte ne correspond a rien de

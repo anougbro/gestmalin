@@ -129,7 +129,7 @@ console.log('\n2. Un code de 4 chiffres ne valide meme pas')
 ok(await quatreChiffresRefuses('Préparateur'), 'quatre chiffres n activent pas « Entrer »')
 
 console.log('\n3. Les nouveaux codes passent')
-ok(await entrer('Préparateur', '12345'), 'Préparateur entre avec 12345')
+ok(await entrer('Préparateur', '00000'), 'Préparateur entre avec le code de secours 00000')
 
 await page.locator('.qui:visible, .qui-btn:visible').first().click()
 await page.waitForTimeout(700)
