@@ -1,75 +1,98 @@
-# React + TypeScript + Vite
+# Gestmalin — l'application
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Application web installable (PWA), **100 % hors ligne**, pour le stock d'une pharmacie :
+médicaments et produits ménagers dans deux rayons séparés. Un téléphone partagé, un login
+et un mot de passe à cinq chiffres par personne.
 
-Currently, two official plugins are available:
+Elle s'installe depuis un lien, sans passer par un magasin d'applications :
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+1. ouvrir <https://anougbro.github.io/gestmalin/> dans Chrome ou Edge ;
+2. menu du navigateur → **Ajouter à l'écran d'accueil** ;
+3. l'ouvrir depuis l'icône : elle démarre sans réseau, y compris la première fois.
 
-## React Compiler
+Internet Explorer ne peut pas l'exécuter. Ce n'est pas un défaut : l'application a besoin
+d'IndexedDB, d'un service worker et des modules JavaScript modernes.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+---
 
-## Expanding the ESLint configuration
+## Ce qu'elle tient
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+| Écran | Geste |
+|---|---|
+| Réception | scanner la boîte, saisir quantité et péremption — le produit arrive au quai |
+| Ranger | poser au quai puis à sa place, dans l'ordre FEFO (le plus proche de la péremption sort en premier) |
+| Sortie | sortir une quantité ; le stock se déduit du journal |
+| Compter | comptage à l'aveugle, avec un second compte qui libère la ligne |
+| Alertes | seuil bas, péremption proche, quai en attente |
+| Commander / Réappro | ce qu'il faut racheter, et à qui |
+| Étiquettes | étiquettes de rayon et de place, imprimables |
+| Fichiers | import et export `.xlsx` / `.csv`, sans aucune dépendance |
+| Réglages | login, mail de contact, mot de passe, personnes, déblocage, jeu d'essai |
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+Deux règles structurent le code :
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+- **Le stock n'est pas stocké.** Il est recalculé à partir des mouvements, qui sont
+  ajoutés et jamais modifiés. Un écart se voit, il ne se maquille pas.
+- **Aucun prix, aucune donnée patient, aucun serveur.** Ce qui n'est pas là ne peut pas
+  fuir.
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## Architecture
 
 ```
-
-You can also install [eslint-plugin-react-x](https://npmx.dev/package/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://npmx.dev/package/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
+src/
+  domaine/     les règles pures, sans React ni base : acces, stock, FEFO, code-barres,
+               reception, comptage, alertes, commande, xlsx, csv…
+  donnees/     Dexie (IndexedDB) : les tables, et les fonctions qui écrivent
+  etat/        la session, l'amorçage, la réparation des comptes
+  interface/   18 écrans + les primitives (Bouton, Tuile, pavé de chiffres, icônes)
+scripts/       les vérificateurs de navigateur (Playwright) et l'aide commune
+DECISIONS.md   les écarts assumés au standard de sécurité, et pourquoi
 ```
+
+Le sens des dépendances va de l'interface vers le domaine, jamais l'inverse : les règles
+de stock se testent sans navigateur, et c'est ce que fait `src/**/*.test.ts`.
+
+## Commandes
+
+```bash
+npm install
+npm run dev        # http://localhost:5173
+npm run verifier   # tsc + eslint + vitest (les trois doivent passer)
+npm run build      # construit dist/
+```
+
+Pour construire comme GitHub Pages (sous-dossier `/gestmalin/`) :
+
+```bash
+# PowerShell
+$env:BASE_PATH="/gestmalin/"; npx vite build
+$env:BASE_PATH="/gestmalin/"; npx vite preview --port 4173
+```
+
+### Vérificateurs de navigateur
+
+Ils pilotent un vrai Chrome sur le serveur de développement (`npm run dev` doit tourner) :
+
+```bash
+npm run verifier-comptes      # installation, premier compte directeur, jeu d'essai
+npm run verifier-blocage      # cinq essais, blocage, déblocage, remise de 00000
+npm run verifier-connexion    # la porte du login, pas à pas
+npm run verifier-cloisonnement# un téléphone, deux personnes, deux rayons
+npm run verifier-mobile       # trois largeurs de téléphone et le bureau
+npm run verifier-hors-ligne   # le build servi sous /gestmalin/, réseau coupé
+npm run verifier-site         # le site publié, réseau coupé
+```
+
+Les autres (`verifier-menu`, `verifier-scan`, `verifier-comptage`, `verifier-codes`,
+`verifier-migration`, `verifier-demandes`, `verifier-texte`, `verifier-deconnexion`,
+`verifier-atteignabilite`, `verifier-defilement`, `verifier-barre-haut`,
+`verifier-pave`) couvrent chacun un écran ou une règle précise.
+
+`verifier-hors-ligne` et `verifier-site` créent leur premier compte par l'écran : ils ne
+peuvent pas semer de données par import, puisque `/src/...` n'existe plus dans un build.
+
+## Ce qui a été décidé, et pourquoi
+
+`DECISIONS.md` explique les cinq écarts volontaires au standard d'authentification :
+pas d'Argon2id, pas de jeton, cinq chiffres, blocage de quinze minutes, mail de contact
+seulement. À lire avant de « corriger » la connexion.
