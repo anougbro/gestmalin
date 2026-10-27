@@ -112,7 +112,7 @@ async function saisirCode(code: string, bouton: string) {
    retour en arriere — deux codes differents — il redevient
    « Suivant ». C'est le comportement voulu. */
 await saisirCode('90715', 'Suivant')
-ok((await page.getByText(/Tape le même code/).count()) > 0, 'une deuxieme saisie est demandee')
+ok((await page.getByText(/Tape le même mot de passe/).count()) > 0, 'une deuxieme saisie est demandee')
 
 await saisirCode('12345', 'Valider')
 ok((await page.getByText(/pas pareils/i).count()) > 0, 'deux codes differents sont refuses')
@@ -121,7 +121,7 @@ ok((await page.getByRole('button', { name: 'Suivant', exact: true }).count()) ==
 await saisirCode('56782', 'Suivant')
 await saisirCode('56782', 'Valider')
 await page.waitForTimeout(900)
-ok((await page.getByText(/Code changé/).count()) > 0, 'le nouveau code est accepte')
+ok((await page.getByText(/Mot de passe changé/).count()) > 0, 'le nouveau code est accepte')
 
 await page.locator('.qui:visible, .qui-btn:visible, .qui-btn-lg:visible').first().click()
 await page.waitForTimeout(800)

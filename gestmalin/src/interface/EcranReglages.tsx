@@ -7,7 +7,7 @@ import { RAYONS_PAR_DEFAUT } from '../etat/rayons'
 import { chargerJeuEssai, chargerPersonnes, COMPTES_ESSAI } from '../donnees/jeuEssai'
 import { empreinte, LONGUEUR_CODE } from '../domaine/acces'
 import { Icone } from './Icones'
-import { Bouton, Entete, PastillesCode, PavillonNumerique } from './Primitives'
+import { Bouton, Entete, NumeroAffiche, PastillesCode, PavillonNumerique } from './Primitives'
 
 /* ============================================================
    LES REGLAGES
@@ -58,7 +58,7 @@ export function EcranReglages({ retour }: { retour: () => void }) {
     }
 
     if (code !== premier) {
-      setErreurCode('Les deux codes ne sont pas pareils. Recommence.')
+      setErreurCode('Les deux mots de passe ne sont pas pareils. Recommence.')
       setPremier(null)
       setCode('')
       return
@@ -66,7 +66,7 @@ export function EcranReglages({ retour }: { retour: () => void }) {
 
     void (async () => {
       await base.utilisateurs.put({ ...utilisateur, longueurCode: LONGUEUR_CODE, empreinte: empreinte(utilisateur.id, code) })
-      setMessage(`Code changé. Le nouveau code est pris en compte dès la prochaine connexion.`)
+      setMessage(`Mot de passe changé. Le nouveau mot de passe est pris en compte dès la prochaine connexion.`)
       setPremier(null)
       setCode('')
     })()
@@ -93,7 +93,7 @@ export function EcranReglages({ retour }: { retour: () => void }) {
      liste ci-dessus ne dit plus vrai. */
   async function remettreLesComptes() {
     await chargerPersonnes()
-    setMessage('Les codes de l\'essai sont remis.')
+    setMessage('Les mots de passe de l\'essai sont remis.')
     await rafraichir()
   }
 
@@ -135,7 +135,7 @@ const [numeroOuvert, setNumeroOuvert] = useState(false)
 async function validerNumero() {
   if (!utilisateur) return
   if (!telephoneSaisi(numero)) {
-    setErreurNumero(`Le numéro doit faire ${LONGUEUR_TELEPHONE} chiffres.`)
+    setErreurNumero(`Le login doit faire ${LONGUEUR_TELEPHONE} chiffres.`)
     return
   }
   const r = await changerNumero(utilisateur.id, numero)
@@ -147,7 +147,7 @@ async function validerNumero() {
   setErreurNumero(null)
   setNumero('')
   setNumeroOuvert(false)
-  setMessage('Numéro changé. Il te faut l\'entrer à la prochaine connexion.')
+  setMessage('Login changé. Il te faut l\'entrer à la prochaine connexion.')
   await lirePersonnes()
 }
 
@@ -161,14 +161,14 @@ async function validerNumero() {
 if (numeroOuvert) {
   return (
     <div className="ecran">
-      <Entete titre="Mon numéro" surRetour={() => { setNumeroOuvert(false); setNumero(''); setErreurNumero(null) }} />
+      <Entete titre="Mon login" surRetour={() => { setNumeroOuvert(false); setNumero(''); setErreurNumero(null) }} />
 
       <div className="contenu">
         <p style={{ margin: '0 0 12px', fontSize: 13.5, color: 'var(--c-500)' }}>
           Dix chiffres, sans l’indicatif du pays.
         </p>
 
-        <PastillesCode code={numero} sur="clair" total={LONGUEUR_TELEPHONE} />
+        <NumeroAffiche numero={numero} sur="clair" />
         <PavillonNumerique
           ton="clair"
           onChiffre={(c) => {
@@ -207,22 +207,22 @@ async function effacerTout() {
           </div>
         )}
 
-        {/* ---------- Mon numero ----------
+        {/* ---------- Mon login ----------
 
-            Le numero EST l'identite : c'est par lui qu'on entre.
+            Le login EST l'identite : c'est par lui qu'on entre.
             On le montre en clair, en gros, pour que la personne
             le verifie d'un coup d'oeil — un numero mal recopie
             par ailleurs est la cause la plus probable d'un
             « je n'arrive pas a entrer ». */}
         <div className="carte">
-          <p className="section__titre">Mon numéro</p>
+          <p className="section__titre">Mon login</p>
           <p className="num" style={{ margin: '0 0 4px', fontSize: 26, fontWeight: 700, letterSpacing: '0.02em' }}>
             {utilisateur?.telephone ?? '—'}
           </p>
           <p style={{ margin: '0 0 12px', fontSize: 12.5, color: 'var(--c-500)' }}>
             {utilisateur?.telephone
-              ? 'Tu entres avec ce numéro, puis ton code.'
-              : 'Pas encore de numéro. Ajoute-le : sans lui, tu entres par ton nom.'}
+              ? 'Tu entres avec ce login, puis ton mot de passe.'
+              : 'Pas encore de login. Ajoute-le : sans lui, tu entres par ton nom.'}
           </p>
 
           {/* Le pave du numero vit sur SON ecran, pas ici. Deux
@@ -230,21 +230,21 @@ async function effacerTout() {
               meme dessin avec deux sens differents : personne ne
               sait lequel remplit quoi. */}
           <Bouton surClick={() => { setNumero(''); setErreurNumero(null); setNumeroOuvert(true) }}>
-            {utilisateur?.telephone ? 'Changer mon numéro' : 'Ajouter mon numéro'}
+            {utilisateur?.telephone ? 'Changer mon login' : 'Ajouter mon login'}
           </Bouton>
         </div>
 
-        {/* ---------- Mon code ---------- */}
+        {/* ---------- Mon mot de passe ---------- */}
         <div className="carte">
-          <p className="section__titre">Mon code</p>
+          <p className="section__titre">Mon mot de passe</p>
           <p style={{ margin: '0 0 4px', fontSize: 13.5, color: 'var(--c-700)' }}>
             {utilisateur ? `${utilisateur.nom} — ${utilisateur.role}` : ''}
           </p>
 
           <p style={{ margin: '0 0 2px', fontSize: 13, color: 'var(--c-500)' }}>
             {enConfirmation
-              ? 'Tape le même code encore une fois'
-              : `Choisis un nouveau code de ${LONGUEUR_CODE} chiffres`}
+              ? 'Tape le même mot de passe encore une fois'
+              : `Choisis un nouveau mot de passe de ${LONGUEUR_CODE} chiffres`}
           </p>
 
           <PastillesCode code={code} sur="clair" />
@@ -281,9 +281,9 @@ async function effacerTout() {
             croire que l'application est cassee quand elle refuse
             un code qu'on ne se rappelle pas. */}
         <div className="carte">
-          <p className="section__titre">Personnes et codes</p>
+          <p className="section__titre">Personnes et mots de passe</p>
           <p style={{ margin: '0 0 12px', fontSize: 13.5, color: 'var(--c-700)' }}>
-            Les codes de l'essai. Ils ne sont jamais stockés en clair
+            Les mots de passe de l'essai. Ils ne sont jamais stockés en clair
             dans l'application : elle ne compare que des empreintes.
           </p>
           <ul className="codes" data-liste="comptes">
@@ -298,7 +298,7 @@ async function effacerTout() {
 
           <div style={{ marginTop: 12 }}>
             <Bouton variante="secondaire" surClick={() => void remettreLesComptes()}>
-              Remettre les codes de l'essai
+              Remettre les mots de passe de l'essai
             </Bouton>
           </div>
         </div>
@@ -326,7 +326,7 @@ async function effacerTout() {
                   {p.telephone ? (
                     <span className="num">{p.telephone}</span>
                   ) : (
-                    <span style={{ color: 'var(--wrn-700)' }}>Pas de numéro</span>
+                    <span style={{ color: 'var(--wrn-700)' }}>Pas de login</span>
                   )}
                 </span>
               </li>

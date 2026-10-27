@@ -98,12 +98,12 @@ const avantFaux = avant.filter((u) => u.code !== codes[avant.indexOf(u)])
 ok(avantFaux.length > 0, `la base ne correspond PAS encore a la liste (${avantFaux.map((u) => u.nom + '=' + u.code).join(', ')})`)
 
 /* ---------- On remet ---------- */
-console.log('\n2. On remet les codes de l essai')
-const bouton = page.getByRole('button', { name: /Remettre les codes/ })
+console.log('\n2. On remet les mots de passe de l essai')
+const bouton = page.getByRole('button', { name: /Remettre les mots de passe/ })
 ok((await bouton.count()) === 1, 'le bouton existe')
 await bouton.click()
 await page.waitForTimeout(1200)
-ok((await page.getByText(/codes de l'essai sont remis/).count()) > 0, 'un message confirme')
+ok((await page.getByText(/mots de passe de l'essai sont remis/).count()) > 0, 'un message confirme')
 
 const apres = await lire()
 console.log('   etat reel : ' + apres.map((u) => `${u.nom}=${u.code}`).join(', '))

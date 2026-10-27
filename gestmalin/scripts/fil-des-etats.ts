@@ -97,7 +97,7 @@ await page.waitForTimeout(2200)
 await afficher('ETAPE 3 — apres le passage a 5 chiffres (migration)')
 
 /* ---------- Etape 4 : on remet les codes annonces ---------- */
-console.log('\nETAPE 4 — apres « Remettre les codes de l essai »')
+console.log('\nETAPE 4 — apres « Remettre les mots de passe de l essai »')
 
 /* Apres le rechargement, la session peut nous avoir deja
    connectes : on ne cherche pas un pave qui n'est pas la. */
@@ -125,7 +125,7 @@ if ((await page.locator('.ecran--connexion').count()) > 0) {
    on clique, puis on attend l'ecran. */
 await page.locator('.nav-item', { hasText: /^Réglages$/ }).first().click()
 await page.waitForTimeout(1000)
-await page.getByRole('button', { name: /Remettre les codes/ }).click()
+await page.getByRole('button', { name: /Remettre les mots de passe/ }).click()
 await page.waitForTimeout(1500)
 await afficher('   ')
 

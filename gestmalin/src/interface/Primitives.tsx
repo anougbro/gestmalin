@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { Icone, type NomIcone } from './Icones'
-import { LONGUEUR_CODE } from '../domaine/acces'
+import { LONGUEUR_CODE, LONGUEUR_TELEPHONE } from '../domaine/acces'
 
 /* ============================================================
    LES PRIMITIVES
@@ -252,21 +252,48 @@ export function PavillonNumerique({
 
 /* ---------- Les pastilles du code saisi ---------- */
 
-export function PastillesCode({ code, sur, total }: { code: string; sur?: 'sombre' | 'clair'; total?: number }) {
+export function PastillesCode({ code, sur }: { code: string; sur?: 'sombre' | 'clair' }) {
   /* Le nombre de pastilles suit la longueur reelle du code. Un
      ecran qui en dessine quatre pour un code a cinq chiffres ne
      montre pas a la personne ou elle en est : elle ne sait plus
      combien il lui en reste a taper. */
-    /* Pour le numero, la longueur est dix : on ne la deduit pas
-       de ce qui est tape, sinon l ecran s elargit sous les yeux
-       a chaque chiffre, et la personne ne sait plus combien il
-       lui en reste. */
-    const place = total ?? Math.max(LONGUEUR_CODE, code.length)
+  const place = Math.max(LONGUEUR_CODE, code.length)
 
   return (
     <div className={`pastilles${sur === 'clair' ? ' pastilles--clair' : ''}`}>
       {Array.from({ length: place }, (_, i) => (
         <span key={i} className={`pastille-point${code.length > i ? ' pastille-point--plein' : ''}`} />
+      ))}
+    </div>
+  )
+}
+
+/* ---------- Le login, chiffre par chiffre ----------
+
+   Dix points ne disent rien : on ne peut pas relire ce qu'on vient
+   de taper, et une faute sur un numero ne se voit qu'au refus, une
+   fois la porte fermee. Un numero n'est pas un secret — le cacher
+   n'apporte rien et coute la seule verification dont on dispose
+   avant de valider.
+
+   On affiche donc les chiffres, groupes deux par deux, comme on lit
+   un numero de telephone. Les positions encore vides restent en
+   pointille : la personne voit combien il lui en reste. */
+export function NumeroAffiche({ numero, sur }: { numero: string; sur?: 'sombre' | 'clair' }) {
+  const chiffres = numero.slice(0, LONGUEUR_TELEPHONE)
+  return (
+    <div
+      className={`numero-affiche${sur === 'clair' ? ' numero-affiche--clair' : ''}`}
+      role="status"
+      aria-label={`Login : ${chiffres || 'vide'}`}
+    >
+      {Array.from({ length: LONGUEUR_TELEPHONE }, (_, i) => (
+        <span
+          key={i}
+          className={`numero-affiche__chiffre${i < chiffres.length ? '' : ' numero-affiche__chiffre--vide'}`}
+        >
+          {i < chiffres.length ? chiffres[i] : '·'}
+        </span>
       ))}
     </div>
   )

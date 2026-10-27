@@ -1484,6 +1484,30 @@ body {
 .pastilles--clair .pastille-point { border-color: var(--line-3); }
 .pastilles--clair .pastille-point--plein { background: var(--teal-700); border-color: var(--teal-700); }
 
+/* ---------- Le login, chiffre par chiffre ----------
+
+   Dix chiffres tenants, groupes deux par deux : on relit son numero
+   d'un coup d'oeil avant de valider. Chiffres a largeur fixe, sinon
+   la ligne danse a chaque frappe. */
+.numero-affiche {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 8px 0 12px;
+  min-height: 32px;
+  font-size: 25px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #fff;
+}
+.numero-affiche__chiffre { width: 0.66em; text-align: center; }
+/* Un soupcon d'air toutes les deux paires, sans casser la ligne. */
+.numero-affiche__chiffre:nth-child(2n) { margin-right: 0.42em; }
+.numero-affiche__chiffre:last-child { margin-right: 0; }
+.numero-affiche__chiffre--vide { color: rgba(255, 255, 255, 0.42); }
+.numero-affiche--clair { color: var(--c-900); }
+.numero-affiche--clair .numero-affiche__chiffre--vide { color: var(--c-300); }
+
 /* ============================================================
    LES MEDIA QUERIES — EN DERNIER
 

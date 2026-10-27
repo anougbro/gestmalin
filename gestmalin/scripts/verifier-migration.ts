@@ -107,7 +107,7 @@ async function entrer(nom: string, code: string) {
    verifie par les tests unitaires — ici on verifie l'ecran. */
 async function quatreChiffresRefuses(nom: string) {
   await prepare(page)
-  await page.getByRole('button', { name: /oublié le numéro/ }).click()
+  await page.getByRole('button', { name: /oublié mon login/ }).click()
   await page.waitForTimeout(500)
   await page.locator('.personne', { hasText: nom }).first().click()
   await page.waitForTimeout(500)
@@ -147,7 +147,7 @@ await page.waitForTimeout(800)
    porte de secours pour choisir la personne, et on compte alors
    les pastilles du CODE. */
 await prepare(page)
-await page.getByRole('button', { name: /oublié le numéro/ }).click()
+await page.getByRole('button', { name: /oublié mon login/ }).click()
 await page.waitForTimeout(500)
 
 if ((await page.locator('.personne').count()) > 0) {

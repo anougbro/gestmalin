@@ -9,13 +9,13 @@ import { prepare } from './aide.ts'
    ecran reel.
 
    Ce script fait exactement ce que fait un humain : il appuie sur
-   les touches du pave. D'abord dix chiffres pour le numero, puis
-   cinq pour le code.
+   les touches du pave. D'abord dix chiffres pour le login, puis
+   cinq pour le mot de passe.
 
    Il teste aussi ce qui a change et qu'aucun test unitaire ne
-   voit : un numero inconnu dit « Numéro inconnu » et non « Code
-   incorrect ». La personne ne doit pas chercher son code pendant
-   qu'elle s'est trompee de numero.
+   voit : un login inconnu dit « Login inconnu » et non « Mot de
+   passe incorrect ». La personne ne doit pas chercher son mot de
+   passe pendant qu'elle s'est trompee de login.
    ============================================================ */
 
 const navigateur = await chromium.launch()
@@ -85,13 +85,13 @@ await page.reload({ waitUntil: 'networkidle' })
 await prepare(page)
 await attendre(1000)
 
-/* ---------- 1. L ecran du numero ---------- */
-titre('1. Ton numero')
+/* ---------- 1. L ecran du login ---------- */
+titre('1. Ton login')
 const pave = page.locator('.pave__touche')
 ok((await pave.count()) === 11, `le pave est affiche (${await pave.count()} touches)`)
 
-const pastilles = await page.locator('.pastilles--clair .pastille-point, .pastille-point').count()
-ok(pastilles >= 10, `il y a de la place pour dix chiffres (${pastilles} pastilles)`)
+const chiffres = await page.locator('.numero-affiche__chiffre').count()
+ok(chiffres === 10, `il y a de la place pour dix chiffres (${chiffres} cases)`)
 
 const entrer = page.getByRole('button', { name: 'Entrer' })
 ok(await entrer.isDisabled(), '« Entrer » est inactif tant que le numero est incomplet')
@@ -102,7 +102,7 @@ ok(await entrer.isDisabled(), 'huit chiffres ne suffisent pas : on refuse avant 
 await page.screenshot({ path: 'captures/connexion-numero.png' })
 
 /* ---------- 2. Un numero inconnu ---------- */
-titre('2. Un numero qui n existe pas')
+titre('2. Un login qui n existe pas')
 await ecranVierge()
 await taper('9012345678')
 ok(!(await entrer.isDisabled()), '« Entrer » s active a dix chiffres')
@@ -110,18 +110,18 @@ await entrer.click()
 await attendre(700)
 
 const messageInconnu = (await page.locator('.connexion__erreur').first().innerText().catch(() => '')).trim()
-ok(messageInconnu === 'Numéro inconnu.', `un numero inconnu dit « Numéro inconnu » (« ${messageInconnu} »), pas « code incorrect »`)
+ok(messageInconnu === 'Login inconnu.', `un login inconnu dit « Login inconnu » (« ${messageInconnu} »), pas « mot de passe incorrect »`)
 await page.screenshot({ path: 'captures/connexion-inconnu.png' })
 
 /* ---------- 3. Le bon numero ---------- */
-titre('3. Ton numero, puis ton code')
+titre('3. Ton login, puis ton mot de passe')
 await ecranVierge()
 await taper(NUMERO)
 await entrer.click()
 await attendre(900)
 
 const titreCode = await page.locator('.connexion__titre').innerText().catch(() => '')
-ok(titreCode.includes('code'), `l ecran passe a l etape du code (« ${titreCode} »)`)
+ok(titreCode.includes('Mot de passe'), `l ecran passe a l etape du mot de passe (« ${titreCode} »)`)
 
 const nomAffiche = await page.locator('.connexion__indices').innerText().catch(() => '')
 ok(nomAffiche.trim().length > 0, `le nom de la personne est affiche (« ${nomAffiche.trim()} »)`)
@@ -146,10 +146,10 @@ ok((await page.locator('.accueil').count()) > 0, 'l accueil est affiche')
 await page.screenshot({ path: 'captures/connexion-ok.png' })
 
 /* ---------- 6. La porte de secours ---------- */
-titre('6. J ai oublie le numero')
+titre('6. J ai oublie mon login')
 await page.locator('.qui-btn').click()
 await attendre(1200)
-const secours = page.getByRole('button', { name: /oublié le numéro/ })
+const secours = page.getByRole('button', { name: /oublié mon login/ })
 ok((await secours.count()) > 0, 'le bouton de secours est la')
 await secours.click()
 await attendre(700)

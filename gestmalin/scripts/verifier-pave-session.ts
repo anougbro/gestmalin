@@ -37,7 +37,7 @@ await page.waitForTimeout(1200)
    directement au code par la liste des noms — c'est le chemin
    court, et c'est celui qui montre le pave du CODE, le seul que
    ce script mesure. */
-await page.getByRole('button', { name: /oublié le numéro/ }).click()
+await page.getByRole('button', { name: /oublié mon login/ }).click()
 await page.waitForTimeout(500)
 await page.locator('.personne').first().click()
 await page.waitForTimeout(500)

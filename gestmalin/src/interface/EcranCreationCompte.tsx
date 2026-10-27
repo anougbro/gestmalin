@@ -4,7 +4,7 @@ import { RAYONS_PAR_DEFAUT } from '../etat/rayons'
 import { LONGUEUR_CODE, LONGUEUR_TELEPHONE, empreinte, normaliserTelephone, numeroLibre, telephoneSaisi } from '../domaine/acces'
 import { nouvelId } from '../donnees/depots'
 import { Icone } from './Icones'
-import { Bouton, PastillesCode, PavillonNumerique } from './Primitives'
+import { Bouton, NumeroAffiche, PastillesCode, PavillonNumerique } from './Primitives'
 
 /* ============================================================
    CREER SON COMPTE
@@ -43,15 +43,15 @@ export function EcranCreationCompte({ surFin }: { surFin: () => void }) {
 
     if (!nom.trim()) return setErreur('Écris ton nom.')
     if (!rayonId) return setErreur('Choisis ton rayon.')
-    if (!telephoneSaisi(numero)) return setErreur(`Ton numéro doit faire ${LONGUEUR_TELEPHONE} chiffres.`)
-    if (code.length !== LONGUEUR_CODE) return setErreur(`Ton code doit faire ${LONGUEUR_CODE} chiffres.`)
+    if (!telephoneSaisi(numero)) return setErreur(`Ton login doit faire ${LONGUEUR_TELEPHONE} chiffres.`)
+    if (code.length !== LONGUEUR_CODE) return setErreur(`Ton mot de passe doit faire ${LONGUEUR_CODE} chiffres.`)
 
     /* L'unicite se verifie AU MOMENT ou l'on enregistre, pas
        pendant la frappe : le numero tape au clavier peut changer
        entre le moment ou l'on le controle et celui ou l'on
        valide, et c'est la validation qui doit faire foi. */
     if (!numeroLibre(tous, numero)) {
-      setErreur('Ce numéro est déjà pris.')
+      setErreur('Ce login est déjà pris.')
       setEtape('numero')
       setNumero('')
       return
@@ -148,14 +148,15 @@ export function EcranCreationCompte({ surFin }: { surFin: () => void }) {
     )
   }
 
-  /* ---------- 3. Ton numero ---------- */
+  /* ---------- 3. Ton login ---------- */
   if (etape === 'numero') {
     return (
       <div className="ecran">
         <div className="contenu">
-          <p className="section__titre">Ton numéro</p>
-          <PastillesCode code={numero} total={LONGUEUR_TELEPHONE} />
+          <p className="section__titre">Ton login</p>
+          <NumeroAffiche numero={numero} sur="clair" />
           <PavillonNumerique
+            ton="clair"
             onChiffre={chiffreNumero}
             onEffacer={effacer}
             onValider={() => { if (telephoneSaisi(numero)) setEtape('code') }}
@@ -168,13 +169,14 @@ export function EcranCreationCompte({ surFin }: { surFin: () => void }) {
     )
   }
 
-  /* ---------- 4. Ton code, deux fois ---------- */
+  /* ---------- 4. Ton mot de passe, deux fois ---------- */
   return (
     <div className="ecran">
       <div className="contenu">
-        <p className="section__titre">{confirmation === null ? 'Ton code' : 'Répète ton code'}</p>
-        <PastillesCode code={confirmation ?? code} />
+        <p className="section__titre">{confirmation === null ? 'Ton mot de passe' : 'Répète ton mot de passe'}</p>
+        <PastillesCode code={confirmation ?? code} sur="clair" />
         <PavillonNumerique
+          ton="clair"
           onChiffre={(c) => {
             if (confirmation === null) chiffreCode(c)
             else {
@@ -195,7 +197,7 @@ export function EcranCreationCompte({ surFin }: { surFin: () => void }) {
                  des deux compte. */
               setConfirmation(null)
               setCode('')
-              setErreur('Les deux codes ne sont pas pareils.')
+              setErreur('Les deux mots de passe ne sont pas pareils.')
               return
             }
             void enregistrerCompte()

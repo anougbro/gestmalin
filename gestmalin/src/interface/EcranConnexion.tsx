@@ -4,7 +4,7 @@ import { base } from '../donnees/base'
 import { reparerComptes, CODE_INITIAL, CODE_PAR_DEFAUT } from '../etat/preparation'
 import { LONGUEUR_CODE, LONGUEUR_TELEPHONE, normaliserTelephone, telephoneSaisi, type Utilisateur } from '../domaine/acces'
 import { Icone } from './Icones'
-import { PastillesCode, PavillonNumerique } from './Primitives'
+import { NumeroAffiche, PastillesCode, PavillonNumerique } from './Primitives'
 
 /* ============================================================
    LA CONNEXION
@@ -65,14 +65,14 @@ export function EcranConnexion({ surCreation }: { surCreation: () => void }) {
     const trouves = comptes.filter((u) => u.telephone && normaliserTelephone(u.telephone) === voulu)
 
     if (trouves.length === 0) {
-      setErreur('Numéro inconnu.')
+      setErreur('Login inconnu.')
       return
     }
     if (trouves.length > 1) {
       /* Deux comptes pour un numero : on ne sait pas lequel
          ouvrir, et choisir le premier reviendrait a laisser le
          code de l un ouvrir le mauvais rayon. */
-      setErreur('Ce numéro est utilisé deux fois. Demande à un responsable.')
+      setErreur('Ce login est utilisé deux fois. Demande à un responsable.')
       return
     }
     setChoisi(trouves[0].id)
@@ -85,7 +85,7 @@ export function EcranConnexion({ surCreation }: { surCreation: () => void }) {
     try {
       const r = await connecter(id, code)
       if (r.ok) { setErreur(null); return }
-      setErreur(r.raison === 'inactif' ? 'Ce compte est désactivé.' : 'Code incorrect.')
+      setErreur(r.raison === 'inactif' ? 'Ce compte est désactivé.' : 'Mot de passe incorrect.')
     } catch {
       setErreur('Connexion impossible. Réessaie.')
     } finally {
@@ -95,9 +95,9 @@ export function EcranConnexion({ surCreation }: { surCreation: () => void }) {
 
   async function reparer() {
     if (!confirm(
-      `Réinitialiser les codes ?\n\n` +
-      `Les codes d'origine n'ont jamais été stockés en clair : ils sont perdus.\n` +
-      `Le premier compte reprend le code ${CODE_INITIAL}, les autres ${CODE_PAR_DEFAUT}.\n\n` +
+      `Réinitialiser les mots de passe ?\n\n` +
+      `Les mots de passe d'origine n'ont jamais été stockés en clair : ils sont perdus.\n` +
+      `Le premier compte reprend le mot de passe ${CODE_INITIAL}, les autres ${CODE_PAR_DEFAUT}.\n\n` +
       `À n'utiliser que si personne ne peut plus entrer.`,
     )) return
     await reparerComptes()
@@ -183,11 +183,11 @@ export function EcranConnexion({ surCreation }: { surCreation: () => void }) {
           <span>Gestmalin</span>
         </div>
 
-        {/* ---------- Etape 1 : le numero ---------- */}
+        {/* ---------- Etape 1 : le login ---------- */}
         {etape === 'numero' && (
           <>
-            <p className="connexion__titre">Ton numéro</p>
-            <PastillesCode code={numero} total={LONGUEUR_TELEPHONE} />
+            <p className="connexion__titre">Login</p>
+            <NumeroAffiche numero={numero} />
             <PavillonNumerique
               onChiffre={chiffreNumero}
               onEffacer={effacer}
@@ -196,15 +196,15 @@ export function EcranConnexion({ surCreation }: { surCreation: () => void }) {
             />
             {erreur && <p className="connexion__erreur">{erreur}</p>}
             <button className="btn btn--discret" style={{ color: 'rgba(255,255,255,.55)', minHeight: 40 }} onClick={() => { setEtape('noms'); setErreur(null) }}>
-              J’ai oublié le numéro
+              J’ai oublié mon login
             </button>
           </>
         )}
 
-        {/* ---------- Etape 2 : le code ---------- */}
+        {/* ---------- Etape 2 : le mot de passe ---------- */}
         {enCode && (
           <>
-            <p className="connexion__titre">Ton code</p>
+            <p className="connexion__titre">Mot de passe</p>
             <p className="connexion__indices">
               {liste.find((u) => u.id === choisi)?.nom ?? 'Préparateur'}
             </p>
@@ -254,7 +254,7 @@ export function EcranConnexion({ surCreation }: { surCreation: () => void }) {
             style={{ color: 'rgba(255,255,255,.5)', minHeight: 40 }}
             onClick={() => void reparer()}
           >
-            Code oublié ?
+            Mot de passe oublié ?
           </button>
         )}
 

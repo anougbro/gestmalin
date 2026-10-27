@@ -166,14 +166,14 @@ ok(creee?.empreinte === empreinte(creee.id, '44444'), 'le code est stocke en emp
    son compte, son rayon, ni son code. Et il ne doit pas pouvoir
    prendre celui d'un autre — c'est la seule regle qui empeche un
    code d'ouvrir la mauvaise personne. */
-console.log('\n5. Changer son numéro, quand on veut')
+console.log('\n5. Changer son login, quand on veut')
 
 await entrerParNumero('9000000007', '44444')
 ok((await page.locator('.ecran--connexion').count()) === 0, 'le numero qu on vient de creer ouvre la porte')
 
 await page.getByRole('button', { name: 'Réglages' }).first().click()
 await page.waitForTimeout(800)
-await page.getByRole('button', { name: /Changer mon numéro/ }).click()
+await page.getByRole('button', { name: /Changer mon login/ }).click()
 await page.waitForTimeout(700)
 await taperPave('9000000008')
 await page.getByRole('button', { name: 'Enregistrer', exact: true }).click()
@@ -184,7 +184,7 @@ ok(renumerotee?.telephone === '9000000008', `le numero est change (${renumerotee
 ok(renumerotee?.id === creee?.id, 'c est le meme compte : le rayon et le code suivent')
 
 /* Le numero d'une autre personne est refuse, au moment d'ecrire. */
-await page.getByRole('button', { name: /Changer mon numéro/ }).click()
+await page.getByRole('button', { name: /Changer mon login/ }).click()
 await page.waitForTimeout(700)
 await taperPave('9000000002')
 await page.getByRole('button', { name: 'Enregistrer', exact: true }).click()
@@ -208,7 +208,7 @@ await taperPave('9000000007')
 await page.getByRole('button', { name: 'Entrer' }).click()
 await page.waitForTimeout(900)
 const texteAncien = await page.locator('body').innerText()
-ok(texteAncien.includes('Numéro inconnu'), "l'ancien numero n ouvre plus : il est vraiment remplace")
+ok(texteAncien.includes('Login inconnu'), "l'ancien login n ouvre plus : il est vraiment remplace")
 
 console.log(echecs === 0 ? '\nLES COMPTES MARCHENT, DE LA CREATION AU CHANGEMENT DE NUMERO.' : `\n${echecs} ECHEC(S).`)
 await navigateur.close()

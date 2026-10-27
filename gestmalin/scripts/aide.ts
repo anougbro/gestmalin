@@ -40,7 +40,7 @@ export async function prepare(page: Page): Promise<void> {
  */
 export async function connecterParNom(page: Page, nom: string, code = '12345'): Promise<void> {
   await prepare(page)
-  const secours = page.getByRole('button', { name: /oublié le numéro/ })
+  const secours = page.getByRole('button', { name: /oublié mon login/ })
   if (await secours.count()) {
     await secours.click()
     await page.waitForTimeout(500)

@@ -204,7 +204,7 @@ ok(!listeMen.includes('Paracetamol de test'), 'le produit de la pharmacie n appa
 await enregistrerProduit('Savon de test')
 ok((await rayonDuProduit('Savon de test')) === MENAGE.id, 'un produit menager s ecrit bien dans Menagers')
 
-titre("6. Le code de l'un n'ouvre pas le compte de l'autre")
+titre("6. Le mot de passe de l'un n'ouvre pas le compte de l'autre")
 await sortir()
 await taper(MENAGE.numero)
 await page.getByRole('button', { name: 'Entrer' }).click()
@@ -215,19 +215,19 @@ await page.waitForTimeout(1200)
 
 const texteApresFaux = await page.locator('body').innerText()
 ok((await page.locator('.ecran--connexion').count()) === 1, 'la porte reste fermee')
-ok(texteApresFaux.includes('Code incorrect'), 'le refus est dit, et il dit « code » — pas « numero »')
-ok(!texteApresFaux.includes('Numéro inconnu'), 'le numero est connu : dire le contraire serait faux')
+ok(texteApresFaux.includes('Mot de passe incorrect'), 'le refus est dit, et il dit « mot de passe » — pas « login »')
+ok(!texteApresFaux.includes('Login inconnu'), 'le login est connu : dire le contraire serait faux')
 
-titre('7. Un numero que personne n a est dit inconnu')
+titre('7. Un login que personne n a est dit inconnu')
 await page.reload({ waitUntil: 'networkidle' })
 await page.waitForTimeout(1500)
 await taper('9099999999')
 await page.getByRole('button', { name: 'Entrer' }).click()
 await page.waitForTimeout(900)
 const texteInconnu = await page.locator('body').innerText()
-ok(texteInconnu.includes('Numéro inconnu'), 'le numero inconnu est distingue du code faux')
+ok(texteInconnu.includes('Login inconnu'), 'le login inconnu est distingue du mot de passe faux')
 
-titre('8. Un numero partage est refuse, meme avec le bon code')
+titre('8. Un login partage est refuse, meme avec le bon mot de passe')
 /* Deux comptes sur un meme numero : on ne sait pas lequel ouvrir,
    et ouvrir le premier laisserait le code de l'un entrer dans le
    rayon de l'autre. On ferme donc les deux portes. */
