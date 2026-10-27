@@ -267,7 +267,7 @@ async function effacerTout() {
               </button>
             ) : (
               <p style={{ margin: 0, fontSize: 12, color: 'var(--c-400)' }}>
-                Le code n'est jamais écrit en clair, seulement son empreinte.
+                Le mot de passe n'est jamais écrit en clair, seulement son empreinte.
               </p>
             )}
           </div>
